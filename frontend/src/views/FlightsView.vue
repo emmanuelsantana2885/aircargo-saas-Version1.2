@@ -1,13 +1,13 @@
 <template>
-  <div class="p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
+  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
 
     <!-- Header -->
-    <header class="flex justify-between items-center border-b border-slate-400 pb-3 shrink-0">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-400 pb-3 shrink-0 gap-2">
       <div>
         <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Flight Control</h1>
         <p class="text-[11px] font-mono text-slate-950 mt-0.5 uppercase tracking-widest font-bold">SDQ Ramp Ops // Active Manifest Board</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 md:gap-3 flex-wrap">
         <div v-if="store.error" class="text-[12px] font-mono text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded">
           {{ store.error }}
         </div>
@@ -25,7 +25,8 @@
     <!-- Table -->
     <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
 
-      <div class="bg-slate-700 border-b border-slate-500 text-[11px] font-bold text-white uppercase tracking-wider grid grid-cols-12 py-2 px-5 items-center shrink-0 font-mono shadow-sm">
+      <div class="table-scroll-wrapper flex-1 min-h-0">
+      <div class="bg-slate-700 border-b border-slate-500 text-[11px] font-bold text-white uppercase tracking-wider grid grid-cols-12 py-2 px-5 items-center shrink-0 font-mono shadow-sm" style="min-width: 900px">
         <div class="col-span-2">Vuelo</div>
         <div class="col-span-2">Ruta</div>
         <div class="col-span-1">Aeronave</div>
@@ -101,11 +102,10 @@ class="grid grid-cols-12 items-center py-1.5 px-5 transition-all duration-150 cu
           </div>
         </div>
       </div>
+      </div>
     </section>
-
-    <!-- Modal crear/editar vuelo -->
-    <div v-if="showModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="closeModal">
-      <div class="bg-white rounded-xl border border-slate-400 shadow-2xl w-full max-w-xl p-6">
+    <div v-if="showModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-4" @click.self="closeModal">
+      <div class="bg-white rounded-xl border border-slate-400 shadow-2xl w-full max-w-xl p-4 md:p-6 max-h-[90vh] overflow-y-auto">
 
         <div class="flex justify-between items-center mb-5 pb-3 border-b border-slate-400">
           <h2 class="text-[13px] font-black font-mono uppercase tracking-wider text-slate-950">

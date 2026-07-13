@@ -1,8 +1,8 @@
 <template>
-  <div class="p-6 max-w-[1600px] mx-auto flex flex-col h-screen">
+  <div class="p-3 md:p-6 max-w-[1600px] mx-auto flex flex-col h-screen">
 
     <!-- ═══ HEADER ═══ -->
-    <div class="flex items-center justify-between mb-4 shrink-0">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 shrink-0 gap-2">
       <div class="flex items-center gap-3">
         <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Exports</h1>
         <div v-if="rows.length" class="h-4 w-[1px] bg-slate-300"></div>
@@ -25,7 +25,7 @@
     </div>
 
     <!-- ═══ FILTER BAR ═══ -->
-    <div class="flex items-center gap-3 mb-4 shrink-0 p-3 rounded-lg border border-slate-200 bg-slate-50">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 shrink-0 p-3 rounded-lg border border-slate-200 bg-slate-50">
       <div>
         <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1 font-mono">Tipo</label>
         <select v-model="exportType"
@@ -176,7 +176,8 @@
 
       <!-- Data -->
       <div v-else class="flex-1 min-h-0 overflow-auto">
-        <table class="text-[11px] font-mono" style="table-layout: fixed">
+        <div class="table-scroll-wrapper">
+        <table class="text-[11px] font-mono" style="table-layout: fixed; min-width: 900px">
           <colgroup>
             <col v-for="(col, ci) in cols" :key="col" :style="colStyle(ci)" />
           </colgroup>
@@ -207,6 +208,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>

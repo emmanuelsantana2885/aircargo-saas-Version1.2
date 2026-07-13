@@ -1,17 +1,17 @@
 <template>
-  <div class="p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
-    <header class="flex justify-between items-center border-b border-slate-200 pb-3 shrink-0">
+  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 pb-3 shrink-0 gap-2">
       <div>
         <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Payload Dashboard</h1>
         <p class="text-[11px] font-mono text-slate-500 mt-0.5 uppercase tracking-widest font-bold">SDQ Hub // Payload Despachado por Vuelo</p>
       </div>
-      <div class="flex items-center gap-3 text-[10px] font-mono font-bold">
+      <div class="flex items-center gap-3 text-[10px] font-mono font-bold flex-wrap">
         <span class="flex items-center gap-1 text-slate-500">
           <span class="h-2 w-2 rounded-full" style="background: var(--accent)"></span> LIVE
         </span>
-        <span class="text-slate-300">|</span>
+        <span class="text-slate-300 hidden sm:inline">|</span>
         <span class="text-slate-950">{{ filteredFlights.length }} vuelos</span>
-        <span class="text-slate-300">|</span>
+        <span class="text-slate-300 hidden sm:inline">|</span>
         <button @click="descargarReporte"
           class="flex items-center gap-1 px-3 py-1.5 rounded border border-slate-950 font-mono uppercase tracking-wider font-bold text-[11px] bg-slate-950 text-white hover:bg-slate-800 transition active:scale-95 shadow-sm">
            <span class="text-[12px] font-semibold leading-none">↓</span> Descargar Reporte
@@ -19,7 +19,7 @@
       </div>
     </header>
 
-    <section class="flex items-center gap-3 my-3 shrink-0 flex-wrap">
+    <section class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 my-3 shrink-0">
       <div class="flex items-center gap-2">
         <label class="text-[10px] font-mono font-black uppercase tracking-widest text-slate-950">Desde</label>
         <input v-model="dateFrom" type="date"
@@ -38,7 +38,8 @@
 
     <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
       <div ref="tableWrapper" class="overflow-auto flex-1 min-h-0 scrollbar-none">
-        <table class="w-full border-collapse text-[11px] font-mono">
+        <div class="table-scroll-wrapper h-full">
+        <table class="w-full border-collapse text-[11px] font-mono" style="min-width: 900px">
           <thead class="sticky top-0 z-20">
             <tr class="bg-slate-700 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-500 shadow-sm">
               <th class="text-center px-2 py-2.5 whitespace-nowrap">#</th>
@@ -84,6 +85,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   </div>

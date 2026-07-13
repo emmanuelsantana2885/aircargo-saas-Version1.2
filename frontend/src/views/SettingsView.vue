@@ -1,6 +1,6 @@
 <template>
-  <div class="p-6 max-w-6xl mx-auto">
-    <div class="flex items-center justify-between mb-5">
+  <div class="p-3 md:p-6 max-w-6xl mx-auto">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-2">
       <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Configuración</h1>
     </div>
 
@@ -42,7 +42,8 @@
 
       <!-- Users table -->
       <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <table class="w-full text-xs">
+        <div class="table-scroll-wrapper">
+        <table class="w-full text-xs" style="min-width: 800px">
           <thead>
             <tr style="background: var(--accent); color: white">
               <th class="text-left px-4 py-2.5 font-semibold">Email</th>
@@ -109,12 +110,13 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Edit modal -->
-      <div v-if="editingUser" class="fixed inset-0 z-50 flex items-center justify-center"
+      <div v-if="editingUser" class="fixed inset-0 z-50 flex items-center justify-center p-3"
         style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
+        <div class="w-full max-w-md p-4 md:p-6 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto" style="background: var(--surface); border: 1px solid var(--border)">
           <h2 class="text-sm font-bold mb-4" style="color: var(--text)">Editar usuario</h2>
           <div class="space-y-3">
             <div>
@@ -232,7 +234,8 @@
 
       <!-- Sites table -->
       <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <table class="w-full text-xs">
+        <div class="table-scroll-wrapper">
+        <table class="w-full text-xs" style="min-width: 500px">
           <thead>
             <tr style="background: var(--accent); color: white">
               <th class="text-left px-4 py-2.5 font-semibold">Código</th>
@@ -275,12 +278,13 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Site edit modal -->
-      <div v-if="editingSite" class="fixed inset-0 z-50 flex items-center justify-center"
+      <div v-if="editingSite" class="fixed inset-0 z-50 flex items-center justify-center p-3"
         style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
+        <div class="w-full max-w-md p-4 md:p-6 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto" style="background: var(--surface); border: 1px solid var(--border)">
           <h2 class="text-sm font-bold mb-4" style="color: var(--text)">Editar sitio</h2>
           <div class="space-y-3">
             <div>

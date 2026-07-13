@@ -20,7 +20,6 @@ body {
   color: var(--text);
 }
 
-/* headings: slightly bigger but still mono */
 h1, h2, h3, h4, .title {
   font-size: 14px;
   font-weight: 700;
@@ -32,33 +31,24 @@ h1, h2, h3, h4, .title {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
-/* Remove all card effects, shadows, and animations */
 .card {
   border: 1px solid var(--border);
 }
 
-.card:hover {
-  /* no hover effects */
-}
+.card:hover {}
 
-/* table row hover: simple gray */
 .table-row:hover {
   background-color: #e5e5e5 !important;
 }
 
-/* Selected row: simple dark border + light gray bg */
 .row-selected {
   background-color: #e5e5e5;
   box-shadow: inset 2px 0 0 0 var(--accent);
 }
 
-/* No blue tints, no pencil-hatch, no chalk overlays */
-
-/* ── Scrollbar ───────────────────────────────── */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── Global table styling ────────────────────── */
 table {
   border-collapse: collapse;
 }
@@ -75,7 +65,6 @@ td, th {
   padding: 6px 8px;
 }
 
-/* ── Default button style ────────────────────── */
 button, .btn {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 12px;
@@ -83,7 +72,6 @@ button, .btn {
   letter-spacing: 0.05em;
 }
 
-/* ── Inputs ──────────────────────────────────── */
 input, select, textarea {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 12px;
@@ -99,23 +87,57 @@ input:focus, select:focus, textarea:focus {
   outline-offset: -1px;
 }
 
+/* ── Table horizontal scroll wrapper ────────── */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll-wrapper::-webkit-scrollbar { height: 6px; }
+.table-scroll-wrapper::-webkit-scrollbar-track { background: var(--bg); }
+.table-scroll-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
 /* ── Responsive ──────────────────────────────── */
-@media (max-width: 1024px) {
+
+/* Tablet landscape: sidebar collapses to icons */
+@media (min-width: 768px) and (max-width: 1023px) {
   :root { --sidebar-width: 60px; }
-  .app-layout { flex-direction: column; }
-  .app-layout > aside { width: 100% !important; height: auto !important; flex-direction: row !important; overflow-x: auto; }
 }
-@media (max-width: 768px) {
-  :root { --sidebar-width: 0px; }
-  .app-layout > aside { display: none; }
-  .app-layout > div { padding-top: 0; }
+
+/* Mobile: full-width sidebar overlay */
+@media (max-width: 767px) {
+  .app-layout > aside {
+    transition: transform 0.3s ease-out;
+  }
 }
+
+/* ── Touch-friendly sizing ──────────────────── */
+@media (max-width: 1023px) {
+  /* Larger tap targets */
+  button, .btn {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+  input, select, textarea {
+    min-height: 36px;
+    font-size: 14px;
+    padding: 8px 10px;
+  }
+  /* Tables scroll horizontally */
+  .table-scroll-wrapper {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile-specific overrides */
 @media (max-width: 640px) {
   .p-5, .p-6 { padding: 12px !important; }
   .p-4 { padding: 10px !important; }
-  .grid-cols-4, .grid-cols-5, .grid-cols-12 { grid-template-columns: repeat(2, 1fr) !important; }
-  input, select, button { font-size: 13px !important; }
   .h-screen { height: auto !important; min-height: 100vh; }
   .max-h-screen { max-height: none !important; }
-  header { flex-wrap: wrap; gap: 8px; }
+
+  /* Header wraps gracefully */
+  header { flex-wrap: wrap; gap: 6px; }
+
+  /* Hide verbose labels */
+  .hide-mobile { display: none !important; }
 }

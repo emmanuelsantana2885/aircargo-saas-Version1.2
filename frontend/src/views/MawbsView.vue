@@ -1,5 +1,5 @@
 <template>
-  <div class="p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
+  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
 
     <!-- Tabs -->
     <div class="flex items-center gap-1 border-b border-slate-200 pb-0 shrink-0">

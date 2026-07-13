@@ -1,6 +1,6 @@
 <template>
-  <div class="p-5 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-sans antialiased overflow-hidden select-none">
-    <header class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-400 pb-3 shrink-0">
+  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-sans antialiased overflow-hidden select-none">
+    <header class="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-2 border-b border-slate-400 pb-3 shrink-0">
       <div class="flex items-center gap-4">
         <div>
           <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">ULD Management Hub</h1>
@@ -120,7 +120,8 @@
 
                 <!-- MAWB TABLE -->
                 <div class="border border-slate-200 rounded overflow-hidden mb-6">
-                  <div class="bg-slate-700 text-white text-[11px] font-bold uppercase grid grid-cols-12 py-3 px-5 tracking-wide items-center gap-2 shadow-sm">
+                  <div class="table-scroll-wrapper">
+                  <div class="bg-slate-700 text-white text-[11px] font-bold uppercase grid grid-cols-12 py-3 px-5 tracking-wide items-center gap-2 shadow-sm" style="min-width: 700px">
                     <div class="col-span-3">MAWB</div>
                     <div class="col-span-2">DESCRIPCIÓN</div>
                     <div class="col-span-1 text-right">PCS ASIG</div>
@@ -187,6 +188,7 @@
                         <button @click="removeMawbRow(uld, mIdx)" class="text-slate-400 hover:text-slate-600 text-xs">&#10005;</button>
                       </div>
                     </div>
+                  </div>
                   </div>
                   <div class="p-2 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500">
                     <button @click="addMawbRow(uld)"

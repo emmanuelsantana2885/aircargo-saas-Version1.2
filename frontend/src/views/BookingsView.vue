@@ -1,8 +1,8 @@
 <template>
-  <div class="p-5 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-sans antialiased overflow-hidden select-none">
+  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-sans antialiased overflow-hidden select-none">
 
-    <header class="flex justify-between items-center border-b border-slate-400 pb-3 shrink-0">
-      <div class="flex items-center gap-4">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-400 pb-3 shrink-0 gap-2">
+      <div class="flex flex-wrap items-center gap-3 md:gap-4">
         <div>
           <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Bookings Hub</h1>
           <p class="text-[11px] font-mono text-slate-950 mt-0.5 uppercase tracking-widest font-bold">SDQ Control Desk</p>
@@ -59,7 +59,8 @@
     </header>
 
     <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
-      <div class="bg-slate-700 border-b border-slate-500 text-[11px] font-bold text-white uppercase tracking-wider grid grid-cols-12 py-2 px-5 items-center shrink-0 font-mono shadow-sm">
+      <div class="table-scroll-wrapper flex-1 min-h-0">
+      <div class="bg-slate-700 border-b border-slate-500 text-[11px] font-bold text-white uppercase tracking-wider grid grid-cols-12 py-2 px-5 items-center shrink-0 font-mono shadow-sm" style="min-width: 900px">
         <div class="col-span-2 text-left">Booking ID</div>
         <div class="col-span-2 text-left">Vuelo / Fecha</div>
         <div class="col-span-2 text-left">Agente / Broker</div>
@@ -131,11 +132,10 @@
           </div>
         </div>
       </div>
+      </div>
     </section>
-
-    <!-- CREATE MODAL -->
-    <div v-if="showModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="closeModal">
-      <div class="bg-white rounded-xl border border-slate-400 shadow-2xl w-full max-w-lg p-6">
+    <div v-if="showModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-4" @click.self="closeModal">
+      <div class="bg-white rounded-xl border border-slate-400 shadow-2xl w-full max-w-lg p-4 md:p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-5 pb-3 border-b border-slate-400">
           <h2 class="text-[12px] font-black font-mono uppercase tracking-wider text-slate-950">Nuevo Booking</h2>
           <button @click="closeModal" class="text-slate-950 hover:text-slate-950"><IconX :size="16" :stroke-width="2" /></button>

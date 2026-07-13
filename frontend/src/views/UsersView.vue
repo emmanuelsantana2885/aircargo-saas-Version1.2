@@ -1,6 +1,6 @@
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
-    <div class="flex items-center justify-between mb-5">
+  <div class="p-3 md:p-6 max-w-7xl mx-auto">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-2">
       <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Usuarios</h1>
       <div class="flex gap-1">
         <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
@@ -16,7 +16,8 @@
     <!-- ────────────── TAB: CONNECTED USERS ────────────── -->
     <template v-if="activeTab === 'connected'">
       <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <table class="w-full text-xs">
+        <div class="table-scroll-wrapper">
+        <table class="w-full text-xs" style="min-width: 700px">
           <thead>
             <tr style="background: var(--accent); color: white">
               <th class="text-left px-4 py-2.5 font-semibold" style="width: 16px"></th>
@@ -44,10 +45,9 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </template>
-
-    <!-- ────────────── TAB: AUDIT LOG ────────────── -->
     <template v-if="activeTab === 'audit'">
       <div class="flex items-center justify-between mb-3">
         <div class="flex gap-2">
@@ -63,7 +63,8 @@
         </div>
       </div>
       <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <table class="w-full text-xs">
+        <div class="table-scroll-wrapper">
+        <table class="w-full text-xs" style="min-width: 600px">
           <thead>
             <tr style="background: var(--accent); color: white">
               <th class="text-left px-4 py-2.5 font-semibold">Fecha/Hora</th>
@@ -90,6 +91,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </template>
 

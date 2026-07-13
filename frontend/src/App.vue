@@ -1,8 +1,8 @@
 <template>
   <div v-if="auth.isAuthenticated" class="flex h-screen overflow-hidden app-layout">
-    <Sidebar />
-    <div class="flex flex-col flex-1 min-w-0">
-      <Header />
+    <Sidebar ref="sidebarRef" />
+    <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <Header @toggle-sidebar="toggleSidebar" />
       <main class="flex-1 overflow-auto">
         <router-view />
       </main>
@@ -26,29 +26,28 @@ import api from './api/client'
 const auth = useAuthStore()
 const toast = useToastStore()
 const router = useRouter()
+const sidebarRef = ref(null)
 let heartbeatInterval
 const prevReceiptCount = ref(0)
 const NOTIFY_ROLES = ['TRAFFIC', 'OPERATIONS', 'SUPER_USER', 'ADMIN']
 
+function toggleSidebar() {
+  if (sidebarRef.value) {
+    sidebarRef.value.mobileOpen = !sidebarRef.value.mobileOpen
+  }
+}
+
 // Global keyboard shortcuts
 function onKeydown(e) {
   if (!auth.isAuthenticated) return
-  // Ignore if user is typing in an input/textarea/select
   const tag = document.activeElement?.tagName || ''
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-  // Ctrl+G → Dashboard
   if (e.ctrlKey && e.key === 'g') { e.preventDefault(); router.push('/') }
-  // Ctrl+B → Bookings
   if (e.ctrlKey && e.key === 'b') { e.preventDefault(); router.push('/bookings') }
-  // Ctrl+F → Flights
   if (e.ctrlKey && e.key === 'f') { e.preventDefault(); router.push('/flights') }
-  // Ctrl+L → Load Planning
   if (e.ctrlKey && e.key === 'l') { e.preventDefault(); router.push('/load-planning') }
-  // Ctrl+U → ULDs
   if (e.ctrlKey && e.key === 'u') { e.preventDefault(); router.push('/ulds') }
-  // Ctrl+R → Receipts
   if (e.ctrlKey && e.key === 'r') { e.preventDefault(); router.push('/receipts') }
-  // Ctrl+M → MAWBs
   if (e.ctrlKey && e.key === 'm') { e.preventDefault(); router.push('/mawbs') }
 }
 
