@@ -10,3 +10,4 @@ frontend/dist/
 *.iml
 .vscode/
 frontend/test-results/
+yay/
