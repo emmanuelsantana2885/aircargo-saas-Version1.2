@@ -1,5 +1,6 @@
 package com.aircargo.event;
 
+import com.aircargo.common.event.ReceiptCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;

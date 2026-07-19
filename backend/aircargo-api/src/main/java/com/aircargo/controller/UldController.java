@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.TransferRequest;
 import com.aircargo.dto.UldDTO;
 import com.aircargo.entity.UldStatus;
@@ -146,6 +146,6 @@ public class UldController {
     }
 
     private static String safe(String s) {
-        return com.aircargo.util.TextUtil.safe(s);
+        return com.aircargo.common.util.TextUtil.safe(s);
     }
 }

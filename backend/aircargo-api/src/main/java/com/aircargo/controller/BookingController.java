@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.BookingAwbUpdateRequest;
 import com.aircargo.dto.BookingDTO;
 import com.aircargo.service.AuditService;
@@ -118,6 +118,6 @@ public class BookingController {
     }
 
     private static String safe(String s) {
-        return com.aircargo.util.TextUtil.safe(s);
+        return com.aircargo.common.util.TextUtil.safe(s);
     }
 }

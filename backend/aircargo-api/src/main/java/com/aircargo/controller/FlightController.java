@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.FlightDTO;
 import com.aircargo.entity.FlightStatus;
 import com.aircargo.service.AuditService;
@@ -99,7 +99,7 @@ public class FlightController {
     }
 
     private static String safe(String s) {
-        return com.aircargo.util.TextUtil.safe(s);
+        return com.aircargo.common.util.TextUtil.safe(s);
     }
 
 }

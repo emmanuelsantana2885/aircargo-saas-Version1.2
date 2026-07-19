@@ -1,6 +1,6 @@
 package com.aircargo.service;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.entity.UserRole;
 import org.springframework.stereotype.Service;
 

@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.DuaRecordDTO;
 import com.aircargo.service.AuditService;
 import com.aircargo.service.DuaRecordService;

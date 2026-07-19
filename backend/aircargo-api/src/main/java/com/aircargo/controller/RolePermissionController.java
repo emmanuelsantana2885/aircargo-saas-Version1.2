@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.RolePermissionBulkUpdateRequest;
 import com.aircargo.dto.RolePermissionDTO;
 import com.aircargo.dto.ViewPermissionDTO;

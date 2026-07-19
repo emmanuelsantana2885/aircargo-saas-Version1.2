@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.entity.WarehouseReceipt;
 import com.aircargo.entity.ReceiptPiece;
 import com.aircargo.repository.WarehouseReceiptRepository;
@@ -279,6 +279,6 @@ public class WarehouseController {
     }
 
     private static String safe(String s) {
-        return com.aircargo.util.TextUtil.safe(s);
+        return com.aircargo.common.util.TextUtil.safe(s);
     }
 }

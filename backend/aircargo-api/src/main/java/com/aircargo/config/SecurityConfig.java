@@ -1,6 +1,6 @@
 package com.aircargo.config;
 
-import com.aircargo.auth.JwtAuthFilter;
+import com.aircargo.common.auth.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

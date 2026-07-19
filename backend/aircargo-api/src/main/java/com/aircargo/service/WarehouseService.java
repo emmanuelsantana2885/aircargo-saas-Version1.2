@@ -5,7 +5,7 @@ import com.aircargo.entity.Mawb;
 import com.aircargo.entity.MawbStatus;
 import com.aircargo.entity.WarehouseReceipt;
 import com.aircargo.entity.ReceiptPiece;
-import com.aircargo.event.ReceiptCreatedEvent;
+import com.aircargo.common.event.ReceiptCreatedEvent;
 import com.aircargo.repository.BookingRepository;
 import com.aircargo.service.PdfGenerationService;
 import com.aircargo.repository.MawbRepository;
@@ -209,7 +209,11 @@ public class WarehouseService {
         if (mawbIdForLock != null) {
             syncBookingsAwbNumber(mawbIdForLock);
             recalculateBookingFulfillment(mawbIdForLock);
-            eventPublisher.publishEvent(new ReceiptCreatedEvent(savedReceipt.getId(), savedReceipt));
+            eventPublisher.publishEvent(new ReceiptCreatedEvent(
+                savedReceipt.getId(),
+                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
+                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getAwbNumber() : null
+            ));
         }
 
         receiptExportService.evictCache(receiptId);
@@ -302,7 +306,11 @@ public class WarehouseService {
         }
 
         if (!evictedReceiptIds.contains(savedReceipt.getId())) {
-            eventPublisher.publishEvent(new ReceiptCreatedEvent(savedReceipt.getId(), savedReceipt));
+            eventPublisher.publishEvent(new ReceiptCreatedEvent(
+                savedReceipt.getId(),
+                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
+                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getAwbNumber() : null
+            ));
         }
         receiptExportService.evictCache(savedReceipt.getId());
         for (UUID oldId : evictedReceiptIds) {
@@ -638,6 +646,6 @@ public class WarehouseService {
     }
 
     private static String xmlEscape(String s) {
-        return com.aircargo.util.TextUtil.xmlEscape(s);
+        return com.aircargo.common.util.TextUtil.xmlEscape(s);
     }
 }

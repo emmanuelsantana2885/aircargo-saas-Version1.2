@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.entity.Flight;
 import com.aircargo.entity.Hawb;
 import com.aircargo.entity.Mawb;
@@ -431,10 +431,10 @@ public class MawbController {
     }
 
     private static String xmlEscape(String s) {
-        return com.aircargo.util.TextUtil.xmlEscape(s);
+        return com.aircargo.common.util.TextUtil.xmlEscape(s);
     }
 
     private static String safe(String s) {
-        return com.aircargo.util.TextUtil.safe(s);
+        return com.aircargo.common.util.TextUtil.safe(s);
     }
 }

@@ -1,6 +1,6 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.AppUserDTO;
 import com.aircargo.dto.ConnectedUserDTO;
 import com.aircargo.entity.AppUser;

@@ -1,4 +1,4 @@
-package com.aircargo.util;
+package com.aircargo.common.util;
 
 public final class TextUtil {
 

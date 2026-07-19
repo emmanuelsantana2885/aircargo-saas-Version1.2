@@ -4,7 +4,7 @@ import com.aircargo.entity.ReceiptPiece;
 import com.aircargo.entity.WarehouseReceipt;
 import com.aircargo.repository.ReceiptPieceRepository;
 import com.aircargo.repository.WarehouseReceiptRepository;
-import com.aircargo.util.TextUtil;
+import com.aircargo.common.util.TextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

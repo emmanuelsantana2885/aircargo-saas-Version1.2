@@ -227,6 +227,6 @@ public class LoadPlanningController {
     }
 
     private String xmlEscape(String s) {
-        return com.aircargo.util.TextUtil.xmlEscape(s);
+        return com.aircargo.common.util.TextUtil.xmlEscape(s);
     }
 }

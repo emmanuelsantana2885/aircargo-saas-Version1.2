@@ -1,4 +1,4 @@
-package com.aircargo.auth;
+package com.aircargo.common.auth;
 
 import java.util.UUID;
 

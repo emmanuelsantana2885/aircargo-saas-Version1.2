@@ -1,7 +1,7 @@
 package com.aircargo.controller;
 
-import com.aircargo.auth.JwtUtil;
-import com.aircargo.auth.UserPrincipal;
+import com.aircargo.common.auth.JwtUtil;
+import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.ChangePasswordRequest;
 import com.aircargo.dto.LoginRequest;
 import com.aircargo.dto.LoginResponse;
