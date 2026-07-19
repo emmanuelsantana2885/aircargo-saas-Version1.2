@@ -190,7 +190,7 @@ function netLbs(flightId) {
 }
 
 function payloadLbs(flightId) {
-  return grossLbs(flightId) - bellyTareLbs(flightId)
+  return grossLbs(flightId) - bellyTareLbs(flightId) + 5
 }
 
 const totalNetPayload = computed(() => {

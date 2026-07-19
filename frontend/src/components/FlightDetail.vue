@@ -314,7 +314,7 @@ const bellyTareLbs = computed(() =>
 )
 
 const netLbs = computed(() => grossLbs.value - totalTareLbs.value)
-const payloadLbs = computed(() => grossLbs.value - bellyTareLbs.value)
+const payloadLbs = computed(() => grossLbs.value - bellyTareLbs.value + 5)
 
 const flightPositions = computed(() =>
   new Set(flightUlds.value.map(u => u.position).filter(Boolean)).size
