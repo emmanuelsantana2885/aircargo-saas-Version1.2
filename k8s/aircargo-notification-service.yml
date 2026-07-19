@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aircargo-notification-service
+  namespace: aircargo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aircargo-notification-service
+  template:
+    metadata:
+      labels:
+        app: aircargo-notification-service
+    spec:
+      containers:
+        - name: aircargo-notification-service
+          image: aircargo/aircargo-notification-service:latest
+          ports:
+            - containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: aircargo-config
+            - secretRef:
+                name: aircargo-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9100
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9100
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aircargo-notification-service
+  namespace: aircargo
+spec:
+  selector:
+    app: aircargo-notification-service
+  ports:
+    - port: 9100
+      targetPort: 9100

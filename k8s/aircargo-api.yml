@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aircargo-api
+  namespace: aircargo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aircargo-api
+  template:
+    metadata:
+      labels:
+        app: aircargo-api
+    spec:
+      containers:
+        - name: aircargo-api
+          image: aircargo/aircargo-api:latest
+          ports:
+            - containerPort: 9091
+          envFrom:
+            - configMapRef:
+                name: aircargo-config
+            - secretRef:
+                name: aircargo-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9091
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9091
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aircargo-api
+  namespace: aircargo
+spec:
+  selector:
+    app: aircargo-api
+  ports:
+    - port: 9091
+      targetPort: 9091

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aircargo-booking-service
+  namespace: aircargo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aircargo-booking-service
+  template:
+    metadata:
+      labels:
+        app: aircargo-booking-service
+    spec:
+      containers:
+        - name: aircargo-booking-service
+          image: aircargo/aircargo-booking-service:latest
+          ports:
+            - containerPort: 9094
+          envFrom:
+            - configMapRef:
+                name: aircargo-config
+            - secretRef:
+                name: aircargo-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9094
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9094
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aircargo-booking-service
+  namespace: aircargo
+spec:
+  selector:
+    app: aircargo-booking-service
+  ports:
+    - port: 9094
+      targetPort: 9094

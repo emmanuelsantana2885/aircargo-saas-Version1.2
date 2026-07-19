@@ -1,0 +1,168 @@
+version: '3.8'
+
+x-common-env: &common-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: aircargo_db
+  POSTGRES_USER: aircargo_user
+  POSTGRES_PASSWORD: aircargo_pass_2024
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: 5672
+  JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-do-not-use-in-production-please-change-me}
+
+services:
+  aircargo-api:
+    build:
+      context: ../backend
+      dockerfile: aircargo-api/Dockerfile
+    container_name: aircargo-api
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9091:9091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  aircargo-gateway:
+    build:
+      context: ../backend
+      dockerfile: aircargo-gateway/Dockerfile
+    container_name: aircargo-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - aircargo-api
+
+  aircargo-auth-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-auth-service/Dockerfile
+    container_name: aircargo-auth-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9092:9092"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-flight-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-flight-service/Dockerfile
+    container_name: aircargo-flight-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9093:9093"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-booking-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-booking-service/Dockerfile
+    container_name: aircargo-booking-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9094:9094"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-mawb-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-mawb-service/Dockerfile
+    container_name: aircargo-mawb-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9095:9095"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-warehouse-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-warehouse-service/Dockerfile
+    container_name: aircargo-warehouse-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9096:9096"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  aircargo-uld-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-uld-service/Dockerfile
+    container_name: aircargo-uld-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9097:9097"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-load-planning-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-load-planning-service/Dockerfile
+    container_name: aircargo-load-planning-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9098:9098"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-export-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-export-service/Dockerfile
+    container_name: aircargo-export-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "9099:9099"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  aircargo-notification-service:
+    build:
+      context: ../backend
+      dockerfile: aircargo-notification-service/Dockerfile
+    container_name: aircargo-notification-service
+    restart: unless-stopped
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+    ports:
+      - "9100:9100"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy

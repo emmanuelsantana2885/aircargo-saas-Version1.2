@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aircargo-gateway
+  namespace: aircargo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aircargo-gateway
+  template:
+    metadata:
+      labels:
+        app: aircargo-gateway
+    spec:
+      containers:
+        - name: aircargo-gateway
+          image: aircargo/aircargo-gateway:latest
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aircargo-gateway
+  namespace: aircargo
+spec:
+  type: LoadBalancer
+  selector:
+    app: aircargo-gateway
+  ports:
+    - port: 8080
+      targetPort: 8080

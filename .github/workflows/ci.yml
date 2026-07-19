@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: aircargo_db
+          POSTGRES_USER: aircargo_user
+          POSTGRES_PASSWORD: aircargo_pass_2024
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test
+        run: mvn clean verify -B
+        working-directory: backend
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: aircargo_db
+          POSTGRES_USER: aircargo_user
+          POSTGRES_PASSWORD: aircargo_pass_2024
+
+      - name: Build Docker images
+        run: |
+          for service in aircargo-api aircargo-gateway aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-export-service aircargo-notification-service; do
+            docker build -t aircargo/$service:latest -f $service/Dockerfile .
+          done
+        working-directory: backend
