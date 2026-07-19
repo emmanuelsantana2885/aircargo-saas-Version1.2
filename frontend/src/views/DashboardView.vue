@@ -40,42 +40,51 @@
     <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
       <div ref="tableWrapper" class="overflow-auto flex-1 min-h-0 scrollbar-none">
         <div class="table-scroll-wrapper h-full">
-        <table class="w-full border-collapse text-[11px] font-mono" style="min-width: 1100px">
+        <table class="w-full border-collapse text-[11px] font-mono" :style="{ minWidth: tableMinWidth + 'px' }">
           <thead class="sticky top-0 z-20">
             <tr class="bg-slate-700 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-500 shadow-sm">
-              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8">#</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8">
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8 sticky left-0 z-10 bg-slate-700">#</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8 sticky left-8 z-10 bg-slate-700">
                 <button @click="toggleAllExpanded" class="flex items-center justify-center gap-1 hover:opacity-70 transition"
                   :title="allExpanded ? 'Colapsar todos' : 'Expandir todos'">
                   <span class="text-[12px]">{{ allExpanded ? '▲' : '▼' }}</span>
                 </button>
               </th>
-              <th class="text-left px-2 py-2.5 whitespace-nowrap">Vuelo</th>
+              <th class="text-left px-2 py-2.5 whitespace-nowrap sticky left-16 z-10 bg-slate-700">Vuelo</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap">Ruta</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap">Fecha</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap">Estado</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap">ULDs</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap">Pos</th>
-              <th class="text-right px-2 py-2.5 whitespace-nowrap">Gross Lbs</th>
-              <th class="text-right px-2 py-2.5 whitespace-nowrap">Tare Lbs</th>
-              <th class="text-right px-2 py-2.5 whitespace-nowrap">Neto Lbs</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap">Docs</th>
-              <th class="text-right px-2 py-2.5 whitespace-nowrap text-emerald-600">Payload Lbs</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap">Commodities</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-16">ULDs</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-14">Pos</th>
+              <th class="text-right px-2 py-2.5 whitespace-nowrap w-24">Gross</th>
+              <th class="text-right px-2 py-2.5 whitespace-nowrap w-24">Tare</th>
+              <th class="text-right px-2 py-2.5 whitespace-nowrap w-24">Neto</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-12">Docs</th>
+              <th class="text-right px-2 py-2.5 whitespace-nowrap w-24 text-emerald-600">Payload</th>
+              <!-- Commodity columns - dynamic based on filtered flights -->
+              <th v-for="c in visibleCommodities" :key="c.type"
+                class="text-right px-2 py-2.5 whitespace-nowrap w-20 text-[10px]"
+                :style="{ background: c.color + '20', borderLeft: '1px solid ' + c.color + '40' }"
+                :title="c.label">
+                <div class="flex items-center justify-end gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full" :style="{ background: c.color }"></span>
+                  <span class="font-mono">{{ c.short }}</span>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading" class="h-32">
-              <td colspan="15" class="text-center text-[12px] font-mono text-slate-400 ">Cargando datos...</td>
+              <td :colspan="14 + visibleCommodities.length" class="text-center text-[12px] font-mono text-slate-400 ">Cargando datos...</td>
             </tr>
             <tr v-else-if="filteredFlights.length === 0" class="h-32">
-              <td colspan="15" class="text-center text-[12px] font-mono text-slate-400 uppercase tracking-widest">No hay vuelos en este rango</td>
+              <td :colspan="14 + visibleCommodities.length" class="text-center text-[12px] font-mono text-slate-400 uppercase tracking-widest">No hay vuelos en este rango</td>
             </tr>
             <template v-for="(f, fi) in filteredFlights" :key="f.id">
               <tr class="border-b border-slate-100 transition-colors hover:bg-slate-50"
                 :class="{ 'bg-slate-50/50': isExpanded(f.id) }">
-                <td class="text-center px-2 py-2 text-slate-400">{{ fi + 1 }}</td>
-                <td class="text-center px-2 py-2">
+                <td class="text-center px-2 py-2 text-slate-400 sticky left-0 z-10 bg-white">{{ fi + 1 }}</td>
+                <td class="text-center px-2 py-2 sticky left-8 z-10 bg-white">
                   <button @click="toggleExpand(f.id)"
                     class="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-200 transition text-slate-500 hover:text-slate-900"
                     :aria-expanded="isExpanded(f.id)"
@@ -83,7 +92,7 @@
                     <span class="text-[10px] transition-transform duration-200" :style="{ transform: isExpanded(f.id) ? 'rotate(180deg)' : '' }">▼</span>
                   </button>
                 </td>
-                <td class="px-2 py-2 font-mono text-slate-950">UPS-{{ f.flightNumber }}</td>
+                <td class="px-2 py-2 font-mono text-slate-950 sticky left-16 z-10 bg-white">UPS-{{ f.flightNumber }}</td>
                 <td class="text-center px-2 py-2 text-slate-700">{{ f.origin }}→{{ f.destination }}</td>
                 <td class="text-center px-2 py-2 text-slate-500">{{ f.flightDate }}</td>
                 <td class="text-center px-2 py-2">
@@ -99,20 +108,46 @@
                 <td class="text-right px-2 py-2 font-mono text-slate-900">{{ netLbs(f.id) }}</td>
                 <td class="text-center px-2 py-2 text-slate-400 font-mono">5</td>
                 <td class="text-right px-2 py-2 font-bold text-emerald-700" style="font-family: 'SF Mono', 'Fira Code', monospace;">{{ payloadLbs(f.id) }}</td>
-                <td class="text-center px-2 py-2">
-                  <CommodityChips :flight-id="f.id" :max-visible="3" />
+                <!-- Commodity payload columns -->
+                <td v-for="c in visibleCommodities" :key="c.type"
+                  class="text-right px-2 py-2 font-mono text-slate-900 tabular-nums"
+                  :style="{ background: c.color + '08' }"
+                  :title="commodityTooltip(f.id, c.type)">
+                  {{ commodityPayload(f.id, c.type) || '—' }}
                 </td>
               </tr>
 
               <!-- Drill-down row -->
               <tr v-show="isExpanded(f.id)" class="bg-slate-50/30 border-t border-slate-200">
-                <td colspan="15" class="p-0">
+                <td :colspan="14 + visibleCommodities.length" class="p-0">
                   <div class="p-3 md:p-4 border-t border-slate-200" style="animation: slideDown 0.2s ease-out;">
                     <FlightDetail :flight="f" :flight-id="f.id" />
                   </div>
                 </td>
               </tr>
             </template>
+
+            <!-- Totals row -->
+            <tr class="bg-slate-50 border-t-2 border-slate-300 font-bold">
+              <td class="text-center px-2 py-2 text-slate-400">Σ</td>
+              <td class="text-center px-2 py-2"></td>
+              <td class="px-2 py-2 text-slate-500">TOTAL</td>
+              <td class="text-center px-2 py-2"></td>
+              <td class="text-center px-2 py-2"></td>
+              <td class="text-center px-2 py-2"></td>
+              <td class="text-center px-2 py-2">{{ totalUldsCount }}</td>
+              <td class="text-center px-2 py-2">{{ totalPositionsAll }}</td>
+              <td class="text-right px-2 py-2">{{ totalGrossAll }}</td>
+              <td class="text-right px-2 py-2">{{ totalTareAll }}</td>
+              <td class="text-right px-2 py-2">{{ totalNetAll }}</td>
+              <td class="text-center px-2 py-2">{{ filteredFlights.length * 5 }}</td>
+              <td class="text-right px-2 py-2 text-emerald-700">{{ totalNetPayload }}</td>
+              <td v-for="c in visibleCommodities" :key="c.type"
+                class="text-right px-2 py-2 text-slate-900 tabular-nums"
+                :style="{ background: c.color + '15' }">
+                {{ totalCommodityPayload(c.type) }}
+              </td>
+            </tr>
           </tbody>
         </table>
         </div>
@@ -125,7 +160,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '../stores/app'
 import { downloadCSV } from '../utils/csv'
-import CommodityChips from '../components/CommodityChips.vue'
 import FlightDetail from '../components/FlightDetail.vue'
 
 const appStore = useAppStore()
@@ -193,6 +227,77 @@ function payloadLbs(flightId) {
   return grossLbs(flightId) - bellyTareLbs(flightId) + 5
 }
 
+// ── Commodity definitions & ordering ──────────────────────────
+const COMMODITY_ORDER = [
+  'PERISHABLE', 'DRY_CARGO', 'ELECTRONICS', 'HIGH_VALUES', 'CIGARETTES',
+  'SMALL_PACKAGES', 'WWEF', 'LIVE_PLANTS', 'GENERAL', 'COMAT', 'FCC',
+  'EMPTY_ULD', 'EMPTY_PALLET', 'RED_TAG', 'EMPTY_BAGS', 'NETS',
+  'SDQ_SDF', 'SDQ_MIA'
+]
+
+const COMMODITY_MAP = {
+  PERISHABLE:       { label: 'PERISHABLE',        short: 'PER',  color: '#ef4444' },
+  DRY_CARGO:        { label: 'DRY CARGO',         short: 'DRY',  color: '#64748b' },
+  ELECTRONICS:      { label: 'ELECTRONICS',       short: 'ELEC', color: '#8b5cf6' },
+  HIGH_VALUES:      { label: 'HIGH VALUES',       short: 'HIGH', color: '#f59e0b' },
+  CIGARETTES:       { label: 'CIGARETTES',        short: 'CIG',  color: '#78716c' },
+  SMALL_PACKAGES:   { label: 'SMALL PACKAGES',    short: 'SMP',  color: '#06b6d4' },
+  WWEF:             { label: 'WWEF',              short: 'WWEF', color: '#ec4899' },
+  LIVE_PLANTS:      { label: 'LIVE PLANTS',       short: 'PLNT', color: '#22c55e' },
+  GENERAL:          { label: 'GENERAL',           short: 'GEN',  color: '#94a3b8' },
+  COMAT:            { label: 'COMAT',             short: 'COMT', color: '#a3a3a3' },
+  FCC:              { label: 'FCC',               short: 'FCC',  color: '#78716c' },
+  EMPTY_ULD:        { label: 'EMPTY ULD',         short: 'EMP',  color: '#d1d5db' },
+  EMPTY_PALLET:     { label: 'EMPTY PALLET',      short: 'EPT',  color: '#d1d5db' },
+  RED_TAG:          { label: 'RED TAG',           short: 'RED',  color: '#dc2626' },
+  EMPTY_BAGS:       { label: 'EMPTY BAGS',        short: 'BAG',  color: '#a3a3a3' },
+  NETS:             { label: 'NETS',              short: 'NET',  color: '#52525b' },
+  SDQ_SDF:          { label: 'SDQ-SDF',           short: 'SDQ',  color: '#2563eb' },
+  SDQ_MIA:          { label: 'SDQ-MIA',           short: 'MIA',  color: '#2563eb' },
+}
+
+// Commodity payload per flight (computed from MAWBs)
+function commodityPayload(flightId, commodityType) {
+  const mawbs = flightMawbs(flightId)
+  const totalLbs = mawbs
+    .filter(m => m.commodityType === commodityType)
+    .reduce((s, m) => s + (Number(m.chargeableWeightKg || m.reportedWeightKg || 0) * 2.20462), 0)
+  return totalLbs > 0 ? Math.round(totalLbs) : null
+}
+
+function commodityTooltip(flightId, commodityType) {
+  const mawbs = flightMawbs(flightId)
+  const items = mawbs.filter(m => m.commodityType === commodityType)
+  if (!items.length) return `${COMMODITY_MAP[commodityType]?.label || commodityType}: 0 lbs`
+  const totalLbs = items.reduce((s, m) => s + (Number(m.chargeableWeightKg || m.reportedWeightKg || 0) * 2.20462), 0)
+  const totalPcs = items.reduce((s, m) => s + Number(m.pieces || 0), 0)
+  const awbNumbers = items.map(m => m.awbNumber).join(', ')
+  return `${COMMODITY_MAP[commodityType]?.label || commodityType}: ${Math.round(totalLbs)} lbs (${totalPcs} pcs) • ${awbNumbers}`
+}
+
+// Visible commodities = those with payload > 0 in ANY filtered flight
+const visibleCommodities = computed(() => {
+  const activeTypes = new Set()
+  filteredFlights.value.forEach(f => {
+    flightMawbs(f.id).forEach(m => {
+      const type = m.commodityType || 'DRY_CARGO'
+      const weight = Number(m.chargeableWeightKg || m.reportedWeightKg || 0) * 2.20462
+      if (weight > 0) activeTypes.add(type)
+    })
+  })
+  return COMMODITY_ORDER
+    .filter(t => activeTypes.has(t))
+    .map(t => ({ type: t, ...COMMODITY_MAP[t] }))
+})
+
+// Table min-width for horizontal scroll
+const tableMinWidth = computed(() => {
+  const base = 1100 // fixed columns
+  const commodityCols = visibleCommodities.value.length * 80 // 80px per commodity col
+  return base + commodityCols
+})
+
+// Totals
 const totalNetPayload = computed(() => {
   return filteredFlights.value.reduce((s, f) => s + payloadLbs(f.id), 0)
 })
@@ -205,6 +310,28 @@ const totalMawbsCount = computed(() => {
   return filteredFlights.value.reduce((s, f) => s + flightMawbs(f.id).length, 0)
 })
 
+const totalPositionsAll = computed(() => {
+  return filteredFlights.value.reduce((s, f) => s + flightPositions(f.id), 0)
+})
+
+const totalGrossAll = computed(() => {
+  return filteredFlights.value.reduce((s, f) => s + grossLbs(f.id), 0)
+})
+
+const totalTareAll = computed(() => {
+  return filteredFlights.value.reduce((s, f) => s + totalTareLbs(f.id), 0)
+})
+
+const totalNetAll = computed(() => {
+  return filteredFlights.value.reduce((s, f) => s + netLbs(f.id), 0)
+})
+
+function totalCommodityPayload(commodityType) {
+  const total = filteredFlights.value.reduce((s, f) => s + (commodityPayload(f.id, commodityType) || 0), 0)
+  return total > 0 ? total : '—'
+}
+
+// Expand logic
 const allExpanded = computed(() => {
   return filteredFlights.value.length > 0 && filteredFlights.value.every(f => expandedFlights.value.has(f.id))
 })
@@ -230,19 +357,27 @@ function isExpanded(flightId) {
 }
 
 function descargarReporte() {
-  const headers = ['Flight Number', 'Route', 'Date', 'Status', 'ULD Count', 'Positions', 'Gross Lbs', 'Tare Lbs', 'Net Lbs', 'Payload Lbs']
-  const rows = filteredFlights.value.map(f => [
-    `UPS-${f.flightNumber}`,
-    `${f.origin}→${f.destination}`,
-    f.flightDate || '',
-    statusLabel(f.status),
-    flightUlds(f.id).length,
-    flightPositions(f.id),
-    grossLbs(f.id),
-    totalTareLbs(f.id),
-    netLbs(f.id),
-    payloadLbs(f.id),
-  ])
+  // Build headers: fixed + commodity columns
+  const fixedHeaders = ['Flight Number', 'Route', 'Date', 'Status', 'ULD Count', 'Positions', 'Gross Lbs', 'Tare Lbs', 'Net Lbs', 'Payload Lbs']
+  const commodityHeaders = visibleCommodities.value.map(c => c.short)
+  const headers = [...fixedHeaders, ...commodityHeaders]
+
+  const rows = filteredFlights.value.map(f => {
+    const fixed = [
+      `UPS-${f.flightNumber}`,
+      `${f.origin}→${f.destination}`,
+      f.flightDate || '',
+      statusLabel(f.status),
+      flightUlds(f.id).length,
+      flightPositions(f.id),
+      grossLbs(f.id),
+      totalTareLbs(f.id),
+      netLbs(f.id),
+      payloadLbs(f.id),
+    ]
+    const commodityVals = visibleCommodities.value.map(c => commodityPayload(f.id, c.type) || '')
+    return [...fixed, ...commodityVals]
+  })
   downloadCSV(headers, rows, `reporte-vuelos-${new Date().toISOString().slice(0, 10)}.csv`)
 }
 
