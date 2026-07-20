@@ -56,6 +56,9 @@ public class SecurityConfig {
                 // ULDs: OPERATIONS + TRAFFIC + LOAD_PLANNER + ADMIN + SUPER_USER
                 .requestMatchers("/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
 
+                // Scan: OPERATIONS + TRAFFIC + LOAD_PLANNER + WAREHOUSE_ASSISTANT + ADMIN + SUPER_USER
+                .requestMatchers("/api/scan/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "WAREHOUSE_ASSISTANT", "ADMIN", "SUPER_USER")
+
                 // Load planning: OPERATIONS + TRAFFIC + LOAD_PLANNER + ADMIN + SUPER_USER
                 .requestMatchers("/api/load-planning/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
 

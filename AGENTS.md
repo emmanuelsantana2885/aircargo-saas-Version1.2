@@ -41,6 +41,33 @@ Flyway migrations live in **two places** with **different content**:
 
 The backend copy also seeds the UPS airline row; the root copy does not. Keep both in sync.
 
+## Recent session changes (July 20, 2026 — ULD Barcode Scanning + Dashboard Commodity Fix)
+
+| File | Change |
+|------|--------|
+| `frontend/src/views/DashboardView.vue` | **FIX**: `mawbDispatchedWeightLbs(mawb, flightId)` now filters ULD-AWB links by flight (`uldIds.has(l.uldId)`), preventing cross-flight piece inflation. Added `flightUldIdSet()` with cache + `watch` invalidation. All callers updated to pass `flightId`. |
+| `frontend/src/components/FlightDetail.vue` | **FIX**: Same `mawbDispatchedWeightLbs` and `mawbDispatchedPieces` fix — filter by `flightUlds` set. |
+| `frontend/src/stores/app.js` | **FIX**: `dispatchUld()` now uses `mawb.awbNumber` instead of `mawb.id` for ULD-AWB link creation. |
+| `.gitignore` | Added `backend/**/target/` to ignore all microservice build artifacts. |
+| `backend/.../entity/UldPiece.java` | **NEW** — per-piece tracking entity (uld_id, mawb_id, awb_number, hawb_number, piece_number, source [BARCODE/MANUAL], scanned_by, scanned_at). |
+| `backend/.../entity/PieceSource.java` | **NEW** — enum: BARCODE, MANUAL. |
+| `backend/.../entity/Uld.java` | Added `@OneToMany(mappedBy="uld", cascade=ALL, orphanRemoval=true)` to `UldPiece`. |
+| `backend/.../repository/UldPieceRepository.java` | **NEW** — findByUldId, findByUldIdAndMawbId, countByUldIdAndMawbId, deleteByUldIdAndMawbId, etc. |
+| `backend/.../repository/MawbRepository.java` | Added `findByAwbNumber(String)` for scan lookup. |
+| `backend/.../repository/HawbRepository.java` | Added `findByHawbNumber(String)` for HAWB scan resolution. |
+| `backend/.../repository/UldAwbRepository.java` | Added `findByUldIdAndMawbId(UUID, UUID)`. |
+| `backend/.../service/ScanService.java` | **NEW** — lookup (MAWB/HAWB/ULD resolution), registerPiece (creates UldPiece + upserts UldAwb + auto-advance status), undoLastPiece. |
+| `backend/.../controller/ScanController.java` | **NEW** — GET `/api/scan/lookup`, POST `/api/scan/piece`, DELETE `/api/scan/piece/last`. |
+| `backend/.../dto/ScanLookupDTO.java` | **NEW** — response for lookup (type, awbNumber, pieces info, ULD info). |
+| `backend/.../dto/ScanPieceRequest.java` | **NEW** — request for registering a piece (uldId, awbNumber, hawbNumber, source). |
+| `backend/.../dto/ScanPieceResult.java` | **NEW** — response for piece registration (success, pieceNumber, totalOnUld, availablePieces). |
+| `backend/.../config/SecurityConfig.java` | Added `/api/scan/**` for OPERATIONS, TRAFFIC, LOAD_PLANNER, WAREHOUSE_ASSISTANT, ADMIN, SUPER_USER. |
+| `backend/resources/db/migration/V32__create_uld_piece_table.sql` | **NEW** — creates `uld_piece` table with indexes, `piece_source` enum type. |
+| `database/migrations/V32__create_uld_piece_table.sql` | Synced from backend. |
+| `frontend/src/api/scan.js` | **NEW** — lookup, piece, undoLast API calls. |
+| `frontend/src/components/ScanPanel.vue` | **NEW** — scan mode panel: auto-focus input, barcode capture, scan history, undo, ULD number detection, audio/visual feedback, camera placeholder. |
+| `frontend/src/views/UldsView.vue` | Integrated ScanPanel: scan toggle button in action bar, scan mode state, `onScanPieceAdded` (auto-creates MAWB row + updates pieces), `onScanPieceRemoved`. |
+
 ## Recent session changes (July 3, 2026 — Sites + SuperUser role)
 
 | File | Change |

@@ -115,6 +115,16 @@
                   </div>
                 </div>
 
+                <!-- SCAN PANEL -->
+                <ScanPanel
+                  :active="scanMode"
+                  :uld-id="uld.backendId || ''"
+                  :uld-number="uld.uldNumber || 'NUEVO'"
+                  @piece-added="onScanPieceAdded"
+                  @piece-removed="onScanPieceRemoved"
+                  @exit-scan="scanMode = false"
+                />
+
                 <!-- MAWB TABLE -->
                 <div class="border border-slate-200 rounded overflow-hidden mb-6">
                   <div class="table-scroll-wrapper">
@@ -265,6 +275,11 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-2">
+                    <button v-if="uld.backendId" @click="toggleScanMode(uld)"
+                      class="font-mono font-black uppercase text-[10px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
+                      :class="scanMode ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
+                      {{ scanMode ? '🔍 Scanando...' : '📷 Modo Scan' }}
+                    </button>
                     <button @click="deleteUld(uld)"
                       class="text-slate-400 hover:text-slate-700 font-mono font-black uppercase text-[10px] tracking-widest px-3 py-2 rounded border border-slate-200 hover:border-slate-400 transition-all"
                       :title="uld.backendId ? 'Eliminar ULD' : 'Descartar ULD'">
@@ -301,6 +316,7 @@ import { uldsApi } from '../api/ulds'
 import { uldAwbsApi } from '../api/uldAwbs'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
+import ScanPanel from '../components/ScanPanel.vue'
 
 const uldsStore = useUldsStore()
 const appStore = useAppStore()
@@ -346,6 +362,61 @@ function formatDate(iso) {
 
 // Local ULD list derived from backend + new unsaved
 const localUlds = ref([])
+
+// Scan mode state
+const scanMode = ref(false)
+const scanUldUid = ref(null)
+
+function toggleScanMode(uld) {
+  scanMode.value = !scanMode.value
+  if (scanMode.value && uld) {
+    scanUldUid.value = uld.uid
+  } else {
+    scanUldUid.value = null
+  }
+}
+
+function onScanPieceAdded(result) {
+  const uid = scanUldUid.value
+  if (!uid) return
+  const uld = localUlds.value.find(u => u.uid === uid)
+  if (!uld) return
+
+  let mawbRow = uld.mawbs.find(m => m.awbNumber === result.awbNumber)
+  if (!mawbRow) {
+    const mawbData = appStore.mawbs.find(m => m.awbNumber === result.awbNumber)
+    mawbRow = {
+      _rowId: Math.random().toString(36).slice(2),
+      awbNumber: result.awbNumber,
+      commodityType: mawbData?.commodityType || 'DRY_CARGO',
+      commodityHint: mawbData?.commodityType || '',
+      pieces: 0,
+      piecesPct: 0,
+      destination: mawbData?.destination || 'MIA',
+      mawbId: mawbData?.id || null,
+      hasReceipt: false,
+      receivedPieces: 0,
+      reservedPieces: 0,
+      availablePieces: 0,
+      _showSuggestions: false,
+      _suggestions: [],
+    }
+    uld.mawbs.push(mawbRow)
+  }
+
+  mawbRow.pieces = result.totalOnUld
+}
+
+function onScanPieceRemoved(data) {
+  const uid = scanUldUid.value
+  if (!uid) return
+  const uld = localUlds.value.find(u => u.uid === uid)
+  if (!uld) return
+  const mawbRow = uld.mawbs.find(m => m.awbNumber === data.awbNumber)
+  if (mawbRow && mawbRow.pieces > 0) {
+    mawbRow.pieces--
+  }
+}
 
 // MAWB availability computation
 const availableMawbs = computed(() => {

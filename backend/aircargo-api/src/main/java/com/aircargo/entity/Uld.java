@@ -14,6 +14,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import com.aircargo.common.entity.Airline;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -90,6 +92,10 @@ public class Uld {
 
     @Column(name = "notes")
     private String notes;
+
+    @OneToMany(mappedBy = "uld", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private List<UldPiece> pieces = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)

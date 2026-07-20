@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -19,4 +20,9 @@ public interface HawbRepository extends JpaRepository<Hawb, UUID> {
      * Recupera las guías de casa asociadas a una aerolínea específica para aislamiento multi-tenant.
      */
     List<Hawb> findByAirlineId(UUID airlineId);
+
+    /**
+     * Busca un HAWB por su número (para resolución desde barcode).
+     */
+    Optional<Hawb> findByHawbNumber(String hawbNumber);
 }

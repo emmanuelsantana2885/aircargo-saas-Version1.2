@@ -13,6 +13,8 @@ public interface MawbRepository extends JpaRepository<Mawb, UUID> {
 
     Optional<Mawb> findByAirlineIdAndAwbNumber(UUID airlineId, String awbNumber);
 
+    Optional<Mawb> findByAwbNumber(String awbNumber);
+
     List<Mawb> findByAirlineId(UUID airlineId);
 
     List<Mawb> findByFlightId(UUID flightId);
