@@ -256,33 +256,49 @@ const COMMODITY_MAP = {
   SDQ_MIA:          { label: 'SDQ-MIA',           short: 'MIA',  color: '#2563eb' },
 }
 
-// Dispatched weight per MAWB: (receivedWeight / receivedPieces) * dispatchedPieces
-function mawbDispatchedWeightLbs(mawb) {
+// ULD IDs per flight (cached for fast lookup during commodity calculations)
+const _uldIdCache = new Map()
+function flightUldIdSet(flightId) {
+  if (!_uldIdCache.has(flightId)) {
+    _uldIdCache.set(flightId, new Set(appStore.ulds.filter(u => u.flightId === flightId).map(u => u.id)))
+  }
+  return _uldIdCache.get(flightId)
+}
+
+// Invalidate cache when ulds change
+watch(() => appStore.ulds.length, () => _uldIdCache.clear())
+
+// Dispatched weight per MAWB within a specific flight:
+// only counts ULD-AWB links whose ULD belongs to that flight.
+// Formula: (receivedWeight / receivedPieces) * dispatchedPieces
+function mawbDispatchedWeightLbs(mawb, flightId) {
   const receivedKg = Number(mawb.chargeableWeightKg || mawb.reportedWeightKg || 0)
   const receivedPcs = Number(mawb.pieces || 0)
   if (!receivedKg || !receivedPcs) return 0
-  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber) || []
+  const uldIds = flightUldIdSet(flightId)
+  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber && uldIds.has(l.uldId)) || []
   const dispatchedPcs = links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
   if (!dispatchedPcs) return 0
   return (receivedKg * 2.20462 / receivedPcs) * dispatchedPcs
 }
 
-// Commodity payload per flight (proportional to dispatched pieces)
+// Commodity payload per flight (sum of per-MAWB dispatched weights)
 function commodityPayload(flightId, commodityType) {
   const mawbs = flightMawbs(flightId)
   const totalLbs = mawbs
-    .filter(m => m.commodityType === commodityType)
-    .reduce((s, m) => s + mawbDispatchedWeightLbs(m), 0)
+    .filter(m => (m.commodityType || 'DRY_CARGO') === commodityType)
+    .reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
   return totalLbs > 0 ? Math.round(totalLbs) : null
 }
 
 function commodityTooltip(flightId, commodityType) {
   const mawbs = flightMawbs(flightId)
-  const items = mawbs.filter(m => m.commodityType === commodityType)
+  const items = mawbs.filter(m => (m.commodityType || 'DRY_CARGO') === commodityType)
   if (!items.length) return `${COMMODITY_MAP[commodityType]?.label || commodityType}: 0 lbs`
-  const totalLbs = items.reduce((s, m) => s + mawbDispatchedWeightLbs(m), 0)
+  const totalLbs = items.reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
+  const uldIds = flightUldIdSet(flightId)
   const totalPcs = items.reduce((s, m) => {
-    const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === m.awbNumber) || []
+    const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === m.awbNumber && uldIds.has(l.uldId)) || []
     return s + links.reduce((ps, l) => ps + (Number(l.pieces) || 0), 0)
   }, 0)
   const awbNumbers = items.map(m => m.awbNumber).join(', ')
@@ -295,7 +311,7 @@ const visibleCommodities = computed(() => {
   filteredFlights.value.forEach(f => {
     flightMawbs(f.id).forEach(m => {
       const type = m.commodityType || 'DRY_CARGO'
-      if (mawbDispatchedWeightLbs(m) > 0) activeTypes.add(type)
+      if (mawbDispatchedWeightLbs(m, f.id) > 0) activeTypes.add(type)
     })
   })
   return COMMODITY_ORDER

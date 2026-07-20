@@ -208,14 +208,15 @@ export const useAppStore = defineStore('app', () => {
     }
     // Crear los uld-awbs vinculados
     for (const mawb of (localUld.mawbs || [])) {
-      if (mawb.id && saved.id) {
+      if (mawb.awbNumber && saved.id) {
         await uldAwbsApi.create({
           uldId:       saved.id,
-          mawbLabel:   mawb.id,
-          description: mawb.description || 'DRY_CARGO',
-          destination: mawb.dest || null,
-          pieces:      mawb.pcs || 0,
-          piecesPct:   mawb.percentage || 0,
+          mawbId:      mawb.mawbId || null,
+          mawbLabel:   mawb.awbNumber,
+          description: mawb.commodityType || mawb.description || 'DRY_CARGO',
+          destination: mawb.destination || mawb.dest || null,
+          pieces:      mawb.pieces || mawb.pcs || 0,
+          piecesPct:   mawb.piecesPct || mawb.percentage || 0,
         })
       }
     }

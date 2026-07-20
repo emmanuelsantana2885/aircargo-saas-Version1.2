@@ -179,19 +179,21 @@ const COMMODITY_MAP = {
   SDQ_MIA:          { label: 'SDQ-MIA',           short: 'MIA',  color: '#2563eb' },
 }
 
-// Dispatched weight per MAWB: (receivedWeight / receivedPieces) * dispatchedPieces
+// Dispatched weight per MAWB within this flight
 function mawbDispatchedWeightLbs(mawb) {
   const receivedKg = Number(mawb.chargeableWeightKg || mawb.reportedWeightKg || 0)
   const receivedPcs = Number(mawb.pieces || 0)
   if (!receivedKg || !receivedPcs) return 0
-  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber) || []
+  const uldIds = new Set(flightUlds.value.map(u => u.id))
+  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber && uldIds.has(l.uldId)) || []
   const dispatchedPcs = links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
   if (!dispatchedPcs) return 0
   return (receivedKg * 2.20462 / receivedPcs) * dispatchedPcs
 }
 
 function mawbDispatchedPieces(mawb) {
-  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber) || []
+  const uldIds = new Set(flightUlds.value.map(u => u.id))
+  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber && uldIds.has(l.uldId)) || []
   return links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
 }
 
