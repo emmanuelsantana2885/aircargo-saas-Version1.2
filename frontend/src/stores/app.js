@@ -8,14 +8,15 @@ import { mawbsApi } from '../api/mawbs'
 import { receiptsApi } from '../api/receipts'
 import { uldsApi } from '../api/ulds'
 import { uldAwbsApi } from '../api/uldAwbs'
+
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 
 // Inferir UldType desde el código del ULD
-function inferUldType(uldNumber) {
+export function inferUldType(uldNumber) {
   const code = (uldNumber || '').toUpperCase().substring(0, 3)
   const map = { PMC: 'PMC', PAH: 'PAH', PAG: 'PAG', PAJ: 'PAJ', AAY: 'AAY',
-                AAZ: 'AAZ', AAD: 'AAD', PIP: 'PIP', AMP: 'AMP', AMJ: 'AMJ' }
+                AAZ: 'AAZ', AAD: 'AAD', PIP: 'PIP', AMP: 'AMP', AMJ: 'AMJ', PMH: 'PMH' }
   return map[code] || 'PMC'
 }
 
@@ -28,6 +29,8 @@ export const useAppStore = defineStore('app', () => {
   const mawbs      = shallowRef([])
   const receipts   = shallowRef([])
   const ulds       = shallowRef([])
+  const uldAwbs    = shallowRef([])
+
 
   const selectedFlightId = ref(null)
   const loading          = ref(false)
@@ -157,7 +160,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function emitReceipt(payload) {
-    const res = await api.post('/api/warehouse/receipts/emit', payload)
+    const res = await api.post('/warehouse/receipts/emit', payload)
     return res.data
   }
 
@@ -168,6 +171,13 @@ export const useAppStore = defineStore('app', () => {
       const res = await uldsApi.getAll(params)
       ulds.value = res.data
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
+  }
+
+  async function loadUldAwbs() {
+    try {
+      const res = await uldAwbsApi.getAll()
+      uldAwbs.value = res.data
+    } catch { /* non-critical */ }
   }
 
   async function dispatchUld(localUld, flightId) {
@@ -223,7 +233,7 @@ export const useAppStore = defineStore('app', () => {
 
   return {
     // state
-    flights, airlines, bookings, mawbs, receipts, ulds,
+    flights, airlines, bookings, mawbs, receipts, ulds, uldAwbs,
     selectedFlightId, selectedFlight, loading, error,
     // computed
     bookingsByFlight, mawbsByFlight, uldsByFlight,
@@ -232,7 +242,7 @@ export const useAppStore = defineStore('app', () => {
     loadBookings, createBooking, updateBooking, deleteBooking,
     loadMawbs, loadAllMawbs, createMawb,
     loadReceipts, emitReceipt,
-    loadUlds, dispatchUld,
+    loadUlds, loadUldAwbs, dispatchUld,
     selectFlight,
   }
 })

@@ -1,6 +1,7 @@
 package com.aircargo.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.dto.MawbDTO;
 import com.aircargo.entity.Flight;
 import com.aircargo.entity.Hawb;
 import com.aircargo.entity.Mawb;
@@ -61,13 +62,19 @@ public class MawbController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Mawb>> getAllMawbs() {
-        return ResponseEntity.ok(mawbRepository.findAll());
+    public ResponseEntity<List<MawbDTO>> getAllMawbs() {
+        List<MawbDTO> dtos = mawbRepository.findAll().stream()
+                .map(MawbDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/flight/{flightId}")
-    public ResponseEntity<List<Mawb>> getMawbsByFlight(@PathVariable UUID flightId) {
-        return ResponseEntity.ok(mawbRepository.findByFlightId(flightId));
+    public ResponseEntity<List<MawbDTO>> getMawbsByFlight(@PathVariable UUID flightId) {
+        List<MawbDTO> dtos = mawbRepository.findByFlightId(flightId).stream()
+                .map(MawbDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     @PostMapping

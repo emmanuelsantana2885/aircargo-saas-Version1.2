@@ -94,6 +94,17 @@ public class BiService {
 
     public List<Map<String, Object>> getBookings(LocalDate dateFrom, LocalDate dateTo) {
         List<com.aircargo.entity.Booking> bookings = bookingRepository.findAll();
+        if (dateFrom != null || dateTo != null) {
+            bookings = bookings.stream()
+                    .filter(b -> {
+                        java.time.LocalDate bDate = b.getFlight() != null ? b.getFlight().getFlightDate() : null;
+                        if (bDate == null) return false;
+                        if (dateFrom != null && bDate.isBefore(dateFrom)) return false;
+                        if (dateTo != null && bDate.isAfter(dateTo)) return false;
+                        return true;
+                    })
+                    .collect(Collectors.toList());
+        }
         return bookings.stream().map(b -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("bookingId", b.getId());

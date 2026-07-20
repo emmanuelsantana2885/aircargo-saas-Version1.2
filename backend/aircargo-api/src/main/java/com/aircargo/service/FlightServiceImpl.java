@@ -8,6 +8,7 @@ import com.aircargo.repository.FlightRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -57,6 +58,7 @@ public class FlightServiceImpl implements FlightService{
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public Optional<FlightDTO> updateStatus(UUID id, FlightStatus status) {
         return flightRepository.findById(id)
@@ -68,6 +70,7 @@ public class FlightServiceImpl implements FlightService{
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public FlightDTO create(FlightDTO dto) {
         Flight entity = FlightDTO.toEntity(dto);
@@ -76,6 +79,7 @@ public class FlightServiceImpl implements FlightService{
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public Optional<FlightDTO> update(UUID id, FlightDTO dto) {
         return flightRepository.findById(id)
@@ -101,6 +105,7 @@ public class FlightServiceImpl implements FlightService{
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public boolean delete(UUID id) {
         if (!flightRepository.existsById(id)) return false;

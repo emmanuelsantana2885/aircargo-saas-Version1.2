@@ -51,8 +51,8 @@
                 </button>
               </th>
               <th class="text-left px-2 py-2.5 whitespace-nowrap sticky left-16 z-10 bg-slate-700">Vuelo</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap">Ruta</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap">Fecha</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap sticky left-[140px] z-10 bg-slate-700">Ruta</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap sticky left-[220px] z-10 bg-slate-700">Fecha</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap">Estado</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap w-16">ULDs</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap w-14">Pos</th>
@@ -93,8 +93,8 @@
                   </button>
                 </td>
                 <td class="px-2 py-2 font-mono text-slate-950 sticky left-16 z-10 bg-white">UPS-{{ f.flightNumber }}</td>
-                <td class="text-center px-2 py-2 text-slate-700">{{ f.origin }}→{{ f.destination }}</td>
-                <td class="text-center px-2 py-2 text-slate-500">{{ f.flightDate }}</td>
+                <td class="text-center px-2 py-2 text-slate-700 sticky left-[140px] z-10 bg-white">{{ f.origin }}→{{ f.destination }}</td>
+                <td class="text-center px-2 py-2 text-slate-500 sticky left-[220px] z-10 bg-white">{{ f.flightDate }}</td>
                 <td class="text-center px-2 py-2">
                   <span class="inline-flex items-center gap-1">
                     <span :class="getStatusDot(f.status)" class="inline-block w-2 h-2 rounded-full"></span>
@@ -102,7 +102,7 @@
                   </span>
                 </td>
                 <td class="text-center px-2 py-2 font-mono text-slate-900">{{ flightUlds(f.id).length }}</td>
-                <td class="text-center px-2 py-2 font-mono text-slate-600">{{ flightPositions(f.id) }}</td>
+                <td class="text-center px-2 py-2 font-mono text-slate-600">{{ flightPositions(f.id) }}<span class="text-slate-300">/</span>{{ f.totalPositions || '—' }}</td>
                 <td class="text-right px-2 py-2 font-mono text-slate-950">{{ grossLbs(f.id) }}</td>
                 <td class="text-right px-2 py-2 font-mono text-slate-600">{{ totalTareLbs(f.id) }}</td>
                 <td class="text-right px-2 py-2 font-mono text-slate-900">{{ netLbs(f.id) }}</td>
@@ -131,12 +131,12 @@
             <tr class="bg-slate-50 border-t-2 border-slate-300 font-bold">
               <td class="text-center px-2 py-2 text-slate-400">Σ</td>
               <td class="text-center px-2 py-2"></td>
-              <td class="px-2 py-2 text-slate-500">TOTAL</td>
-              <td class="text-center px-2 py-2"></td>
-              <td class="text-center px-2 py-2"></td>
+              <td class="px-2 py-2 text-slate-500 sticky left-16 z-10 bg-slate-50">TOTAL</td>
+              <td class="text-center px-2 py-2 sticky left-[140px] z-10 bg-slate-50"></td>
+              <td class="text-center px-2 py-2 sticky left-[220px] z-10 bg-slate-50"></td>
               <td class="text-center px-2 py-2"></td>
               <td class="text-center px-2 py-2">{{ totalUldsCount }}</td>
-              <td class="text-center px-2 py-2">{{ totalPositionsAll }}</td>
+              <td class="text-center px-2 py-2">{{ totalPositionsAll }}<span class="text-slate-300">/</span>{{ totalMaxPositionsAll }}</td>
               <td class="text-right px-2 py-2">{{ totalGrossAll }}</td>
               <td class="text-right px-2 py-2">{{ totalTareAll }}</td>
               <td class="text-right px-2 py-2">{{ totalNetAll }}</td>
@@ -204,7 +204,7 @@ function grossLbs(flightId) {
 function isBellyPosition(position) {
   if (!position) return false
   const p = position.toString().trim().toUpperCase()
-  return p === '31' || p === '34' || p === 'AB' || p === 'LOOSE' || p === 'BULK' || p.includes('BELLY')
+  return p === '31' || p === '34' || p === 'AB' || p === 'A' || p === 'B' || p === 'LOOSE' || p === 'BULK' || p.includes('BELLY')
 }
 
 function totalTareLbs(flightId) {
@@ -224,7 +224,7 @@ function netLbs(flightId) {
 }
 
 function payloadLbs(flightId) {
-  return grossLbs(flightId) - bellyTareLbs(flightId) + 5
+  return grossLbs(flightId) - bellyTareLbs(flightId)
 }
 
 // ── Commodity definitions & ordering ──────────────────────────
@@ -256,12 +256,23 @@ const COMMODITY_MAP = {
   SDQ_MIA:          { label: 'SDQ-MIA',           short: 'MIA',  color: '#2563eb' },
 }
 
-// Commodity payload per flight (computed from MAWBs)
+// Dispatched weight per MAWB: (receivedWeight / receivedPieces) * dispatchedPieces
+function mawbDispatchedWeightLbs(mawb) {
+  const receivedKg = Number(mawb.chargeableWeightKg || mawb.reportedWeightKg || 0)
+  const receivedPcs = Number(mawb.pieces || 0)
+  if (!receivedKg || !receivedPcs) return 0
+  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber) || []
+  const dispatchedPcs = links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
+  if (!dispatchedPcs) return 0
+  return (receivedKg * 2.20462 / receivedPcs) * dispatchedPcs
+}
+
+// Commodity payload per flight (proportional to dispatched pieces)
 function commodityPayload(flightId, commodityType) {
   const mawbs = flightMawbs(flightId)
   const totalLbs = mawbs
     .filter(m => m.commodityType === commodityType)
-    .reduce((s, m) => s + (Number(m.chargeableWeightKg || m.reportedWeightKg || 0) * 2.20462), 0)
+    .reduce((s, m) => s + mawbDispatchedWeightLbs(m), 0)
   return totalLbs > 0 ? Math.round(totalLbs) : null
 }
 
@@ -269,20 +280,22 @@ function commodityTooltip(flightId, commodityType) {
   const mawbs = flightMawbs(flightId)
   const items = mawbs.filter(m => m.commodityType === commodityType)
   if (!items.length) return `${COMMODITY_MAP[commodityType]?.label || commodityType}: 0 lbs`
-  const totalLbs = items.reduce((s, m) => s + (Number(m.chargeableWeightKg || m.reportedWeightKg || 0) * 2.20462), 0)
-  const totalPcs = items.reduce((s, m) => s + Number(m.pieces || 0), 0)
+  const totalLbs = items.reduce((s, m) => s + mawbDispatchedWeightLbs(m), 0)
+  const totalPcs = items.reduce((s, m) => {
+    const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === m.awbNumber) || []
+    return s + links.reduce((ps, l) => ps + (Number(l.pieces) || 0), 0)
+  }, 0)
   const awbNumbers = items.map(m => m.awbNumber).join(', ')
-  return `${COMMODITY_MAP[commodityType]?.label || commodityType}: ${Math.round(totalLbs)} lbs (${totalPcs} pcs) • ${awbNumbers}`
+  return `${COMMODITY_MAP[commodityType]?.label || commodityType}: ${Math.round(totalLbs)} lbs (${totalPcs} pcs desp.) • ${awbNumbers}`
 }
 
-// Visible commodities = those with payload > 0 in ANY filtered flight
+// Visible commodities = those with dispatched payload > 0 in ANY filtered flight
 const visibleCommodities = computed(() => {
   const activeTypes = new Set()
   filteredFlights.value.forEach(f => {
     flightMawbs(f.id).forEach(m => {
       const type = m.commodityType || 'DRY_CARGO'
-      const weight = Number(m.chargeableWeightKg || m.reportedWeightKg || 0) * 2.20462
-      if (weight > 0) activeTypes.add(type)
+      if (mawbDispatchedWeightLbs(m) > 0) activeTypes.add(type)
     })
   })
   return COMMODITY_ORDER
@@ -312,6 +325,10 @@ const totalMawbsCount = computed(() => {
 
 const totalPositionsAll = computed(() => {
   return filteredFlights.value.reduce((s, f) => s + flightPositions(f.id), 0)
+})
+
+const totalMaxPositionsAll = computed(() => {
+  return filteredFlights.value.reduce((s, f) => s + (f.totalPositions || 0), 0)
 })
 
 const totalGrossAll = computed(() => {
@@ -422,6 +439,8 @@ onMounted(async () => {
     await Promise.all([
       appStore.loadUlds(),
       appStore.loadAllMawbs(),
+      appStore.loadUldAwbs(),
+
     ])
   }
   loading.value = false

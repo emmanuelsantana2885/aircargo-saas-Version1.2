@@ -1,20 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
 import api from '../api/client'
-import { useAppStore } from './app'
-
-function inferUldType(uldId) {
-  const id = (uldId || '').toUpperCase()
-  if (id.startsWith('PMC')) return 'PMC'
-  if (id.startsWith('PMH')) return 'PMH'
-  if (id.startsWith('PAH')) return 'PAH'
-  if (id.startsWith('AAD')) return 'AAD'
-  if (id.startsWith('AAY')) return 'AAY'
-  if (id.startsWith('AMP')) return 'AMP'
-  if (id.startsWith('AMJ')) return 'AMJ'
-  if (id.startsWith('PIP')) return 'PIP'
-  return 'PMC'
-}
+import { useAppStore, inferUldType } from './app'
 
 export const useUldsStore = defineStore('ulds', () => {
   const flights = shallowRef([])

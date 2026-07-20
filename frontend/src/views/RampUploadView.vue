@@ -78,6 +78,7 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
+import api from '../api/client'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 
@@ -132,8 +133,8 @@ async function processRampManifest() {
   formData.append('airlineId', airlineId.value)
 
   try {
-    const url = `http://localhost:8080/api/load-planning/flight/${flightId.value}/upload-manifest`
-    const response = await axios.post(url, formData, {
+    const url = `/load-planning/flight/${flightId.value}/upload-manifest`
+    const response = await api.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

@@ -8,6 +8,7 @@ import com.aircargo.repository.AirlineRepository;
 import com.aircargo.repository.BookingRepository;
 import com.aircargo.repository.FlightRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
+    @Transactional
     public BookingDTO create(BookingDTO dto) {
         // Auto-resolve airline from Flight if not provided
         if (dto.getAirlineId() == null && dto.getFlightId() != null) {
@@ -57,6 +59,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
+    @Transactional
     public Optional<BookingDTO> update(UUID id, BookingDTO dto) {
         return bookingRepository.findById(id)
                 .map(existing -> {
@@ -107,6 +110,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
+    @Transactional
     public boolean delete(UUID id) {
         if (!bookingRepository.existsById(id)) return false;
         bookingRepository.deleteById(id);
@@ -114,6 +118,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
+    @Transactional
     public Optional<BookingDTO> updateAwb(UUID id, String awbNumber) {
         return bookingRepository.findById(id)
                 .map(existing -> {

@@ -384,8 +384,11 @@ const aircraftType = computed(() => {
 const bellyPositions = computed(() => {
   const ac = aircraftType.value
   if (ac === 'B757') return ['31', '34']
-  if (ac === 'B767' || ac === 'A300') return ['AB']
-  return ['AB']
+  if (ac === 'B767') return ['A', 'B']
+  if (ac === 'A300' || ac === 'A310' || ac === 'A330' || ac === 'B777') return ['A', 'B']
+  if (ac === 'B747') return ['31', '32', '33', '34']
+  if (ac === 'MD11') return ['31', '34']
+  return []
 })
 
 const positionSummary = computed(() => {
@@ -399,7 +402,7 @@ const positionSummary = computed(() => {
   const bellySet = new Set(bellyPositions.value.map(p => p.toUpperCase()))
   return Object.values(posMap).map(p => ({
     ...p,
-    isBelly: bellySet.has(p.pos) || p.pos === 'AB' || p.pos === '31' || p.pos === '34'
+    isBelly: bellySet.has(p.pos)
   })).sort((a, b) => {
     const aIsBelly = a.isBelly ? 1 : 0
     const bIsBelly = b.isBelly ? 1 : 0
@@ -787,7 +790,7 @@ async function onRowDrop() {
     '1R', '2R', '3R', '4R', '5R', '6R', '7R', '8R', '9R', '10R',
     '11L', '12L', '13L', '14L', '15L', '16L', '17L', '18L',
     '11R', '12R', '13R', '14R', '15R', '16R', '17R', '18R',
-    '31', '32', '33', '34', 'AB']
+    '31', '32', '33', '34', 'A', 'B']
   toast.info('Reordenando posiciones...')
   // Update positions sequentially
   for (let i = 0; i < sorted.length; i++) {

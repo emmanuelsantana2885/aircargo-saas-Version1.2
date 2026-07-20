@@ -68,6 +68,13 @@ public class AppUser {
     private Boolean isActive = true;
 
     @Builder.Default
+    @Column(name = "failed_login_attempts", nullable = false)
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private java.time.OffsetDateTime lockedUntil;
+
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "user_sites",

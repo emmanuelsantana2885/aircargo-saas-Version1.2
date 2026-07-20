@@ -1,0 +1,11 @@
+import api from './client'
+
+export const biApi = {
+  getFlights:   (params = {}) => api.get('/bi/flights', { params }),
+  getBookings:  (params = {}) => api.get('/bi/bookings', { params }),
+  getMawbs:     (params = {}) => api.get('/bi/mawbs', { params }),
+  getReceipts:  (params = {}) => api.get('/bi/receipts', { params }),
+  getUlds:      (params = {}) => api.get('/bi/ulds', { params }),
+  getDashboard: () => api.get('/bi/dashboard'),
+  getDaily:     (params = {}) => api.get('/bi/daily', { params }),
+}

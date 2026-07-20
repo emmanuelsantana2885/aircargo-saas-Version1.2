@@ -7,6 +7,7 @@ import com.aircargo.repository.AppUserRepository;
 import com.aircargo.common.entity.Airline;
 import com.aircargo.repository.SiteRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +39,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional
     public AppUserDTO create(AppUserDTO dto) {
         AppUser e = AppUserDTO.toEntity(dto);
         e.setPasswordHash(null);
@@ -55,6 +57,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional
     public Optional<AppUserDTO> update(UUID id, AppUserDTO dto) {
         return repository.findById(id)
                 .map(existing -> {
@@ -81,6 +84,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional
     public boolean delete(UUID id) {
         if (!repository.existsById(id)) return false;
         repository.deleteById(id);
@@ -88,6 +92,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional
     public void resetPassword(UUID id) {
         repository.findById(id).ifPresent(user -> {
             user.setPasswordHash(null);

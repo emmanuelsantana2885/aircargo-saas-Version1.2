@@ -85,6 +85,7 @@ public class UldServiceImpl implements UldService{
     }
 
     @Override
+    @Transactional
     public UldDTO create(UldDTO dto) {
         Uld e = UldDTO.toEntity(dto);
         computeMetricWeights(e);
@@ -93,6 +94,7 @@ public class UldServiceImpl implements UldService{
     }
 
     @Override
+    @Transactional
     public Optional<UldDTO> update(UUID id, UldDTO dto) {
         return uldRepository.findById(id)
                 .map(existing -> {
@@ -153,6 +155,7 @@ public class UldServiceImpl implements UldService{
     }
 
     @Override
+    @Transactional
     public UldDTO assignFlight(UUID id, UUID flightId) {
         Uld uld = uldRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("ULD not found: " + id));
@@ -167,6 +170,7 @@ public class UldServiceImpl implements UldService{
     }
 
     @Override
+    @Transactional
     public boolean delete(UUID id) {
         if (!uldRepository.existsById(id)) return false;
         uldRepository.deleteById(id);

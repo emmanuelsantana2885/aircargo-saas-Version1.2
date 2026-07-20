@@ -66,13 +66,34 @@ public class AuthController {
         String passwordHash = user.getPasswordHash();
         boolean hasPasswordSet = passwordHash != null && !passwordHash.isBlank();
 
+        // Account lockout check
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(OffsetDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Cuenta bloqueada por intentos fallidos. Intente de nuevo después de " +
+                            user.getLockedUntil().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) + "."));
+        }
+
         if (hasPasswordSet) {
             if (request.password() == null || request.password().isBlank()) {
                 return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED).build();
             }
             if (!passwordEncoder.matches(request.password(), passwordHash)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+                // Increment failed attempts
+                int attempts = (user.getFailedLoginAttempts() != null ? user.getFailedLoginAttempts() : 0) + 1;
+                user.setFailedLoginAttempts(attempts);
+                if (attempts >= 5) {
+                    user.setLockedUntil(OffsetDateTime.now().plusMinutes(30));
+                    userRepository.save(user);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "Cuenta bloqueada por 5 intentos fallidos. Intente de nuevo en 30 minutos."));
+                }
+                userRepository.save(user);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Contraseña incorrecta. Intentos restantes: " + (5 - attempts)));
             }
+            // Successful password login — reset failed attempts
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
         }
 
         // MFA check — SuperUser can bypass MFA if not configured
