@@ -157,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAppStore } from '../stores/app'
 import { downloadCSV } from '../utils/csv'
 import FlightDetail from '../components/FlightDetail.vue'

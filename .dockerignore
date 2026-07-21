@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+**/node_modules
+**/target
+frontend/dist
+docker
+k8s
+yay
+*.md
+!README.md
+.env.local
