@@ -32,7 +32,7 @@ fi
 
 # ── 2. Clone repo ──────────────────────────────
 APP_DIR="$HOME/aircargo-saas"
-REPO_URL="https://github.com/emmanuelsantana2885/aircargo-saas.git"
+REPO_URL="https://github.com/emmanuelsantana2885/aircargo-saas-Version1.2.git"
 
 if [ -d "$APP_DIR/.git" ]; then
   echo "▸ Pulling latest changes..."
