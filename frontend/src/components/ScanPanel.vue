@@ -20,6 +20,14 @@
       </div>
     </div>
 
+    <!-- Info for unsaved ULD -->
+    <div v-if="!uldId" class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+      <span class="text-blue-600 text-sm">ℹ</span>
+      <span class="text-[10px] font-bold text-blue-700 uppercase tracking-wide">
+        Escanee el código del ULD para asignar el número. Las piezas de MAWB se habilitan después de guardar.
+      </span>
+    </div>
+
     <!-- Scan Input -->
     <div class="relative mb-3">
       <input
@@ -88,7 +96,7 @@ const props = defineProps({
   uldNumber: { type: String, default: 'NUEVO' },
 })
 
-const emit = defineEmits(['piece-added', 'piece-removed', 'exit-scan', 'update-mawb-pieces', 'ULD_FOUND'])
+const emit = defineEmits(['piece-added', 'piece-removed', 'exit-scan', 'update-mawb-pieces', 'ULD_FOUND', 'uld-number-scanned'])
 
 const scanInput = ref(null)
 const scanCode = ref('')
@@ -128,16 +136,13 @@ async function processScan(codeOverride) {
     const isUld = /^(PMC|PAH|PAG|PAJ|AAY|AAZ|AAD|PIP|AMP|AMJ|PMH)-/i.test(code)
 
     if (isUld && !props.uldId) {
-      const res = await scanApi.lookup(code)
-      if (res.data.type === 'ULD') {
-        lastResult.value = { success: true, message: `ULD ${res.data.uldNumber} encontrada`, awbNumber: code }
-        flash('emerald')
-        emit('ULD_FOUND', res.data)
-      } else {
-        lastResult.value = { success: false, error: `Código no reconocido: ${code}`, awbNumber: code, time: 'ahora' }
-        history.value.unshift(lastResult.value)
-        flash('red')
-      }
+      lastResult.value = { success: true, message: `ULD ${code} asignado`, awbNumber: code }
+      flash('emerald')
+      emit('uld-number-scanned', code)
+    } else if (!isUld && !props.uldId) {
+      lastResult.value = { success: false, error: 'Guarde el ULD primero para registrar piezas MAWB', awbNumber: code, time: 'ahora' }
+      history.value.unshift(lastResult.value)
+      flash('red')
     } else {
       const res = await scanApi.piece({
         uldId: props.uldId,

@@ -123,6 +123,7 @@
                   @piece-added="onScanPieceAdded"
                   @piece-removed="onScanPieceRemoved"
                   @exit-scan="scanMode = false"
+                  @uld-number-scanned="onUldNumberScanned"
                 />
 
                 <!-- MAWB TABLE -->
@@ -275,7 +276,7 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-2">
-                    <button v-if="uld.backendId" @click="toggleScanMode(uld)"
+                    <button @click="toggleScanMode(uld)"
                       class="font-mono font-black uppercase text-[10px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
                       :class="scanMode ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
                       {{ scanMode ? '🔍 Scanando...' : '📷 Modo Scan' }}
@@ -415,6 +416,18 @@ function onScanPieceRemoved(data) {
   const mawbRow = uld.mawbs.find(m => m.awbNumber === data.awbNumber)
   if (mawbRow && mawbRow.pieces > 0) {
     mawbRow.pieces--
+  }
+}
+
+function onUldNumberScanned(code) {
+  const uid = scanUldUid.value
+  if (!uid) return
+  const uld = localUlds.value.find(u => u.uid === uid)
+  if (!uld) return
+  uld.uldNumber = code.toUpperCase()
+  const detectedType = code.split('-')[0]?.toUpperCase()
+  if (detectedType && uldTypes.includes(detectedType)) {
+    uld.uldType = detectedType
   }
 }
 
