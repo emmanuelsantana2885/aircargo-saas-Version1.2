@@ -64,7 +64,7 @@ public class ScanService {
 
         // 3. Intentar como ULD number
         Optional<Uld> uldOpt = uldRepository.findAll().stream()
-                .filter(u -> u.getUldNumber() != null && u.getUldNumber().equalsIgnoreCase(normalized))
+                .filter(u -> u.getUldNumber() != null && normalizeCode(u.getUldNumber()).equals(normalized))
                 .findFirst();
         if (uldOpt.isPresent()) {
             return buildUldLookup(uldOpt.get());

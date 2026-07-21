@@ -58,23 +58,28 @@
               :class="canUndo ? 'border-slate-300 text-slate-600 hover:bg-slate-100' : 'border-slate-200 text-slate-300 cursor-not-allowed'">
         ↩ Deshacer Último
       </button>
+      <button @click="openCamera"
+              class="text-[10px] font-bold px-3 py-1.5 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors ml-auto">
+        📷 Cámara
+      </button>
     </div>
 
     <!-- Camera Modal -->
-    <div v-if="showCamera" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="showCamera = false">
+    <div v-if="showCamera" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="closeCamera">
       <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <span class="text-[12px] font-black text-slate-900 uppercase">Cámara</span>
-          <button @click="showCamera = false" class="text-slate-400 hover:text-red-500">✕</button>
+          <span class="text-[12px] font-black text-slate-900 uppercase">Escanear con Cámara</span>
+          <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold">✕</button>
         </div>
-        <div id="qr-reader" class="w-full rounded-lg overflow-hidden"></div>
+        <div id="qr-reader" class="w-full rounded-lg overflow-hidden border border-slate-200" style="min-height: 280px;"></div>
+        <p class="text-[10px] text-slate-400 mt-3 text-center">Apunte la cámara al código de barras de la pieza</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, watch, computed } from 'vue'
+import { ref, nextTick, watch, computed, onBeforeUnmount } from 'vue'
 import { scanApi } from '@/api/scan.js'
 
 const props = defineProps({
@@ -95,67 +100,75 @@ const history = ref([])
 const showCamera = ref(false)
 const canUndo = computed(() => history.value.length > 0 && history.value[0].success)
 
+let html5QrScanner = null
+
 // Auto-focus when activated
 watch(() => props.active, async (val) => {
   if (val) {
     await nextTick()
     scanInput.value?.focus()
+  } else {
+    closeCamera()
   }
 })
 
-async function processScan() {
-  const code = scanCode.value?.trim()
+// Clean up on unmount
+onBeforeUnmount(() => {
+  closeCamera()
+})
+
+async function processScan(codeOverride) {
+  const code = codeOverride || scanCode.value?.trim()
   if (!code || processing.value) return
 
   processing.value = true
   scanning.value = true
 
   try {
-    // Check if it looks like a ULD number
     const isUld = /^(PMC|PAH|PAG|PAJ|AAY|AAZ|AAD|PIP|AMP|AMJ|PMH)-/i.test(code)
 
     if (isUld && !props.uldId) {
-      // Lookup ULD
       const res = await scanApi.lookup(code)
       if (res.data.type === 'ULD') {
         lastResult.value = { success: true, message: `ULD ${res.data.uldNumber} encontrada`, awbNumber: code }
         flash('emerald')
-        // Emit event to navigate to this ULD
         emit('ULD_FOUND', res.data)
+      } else {
+        lastResult.value = { success: false, error: `Código no reconocido: ${code}`, awbNumber: code, time: 'ahora' }
+        history.value.unshift(lastResult.value)
+        flash('red')
       }
     } else {
-      // Register piece
       const res = await scanApi.piece({
         uldId: props.uldId,
         awbNumber: code,
         source: 'BARCODE',
       })
 
+      const entry = { awbNumber: code, time: 'ahora' }
       if (res.data.success) {
-        lastResult.value = {
+        Object.assign(entry, {
           success: true,
           message: `Pieza #${res.data.pieceNumber} — ${res.data.awbNumber}`,
-          awbNumber: res.data.awbNumber,
           pieceNumber: res.data.pieceNumber,
           totalOnUld: res.data.totalOnUld,
           maxAllowed: res.data.totalOnUld + res.data.availablePieces,
-          time: 'ahora'
-        }
-        history.value.unshift(lastResult.value)
-        if (history.value.length > 10) history.value.pop()
+        })
         flash('emerald')
         emit('piece-added', res.data)
       } else {
-        lastResult.value = { success: false, error: res.data.error, awbNumber: code, time: 'ahora' }
-        history.value.unshift(lastResult.value)
-        if (history.value.length > 10) history.value.pop()
+        Object.assign(entry, { success: false, error: res.data.error })
         flash('red')
       }
+      lastResult.value = entry
+      history.value.unshift(entry)
+      if (history.value.length > 10) history.value.pop()
     }
   } catch (e) {
     const msg = e.response?.data?.error || e.message || 'Error de conexión'
-    lastResult.value = { success: false, error: msg, awbNumber: code, time: 'ahora' }
-    history.value.unshift(lastResult.value)
+    const entry = { success: false, error: msg, awbNumber: code, time: 'ahora' }
+    lastResult.value = entry
+    history.value.unshift(entry)
     if (history.value.length > 10) history.value.pop()
     flash('red')
   } finally {
@@ -179,6 +192,53 @@ async function undoLast() {
   } catch {
     lastResult.value = { success: false, error: 'No se pudo deshacer', awbNumber: last.awbNumber }
   }
+}
+
+async function openCamera() {
+  showCamera.value = true
+  await nextTick()
+
+  try {
+    const { Html5Qrcode } = await import('html5-qrcode')
+
+    // Stop any existing scanner
+    if (html5QrScanner) {
+      try { await html5QrScanner.stop() } catch {}
+      html5QrScanner.clear()
+      html5QrScanner = null
+    }
+
+    html5QrScanner = new Html5Qrcode('qr-reader')
+
+    await html5QrScanner.start(
+      { facingMode: 'environment' },
+      {
+        fps: 10,
+        qrbox: { width: 280, height: 120 },
+        aspectRatio: 2.0,
+        showTorchButtonIfSupported: true,
+      },
+      (decodedText) => {
+        // On successful scan
+        processScan(decodedText)
+      },
+      () => {} // ignore scan errors (no barcode in frame)
+    )
+  } catch (err) {
+    console.error('Camera error:', err)
+    lastResult.value = { success: false, error: 'No se pudo acceder a la cámara', awbNumber: '', time: 'ahora' }
+    flash('red')
+    closeCamera()
+  }
+}
+
+async function closeCamera() {
+  if (html5QrScanner) {
+    try { await html5QrScanner.stop() } catch {}
+    try { html5QrScanner.clear() } catch {}
+    html5QrScanner = null
+  }
+  showCamera.value = false
 }
 
 function flash(color) {
