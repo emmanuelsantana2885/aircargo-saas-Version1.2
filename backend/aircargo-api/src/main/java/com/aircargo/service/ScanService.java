@@ -22,19 +22,22 @@ public class ScanService {
     private final UldAwbRepository uldAwbRepository;
     private final UldPieceRepository uldPieceRepository;
     private final WarehouseReceiptRepository receiptRepository;
+    private final BookingRepository bookingRepository;
 
     public ScanService(MawbRepository mawbRepository,
                        HawbRepository hawbRepository,
                        UldRepository uldRepository,
                        UldAwbRepository uldAwbRepository,
                        UldPieceRepository uldPieceRepository,
-                       WarehouseReceiptRepository receiptRepository) {
+                       WarehouseReceiptRepository receiptRepository,
+                       BookingRepository bookingRepository) {
         this.mawbRepository = mawbRepository;
         this.hawbRepository = hawbRepository;
         this.uldRepository = uldRepository;
         this.uldAwbRepository = uldAwbRepository;
         this.uldPieceRepository = uldPieceRepository;
         this.receiptRepository = receiptRepository;
+        this.bookingRepository = bookingRepository;
     }
 
     /**
@@ -105,6 +108,14 @@ public class ScanService {
             return errorResult("Código no reconocido: " + request.getAwbNumber());
         }
 
+        // ─── WARN: MAWB without linked Booking ──────────────
+        String bookingWarning = null;
+        java.util.List<Booking> linkedBookings = bookingRepository.findByMawbId(mawb.getId());
+        if (linkedBookings.isEmpty()) {
+            bookingWarning = "MAWB " + mawb.getAwbNumber() + " no tiene Booking vinculado. " +
+                    "El piezas escaneadas no se descontaran de ningun Booking.";
+        }
+
         // Verificar límite de piezas
         long existingCount = uldPieceRepository.countByUldIdAndMawbId(uld.getId(), mawb.getId());
         int maxAllowed = getMaxPieces(mawb);
@@ -145,6 +156,7 @@ public class ScanService {
         result.setAwbNumber(mawb.getAwbNumber());
         result.setTotalOnUld((int) existingCount + 1);
         result.setAvailablePieces(Math.max(0, maxAllowed - (int) existingCount - 1));
+        result.setWarning(bookingWarning);
         return result;
     }
 
@@ -184,12 +196,17 @@ public class ScanService {
                 .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
                 .sum();
 
+        int booked = bookingRepository.findByMawbId(mawb.getId()).stream()
+                .mapToInt(b -> b.getSkids() != null ? b.getSkids() : 0)
+                .max()
+                .orElse(0);
+
         if (mawb.getStatus() == MawbStatus.RECEIVED ||
             mawb.getStatus() == MawbStatus.MANIFESTED ||
             mawb.getStatus() == MawbStatus.DEPARTED) {
-            return Math.max(reserved, received);
+            return Math.max(reserved, Math.max(booked, received));
         }
-        return reserved;
+        return Math.max(reserved, booked);
     }
 
     private ScanLookupDTO buildMawbLookup(Mawb mawb, UUID uldId) {
@@ -248,7 +265,7 @@ public class ScanService {
             UldAwb awb = new UldAwb();
             awb.setUld(uld);
             awb.setMawb(mawb);
-            awb.setMawblabel(mawb.getAwbNumber());
+            awb.setMawbLabel(mawb.getAwbNumber());
             awb.setDescription(mawb.getCommodityType() != null ? mawb.getCommodityType() : CommodityType.DRY_CARGO);
             awb.setDestination(mawb.getDestination());
             awb.setPieces(pieceCount);

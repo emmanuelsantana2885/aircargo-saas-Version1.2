@@ -1,6 +1,7 @@
 package com.aircargo.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.dto.PageResponse;
 import com.aircargo.dto.TransferRequest;
 import com.aircargo.dto.UldDTO;
 import com.aircargo.entity.UldStatus;
@@ -34,6 +35,15 @@ public class UldController {
             @RequestParam(required = false) UUID airlineId,
             @RequestParam(required = false) UUID flightId) {
         return uldService.getAll(airlineId, flightId);
+    }
+
+    @GetMapping(params = {"page", "size"})
+    public PageResponse<UldDTO> getAllPaginated(
+            @RequestParam(required = false) UUID airlineId,
+            @RequestParam(required = false) UUID flightId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return uldService.getAll(airlineId, flightId, page, size);
     }
 
     @GetMapping("/{id}")

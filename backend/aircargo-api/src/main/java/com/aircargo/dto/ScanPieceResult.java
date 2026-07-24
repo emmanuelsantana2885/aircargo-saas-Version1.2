@@ -18,4 +18,5 @@ public class ScanPieceResult {
     private int totalOnUld;
     private int availablePieces;
     private String error;
+    private String warning;
 }

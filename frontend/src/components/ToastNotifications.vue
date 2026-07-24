@@ -7,7 +7,8 @@
           :class="'toast-' + t.type"
           @click="toastStore.remove(t.id)">
           <span class="toast-icon" v-html="iconFor(t.type)"></span>
-          <span class="toast-msg">{{ t.message }}</span>
+          <span v-if="t.html" class="toast-msg toast-rich" v-html="t.message"></span>
+          <span v-else class="toast-msg">{{ t.message }}</span>
           <button class="toast-close" @click.stop="toastStore.remove(t.id)">&times;</button>
         </div>
       </TransitionGroup>
@@ -64,6 +65,29 @@ function iconFor(type) {
 .toast-info    { background: #f5f5f5; color: #111111; border-color: #111111; }
 .toast-icon { font-size: 16px; font-weight: bold; flex-shrink: 0; }
 .toast-msg  { flex: 1; }
+.toast-rich { line-height: 1.5; }
+.toast-rich :deep(.toast-title) {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.toast-rich :deep(.toast-detail) {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.toast-rich :deep(.toast-arrow) {
+  display: inline-block;
+  margin: 0 4px;
+  opacity: 0.5;
+}
+.toast-rich :deep(.toast-before) {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+.toast-rich :deep(.toast-after) {
+  font-weight: 700;
+}
 .toast-close {
   background: none; border: none; font-size: 18px;
   cursor: pointer; opacity: 0.5; padding: 0 2px;

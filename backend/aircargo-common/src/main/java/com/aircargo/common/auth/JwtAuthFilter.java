@@ -28,12 +28,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
+        String token = null;
+
         if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+            token = header.substring(7);
+        } else if (request.getParameter("token") != null) {
+            token = request.getParameter("token");
+        }
+
+        if (token != null) {
             try {
+                if (jwtUtil.isRevoked(token)) {
+                    SecurityContextHolder.clearContext();
+                    chain.doFilter(request, response);
+                    return;
+                }
                 Claims claims = jwtUtil.parseToken(token);
-                String userId = claims.getSubject();
                 String role = claims.get("role", String.class);
+                if (role == null) {
+                    SecurityContextHolder.clearContext();
+                    chain.doFilter(request, response);
+                    return;
+                }
+                String userId = claims.getSubject();
                 String airlineId = claims.get("airlineId", String.class);
                 String email = claims.get("email", String.class);
                 String fullName = claims.get("fullName", String.class);

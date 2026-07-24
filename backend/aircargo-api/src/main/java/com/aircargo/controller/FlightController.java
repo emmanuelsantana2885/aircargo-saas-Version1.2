@@ -2,6 +2,7 @@ package com.aircargo.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.FlightDTO;
+import com.aircargo.dto.PageResponse;
 import com.aircargo.entity.FlightStatus;
 import com.aircargo.service.AuditService;
 import com.aircargo.service.FlightService;
@@ -31,16 +32,18 @@ public class FlightController {
         this.auditService = auditService;
     }
 
-    // GET /api/flights?airlineId=xxx
+    // GET /api/flights?airlineId=xxx&page=0&size=50
     @GetMapping
-    public List<FlightDTO> getAll(
+    public PageResponse<FlightDTO> getAll(
             @RequestParam(required=false) UUID airlineId,
             @RequestParam(required =false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) FlightStatus status,
-            @RequestParam(required = false) String flightNumber) {
+            @RequestParam(required = false) String flightNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
 
-        return flightService.getAll(airlineId, date, status, flightNumber);
+        return flightService.getAll(airlineId, date, status, flightNumber, page, size);
     }
 
     // GET /api/flights/{id}

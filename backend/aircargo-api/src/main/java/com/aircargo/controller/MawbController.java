@@ -2,6 +2,7 @@ package com.aircargo.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.MawbDTO;
+import com.aircargo.dto.PageResponse;
 import com.aircargo.entity.Flight;
 import com.aircargo.entity.Hawb;
 import com.aircargo.entity.Mawb;
@@ -17,6 +18,10 @@ import com.aircargo.service.PdfGenerationService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -69,6 +74,18 @@ public class MawbController {
         return ResponseEntity.ok(dtos);
     }
 
+    @GetMapping(params = {"page", "size"})
+    public PageResponse<MawbDTO> getAllMawbsPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        PageRequest pageReq = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Mawb> result = mawbRepository.findAll(pageReq);
+        List<MawbDTO> dtos = result.getContent().stream()
+                .map(MawbDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+        return PageResponse.of(dtos, page, size, result.getTotalElements());
+    }
+
     @GetMapping("/flight/{flightId}")
     public ResponseEntity<List<MawbDTO>> getMawbsByFlight(@PathVariable UUID flightId) {
         List<MawbDTO> dtos = mawbRepository.findByFlightId(flightId).stream()
@@ -77,8 +94,21 @@ public class MawbController {
         return ResponseEntity.ok(dtos);
     }
 
+    @GetMapping(value = "/flight/{flightId}", params = {"page", "size"})
+    public PageResponse<MawbDTO> getMawbsByFlightPaginated(
+            @PathVariable UUID flightId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        PageRequest pageReq = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Mawb> result = mawbRepository.findByFlightId(flightId, pageReq);
+        List<MawbDTO> dtos = result.getContent().stream()
+                .map(MawbDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+        return PageResponse.of(dtos, page, size, result.getTotalElements());
+    }
+
     @PostMapping
-    public ResponseEntity<?> createMawb(@RequestBody Mawb mawb,
+    public ResponseEntity<?> createMawb(@Valid @RequestBody Mawb mawb,
                                          @AuthenticationPrincipal UserPrincipal principal,
                                          HttpServletRequest request) {
         try {
@@ -134,7 +164,7 @@ public class MawbController {
     }
 
     @PutMapping("/{mawbId}")
-    public ResponseEntity<?> updateMawb(@PathVariable UUID mawbId, @RequestBody Mawb updates,
+    public ResponseEntity<?> updateMawb(@PathVariable UUID mawbId, @Valid @RequestBody Mawb updates,
                                          @AuthenticationPrincipal UserPrincipal principal,
                                          HttpServletRequest request) {
         return mawbRepository.findById(mawbId).map(mawb -> {

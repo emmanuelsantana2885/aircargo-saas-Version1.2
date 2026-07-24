@@ -1,6 +1,7 @@
 package com.aircargo.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -28,6 +29,7 @@ public class Mawb {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -72,6 +74,7 @@ public class Mawb {
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "mawb_status")
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private MawbStatus status = MawbStatus.BOOKED;
 
     @Column(name = "cash_only")
@@ -100,9 +103,11 @@ public class Mawb {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private OffsetDateTime updatedAt;
 }

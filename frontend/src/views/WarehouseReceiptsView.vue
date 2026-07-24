@@ -874,6 +874,42 @@
       </div>
     </Teleport>
 
+    <!-- Booking Correction Modal -->
+    <Teleport to="body">
+      <div v-if="showBookingCorrectionModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="cancelBookingCorrection">
+        <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4" style="max-width: 480px; width: 100%;">
+          <div class="px-5 py-4 border-b border-amber-300 bg-amber-50">
+            <div class="flex items-center gap-2">
+              <span class="text-amber-600 text-lg">&#9888;</span>
+              <span class="text-[13px] font-mono font-black uppercase tracking-widest text-amber-900">Booking Auto-Correccion</span>
+            </div>
+          </div>
+          <div class="px-5 py-4 space-y-3">
+            <p class="text-[12px] font-mono text-slate-600">
+              Las piezas recibidas superan las reservadas en el Booking. El sistema corregira automaticamente:
+            </p>
+            <div v-for="(c, idx) in pendingBookingCorrections" :key="idx"
+              class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
+              <div class="text-[11px] font-mono text-amber-900" v-html="formatCorrection(c)"></div>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 italic">
+              Al aceptar, el Booking se actualizara y el recibo se guardara.
+            </p>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-amber-200 bg-amber-50/50">
+            <button @click="cancelBookingCorrection"
+              class="text-[11px] px-4 py-2 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-700 hover:bg-white transition">
+              &#10007; Ajustar
+            </button>
+            <button @click="confirmBookingCorrection"
+              class="text-[11px] px-5 py-2 rounded font-mono uppercase tracking-wider font-bold text-white bg-amber-600 hover:bg-amber-500 transition">
+              &#10003; Aceptar y Emitir
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Evidence Preview Modal -->
     <Teleport to="body">
       <div v-if="evidencePreview.show" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="closeEvidencePreview">
@@ -937,6 +973,11 @@ const submitting = ref(false)
 const successMsg = ref('')
 const showConfirmModal = ref(false)
 const pendingSubmitMawb = ref(null)
+const showBookingCorrectionModal = ref(false)
+const pendingBookingCorrections = ref([])
+const pendingEmitPayload = ref(null)
+const pendingEmitMawb = ref(null)
+const pendingEmitHawbs = ref(null)
 const formVersion = ref(0)
 function bumpFormVersion() { formVersion.value++ }
 let formVersionDebounceTimer = null
@@ -1930,6 +1971,37 @@ async function confirmSubmit() {
   await submitReceipt(m)
 }
 
+function formatCorrection(c) {
+  const m = c.match(/(\d+)\s*→\s*(\d+)/)
+  if (m) {
+    return c.replace(m[0],
+      `<span class="line-through opacity-50">${m[1]} skids</span> <span class="opacity-40 mx-1">&#8594;</span> <span class="font-bold text-amber-700">${m[2]} skids</span>`
+    )
+  }
+  return c
+}
+
+function cancelBookingCorrection() {
+  showBookingCorrectionModal.value = false
+  pendingBookingCorrections.value = []
+  pendingEmitPayload.value = null
+  pendingEmitMawb.value = null
+  pendingEmitHawbs.value = null
+  submitting.value = false
+}
+
+async function confirmBookingCorrection() {
+  showBookingCorrectionModal.value = false
+  const payload = pendingEmitPayload.value
+  const m = pendingEmitMawb.value
+  const hawbs = pendingEmitHawbs.value
+  pendingBookingCorrections.value = []
+  pendingEmitPayload.value = null
+  pendingEmitMawb.value = null
+  pendingEmitHawbs.value = null
+  await executeEmit(m, hawbs, payload)
+}
+
 async function editReceipt(m) {
   return submitReceipt(m)
 }
@@ -1939,7 +2011,6 @@ async function submitReceipt(m) {
   const f = receiptForms[m.id]
   const hawbs = receiptHawbs[m.id] || []
   if (!f) return
-  // Safety net: remove phantom pieces (no hawbId, no dimensions) that slipped through
   f.pieces = f.pieces.filter(p => p.hawbId != null || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
   if (f.pieces.length === 0) {
     alert('Ingresa al menos una pieza')
@@ -1948,7 +2019,6 @@ async function submitReceipt(m) {
   submitting.value = true
   try {
     console.warn('[Submit] START', { mawbId: m.id, awbNumber: m.awbNumber, existingReceipt: f._existingReceiptId, pieceCount: f.pieces.length, hawbCount: hawbs.length })
-    // Save MAWB name changes (non-critical — catch 403/500 so receipt emit still proceeds)
     try {
       if (f.shipperName && f.shipperName !== m.shipperName) {
         await mawbsApi.update(m.id, { shipperName: f.shipperName })
@@ -1965,6 +2035,31 @@ async function submitReceipt(m) {
       }
     } catch (nameErr) {
       console.warn('Non-critical: failed to sync MAWB/HAWB names', nameErr)
+    }
+
+    for (const h of hawbs) {
+      if (!h._dbId && h.hawbNumber) {
+        const oldHawbId = h._hawbId
+        try {
+          const res = await hawbsApi.create({
+            mawbId: m.id,
+            hawbNumber: h.hawbNumber,
+            consigneeName: h.consigneeName || '',
+            pieces: h.pieces || 1,
+            weightKg: h.weightKg || 0,
+            destination: h.destination || f.destination || 'MIA',
+          })
+          h._dbId = res.data.id
+          h._hawbId = res.data.id
+          for (const p of f.pieces) {
+            if (p.hawbId === oldHawbId) {
+              p.hawbId = res.data.id
+            }
+          }
+        } catch (hawbErr) {
+          console.warn('Failed to persist HAWB:', h.hawbNumber, hawbErr)
+        }
+      }
     }
 
     function buildPayload(pieceList, remarkSuffix, appendOnly = false, hawbId = null) {
@@ -2021,67 +2116,36 @@ async function submitReceipt(m) {
           type: ev.type,
           url: ev.url,
         })),
-        // appendOnly=true evita que el backend purgue otros recibos del mismo MAWB al insertar
-        // este (necesario cuando se emiten varios recibos -general + por HAWB- en una sesion).
         appendOnly,
       }
     }
 
-    async function sendReceipt(payload) {
-      if (f._existingReceiptId) {
-        const res = await receiptsApi.updateEmit(f._existingReceiptId, payload)
-        return res.data
+    const payload = hawbs.length <= 1
+      ? buildPayload(f.pieces, '')
+      : buildPayload(f.pieces, 'RECIBO GENERAL')
+
+    // ─── VALIDATE FIRST (dry-run) ────────────────────────
+    const newPieceCount = f.pieces.reduce((s, p) => s + (p.pieces || 1), 0)
+    try {
+      const valRes = await receiptsApi.validate({
+        mawbId: m.id,
+        pieces: [{ pieces: newPieceCount }],
+      })
+      const corrections = valRes.data?.corrections || []
+      if (corrections.length > 0) {
+        // Show booking correction modal — do NOT emit yet
+        pendingBookingCorrections.value = corrections
+        pendingEmitPayload.value = payload
+        pendingEmitMawb.value = m
+        pendingEmitHawbs.value = hawbs
+        return
       }
-      return store.emitReceipt(payload)
+    } catch (valErr) {
+      console.warn('Validation failed, proceeding with emit:', valErr)
     }
 
-    if (hawbs.length <= 1) {
-      console.warn('[Submit] Sending single receipt...', { existing: !!f._existingReceiptId, pieces: f.pieces.length })
-      const res = await sendReceipt(buildPayload(f.pieces, ''))
-      console.warn('[Submit] Receipt response:', res)
-      const receiptId = res?.id || null
-      if (receiptId) generatedReceiptId.value = receiptId
-    } else if (f._existingReceiptId) {
-      let lastId = null
-      const genRes = await receiptsApi.updateEmit(f._existingReceiptId, buildPayload(f.pieces, 'RECIBO GENERAL'))
-      lastId = genRes?.data?.id || null
-      if (lastId) generatedReceiptId.value = lastId
-    } else {
-      // Multi-HAWB CREATE: crear UN solo recibo general con todas las piezas.
-      // No se crean recibos por HAWB separados para evitar duplicar conteo de piezas.
-      let lastId = null
-      const genRes = await store.emitReceipt(buildPayload(f.pieces, 'RECIBO GENERAL'))
-      lastId = genRes?.id || null
-      if (lastId) generatedReceiptId.value = lastId
-    }
-    const wasExisting = !!f._existingReceiptId
-    console.warn('[Submit] Receipt sent, reloading data...', { wasExisting, generatedReceiptId: generatedReceiptId.value })
-    await store.loadReceipts()
-    await loadExistingReceiptData(m)
-    bumpFormVersion()
-    localStep.value = 5
-    console.warn('[Submit] SUCCESS — step set to 5, reloading MAWBs...')
-    clearDraft(m.id)
-    // Reload MAWBs to get server-recalculated piece count, weight, and status
-    if (store.selectedFlightId) {
-      await store.loadMawbs(store.selectedFlightId)
-    } else {
-      await store.loadAllMawbs()
-    }
-    const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
-    const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
-    const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
-    successMsg.value = (wasExisting ? 'Recibo actualizado' : 'Recibo generado') +
-      ` — ${totalPieces(m.id, null)} pzas, ${totalKg.toFixed(1)} KGS / ${totalLbs.toFixed(1)} LBS (facturable: ${chargeKg.toFixed(1)} KGS)`
-    if (successTimer) clearTimeout(successTimer)
-    successTimer = setTimeout(() => { successMsg.value = '' }, 6000)
-
-    // Auto-download Excel + PDF receipt
-    const downloadId = generatedReceiptId.value
-    if (downloadId) {
-      setTimeout(() => downloadReceiptByIdAuto(downloadId, m.awbNumber), 500)
-      setTimeout(() => downloadReceiptPdfAuto(downloadId, m.awbNumber), 1200)
-    }
+    // ─── NO CORRECTIONS → EMIT DIRECTLY ──────────────────
+    await executeEmit(m, hawbs, payload)
   } catch (e) {
     toast.error(extractError(e))
     const data = e.response?.data
@@ -2090,6 +2154,58 @@ async function submitReceipt(m) {
     alert('Error (' + e.response?.status + '): ' + msg)
   } finally {
     submitting.value = false
+  }
+}
+
+async function executeEmit(m, hawbs, payload) {
+  const f = receiptForms[m.id]
+  if (!f) return
+
+  async function sendReceipt(p) {
+    if (f._existingReceiptId) {
+      const res = await receiptsApi.updateEmit(f._existingReceiptId, p)
+      return res.data
+    }
+    return store.emitReceipt(p)
+  }
+
+  if (hawbs.length <= 1) {
+    const res = await sendReceipt(payload)
+    const receiptId = res?.id || null
+    if (receiptId) generatedReceiptId.value = receiptId
+  } else if (f._existingReceiptId) {
+    const genRes = await receiptsApi.updateEmit(f._existingReceiptId, payload)
+    const lastId = genRes?.data?.id || null
+    if (lastId) generatedReceiptId.value = lastId
+  } else {
+    const genRes = await store.emitReceipt(payload)
+    const lastId = genRes?.id || null
+    if (lastId) generatedReceiptId.value = lastId
+  }
+
+  await store.loadReceipts()
+  await loadExistingReceiptData(m)
+  bumpFormVersion()
+  localStep.value = 5
+  clearDraft(m.id)
+  if (store.selectedFlightId) {
+    await store.loadMawbs(store.selectedFlightId)
+  } else {
+    await store.loadAllMawbs()
+  }
+  const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
+  const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
+  const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
+  const wasExisting = !!f._existingReceiptId
+  successMsg.value = (wasExisting ? 'Recibo actualizado' : 'Recibo generado') +
+    ` — ${totalPieces(m.id, null)} pzas, ${totalKg.toFixed(1)} KGS / ${totalLbs.toFixed(1)} LBS (facturable: ${chargeKg.toFixed(1)} KGS)`
+  if (successTimer) clearTimeout(successTimer)
+  successTimer = setTimeout(() => { successMsg.value = '' }, 6000)
+
+  const downloadId = generatedReceiptId.value
+  if (downloadId) {
+    setTimeout(() => downloadReceiptByIdAuto(downloadId, m.awbNumber), 500)
+    setTimeout(() => downloadReceiptPdfAuto(downloadId, m.awbNumber), 1200)
   }
 }
 

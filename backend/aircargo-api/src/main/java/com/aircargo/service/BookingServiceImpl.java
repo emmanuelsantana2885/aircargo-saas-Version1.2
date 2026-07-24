@@ -1,12 +1,16 @@
 package com.aircargo.service;
 
 import com.aircargo.dto.BookingDTO;
+import com.aircargo.dto.PageResponse;
 import com.aircargo.entity.Booking;
 import com.aircargo.common.entity.Airline;
 import com.aircargo.entity.Flight;
 import com.aircargo.repository.AirlineRepository;
 import com.aircargo.repository.BookingRepository;
 import com.aircargo.repository.FlightRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<BookingDTO> getAll(UUID airlineId, UUID flightId) {
         List<Booking> results;
         if (flightId != null) results = bookingRepository.findByFlightId(flightId);
@@ -40,6 +45,23 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BookingDTO> getAll(UUID airlineId, UUID flightId, int page, int size) {
+        PageRequest pageReq = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Booking> result;
+        if (flightId != null) result = bookingRepository.findByFlightId(flightId, pageReq);
+        else if (airlineId != null) result = bookingRepository.findByAirlineId(airlineId, pageReq);
+        else result = bookingRepository.findAll(pageReq);
+
+        List<BookingDTO> dtoList = result.getContent().stream()
+                .map(BookingDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        return PageResponse.of(dtoList, page, size, result.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<BookingDTO> getById(UUID id) {
         return bookingRepository.findById(id).map(BookingDTO::fromEntity);
     }

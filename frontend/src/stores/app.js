@@ -63,11 +63,11 @@ export const useAppStore = defineStore('app', () => {
 
   // ── Actions ────────────────────────────────────────────────────
 
-  async function loadFlights() {
+  async function loadFlights({ page = 0, size = 50 } = {}) {
     try {
       loading.value = true
-      const res = await flightsApi.getAll()
-      flights.value = res.data
+      const res = await flightsApi.getAll({ page, size })
+      flights.value = res.data.content || res.data
       if (flights.value.length && !selectedFlightId.value) {
         selectedFlightId.value = flights.value[0].id
       }
@@ -99,12 +99,13 @@ export const useAppStore = defineStore('app', () => {
     flights.value = flights.value.filter(f => f.id !== id)
   }
 
-  async function loadBookings(flightId) {
+  async function loadBookings(flightId, { page = 0, size = 50 } = {}) {
     try {
       loading.value = true
-      const params = flightId ? { flightId } : {}
+      const params = { page, size }
+      if (flightId) params.flightId = flightId
       const res = await bookingsApi.getAll(params)
-      bookings.value = res.data
+      bookings.value = res.data.content || res.data
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
   }
 
@@ -126,20 +127,20 @@ export const useAppStore = defineStore('app', () => {
     bookings.value = bookings.value.filter(b => b.id !== id)
   }
 
-  async function loadMawbs(flightId) {
+  async function loadMawbs(flightId, { page = 0, size = 50 } = {}) {
     if (!flightId) return
     try {
       loading.value = true
-      const res = await mawbsApi.getByFlight(flightId)
-      mawbs.value = res.data
+      const res = await mawbsApi.getByFlight(flightId, { page, size })
+      mawbs.value = res.data.content || res.data
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
   }
 
-  async function loadAllMawbs() {
+  async function loadAllMawbs({ page = 0, size = 50 } = {}) {
     try {
       loading.value = true
-      const res = await mawbsApi.getAll()
-      mawbs.value = res.data
+      const res = await mawbsApi.getAll({ page, size })
+      mawbs.value = res.data.content || res.data
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
   }
 
@@ -151,11 +152,11 @@ export const useAppStore = defineStore('app', () => {
     return data
   }
 
-  async function loadReceipts() {
+  async function loadReceipts({ page = 0, size = 50 } = {}) {
     try {
       loading.value = true
-      const res = await receiptsApi.getAll()
-      receipts.value = res.data || []
+      const res = await receiptsApi.getAll({ page, size })
+      receipts.value = (res.data.content || res.data) || []
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
   }
 
@@ -164,12 +165,13 @@ export const useAppStore = defineStore('app', () => {
     return res.data
   }
 
-  async function loadUlds(flightId) {
+  async function loadUlds(flightId, { page = 0, size = 50 } = {}) {
     try {
       loading.value = true
-      const params = flightId ? { flightId } : {}
+      const params = { page, size }
+      if (flightId) params.flightId = flightId
       const res = await uldsApi.getAll(params)
-      ulds.value = res.data
+      ulds.value = res.data.content || res.data
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
   }
 

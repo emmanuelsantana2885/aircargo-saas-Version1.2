@@ -50,11 +50,12 @@
     <div v-if="history.length" class="max-h-32 overflow-y-auto space-y-1 mb-2">
       <div v-for="(entry, i) in history" :key="i"
            class="flex items-center gap-2 text-[10px] py-1 px-2 rounded"
-           :class="entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
-        <span>{{ entry.success ? '✓' : '✗' }}</span>
+           :class="entry.warning ? 'bg-amber-50 text-amber-700' : entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
+        <span>{{ entry.success ? (entry.warning ? '⚠' : '✓') : '✗' }}</span>
         <span class="font-bold">{{ entry.awbNumber }}</span>
         <span v-if="entry.pieceNumber">Pieza #{{ entry.pieceNumber }}</span>
         <span v-if="entry.totalOnUld">({{ entry.totalOnUld }}/{{ entry.maxAllowed }})</span>
+        <span v-if="entry.warning" class="ml-1 text-amber-600 italic truncate max-w-[120px]" :title="entry.warning">sin Booking</span>
         <span class="ml-auto opacity-60">{{ entry.time }}</span>
       </div>
     </div>
@@ -158,8 +159,9 @@ async function processScan(codeOverride) {
           pieceNumber: res.data.pieceNumber,
           totalOnUld: res.data.totalOnUld,
           maxAllowed: res.data.totalOnUld + res.data.availablePieces,
+          warning: res.data.warning || null,
         })
-        flash('emerald')
+        flash(res.data.warning ? 'amber' : 'emerald')
         emit('piece-added', res.data)
       } else {
         Object.assign(entry, { success: false, error: res.data.error })

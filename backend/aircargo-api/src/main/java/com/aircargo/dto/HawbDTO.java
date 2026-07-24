@@ -5,6 +5,8 @@ import com.aircargo.common.entity.CommodityType;
 import com.aircargo.entity.Hawb;
 import com.aircargo.entity.Mawb;
 import com.aircargo.entity.MawbStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,10 +24,16 @@ public class HawbDTO {
     private UUID id;
     private UUID mawbId;
     private UUID airlineId;
+
+    @NotBlank(message = "hawbNumber es requerido")
     private String hawbNumber;
+
     private String consigneeName;
     private String destination;
+
+    @NotNull(message = "pieces es requerido")
     private Integer pieces;
+
     private BigDecimal weightKg;
     private CommodityType commodityType;
     private MawbStatus status;

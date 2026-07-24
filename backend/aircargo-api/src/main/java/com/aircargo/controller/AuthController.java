@@ -1,5 +1,6 @@
 package com.aircargo.controller;
 
+import com.aircargo.config.ErrorMessages;
 import com.aircargo.common.auth.JwtUtil;
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.ChangePasswordRequest;
@@ -57,10 +58,12 @@ public class AuthController {
         AppUser user = userRepository.findByEmail(request.email())
                 .orElse(null);
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", ErrorMessages.USER_NOT_FOUND));
         }
         if (!Boolean.TRUE.equals(user.getIsActive())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", ErrorMessages.USER_INACTIVE));
         }
 
         String passwordHash = user.getPasswordHash();
@@ -69,8 +72,8 @@ public class AuthController {
         // Account lockout check
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(OffsetDateTime.now())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Cuenta bloqueada por intentos fallidos. Intente de nuevo después de " +
-                            user.getLockedUntil().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) + "."));
+                    .body(Map.of("error", String.format(ErrorMessages.ACCOUNT_LOCKED,
+                            user.getLockedUntil().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")))));
         }
 
         if (hasPasswordSet) {
@@ -85,11 +88,11 @@ public class AuthController {
                     user.setLockedUntil(OffsetDateTime.now().plusMinutes(30));
                     userRepository.save(user);
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "Cuenta bloqueada por 5 intentos fallidos. Intente de nuevo en 30 minutos."));
+                            .body(Map.of("error", ErrorMessages.ACCOUNT_LOCKED_5_ATTEMPTS));
                 }
                 userRepository.save(user);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Contraseña incorrecta. Intentos restantes: " + (5 - attempts)));
+                        .body(Map.of("error", String.format(ErrorMessages.WRONG_PASSWORD, 5 - attempts)));
             }
             // Successful password login — reset failed attempts
             user.setFailedLoginAttempts(0);
@@ -103,16 +106,16 @@ public class AuthController {
                     return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED)
                             .body(Map.of(
                                     "mfaRequired", true,
-                                    "message", "Se requiere código de autenticación de dos factores"
+                                    "message", ErrorMessages.MFA_REQUIRED
                             ));
                 }
                 if (user.getMfaLocked()) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "Cuenta bloqueada por intentos fallidos de MFA. Contacte al administrador."));
+                            .body(Map.of("error", ErrorMessages.MFA_ACCOUNT_LOCKED));
                 }
                 if (!mfaService.verifyCode(user.getMfaSecret(), request.totpCode())) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(Map.of("error", "Código de autenticación inválido"));
+                            .body(Map.of("error", ErrorMessages.MFA_CODE_INVALID));
                 }
             }
         }
@@ -123,13 +126,14 @@ public class AuthController {
         String airlineIdStr = user.getAirline() != null && user.getAirline().getId() != null
                 ? user.getAirline().getId().toString() : "";
 
-        String token = jwtUtil.generateToken(
+        String token = jwtUtil.generateAccessToken(
                 user.getId().toString(),
                 user.getRole().name(),
                 airlineIdStr,
                 user.getEmail(),
                 user.getFullName()
         );
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
 
         auditService.logLogin(user.getId(), user.getEmail(), user.getFullName(), servletRequest.getRemoteAddr());
 
@@ -149,6 +153,7 @@ public class AuthController {
 
         return ResponseEntity.ok(new LoginResponse(
                 token,
+                refreshToken,
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),
@@ -168,24 +173,36 @@ public class AuthController {
                 .orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Usuario no encontrado"));
+                    .body(Map.of("error", ErrorMessages.USER_NOT_FOUND));
         }
         if (!Boolean.TRUE.equals(user.getIsActive())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Usuario inactivo"));
+                    .body(Map.of("error", ErrorMessages.USER_INACTIVE));
         }
 
         String currentHash = user.getPasswordHash();
         if (currentHash != null && !currentHash.isBlank()) {
-            if (request.currentPassword() == null || !passwordEncoder.matches(request.currentPassword(), currentHash)) {
+            // User has an existing password — current password is required to change it
+            if (request.currentPassword() == null || request.currentPassword().isBlank()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Contraseña actual incorrecta"));
+                        .body(Map.of("error", ErrorMessages.PASSWORD_REQUIRED));
+            }
+            if (!passwordEncoder.matches(request.currentPassword(), currentHash)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", ErrorMessages.CURRENT_PASSWORD_WRONG));
             }
         } else {
+            // First-time setup — no current password needed
             if (request.currentPassword() != null && !request.currentPassword().isBlank()) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Este usuario no tiene contraseña previa. No envíe contraseña actual."));
+                        .body(Map.of("error", ErrorMessages.NO_PREVIOUS_PASSWORD));
             }
+        }
+
+        // Revoke any existing access token so old session is invalidated
+        String authHeader = servletRequest.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwtUtil.revokeToken(authHeader.substring(7));
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
@@ -197,16 +214,18 @@ public class AuthController {
         String airlineIdStr = user.getAirline() != null && user.getAirline().getId() != null
                 ? user.getAirline().getId().toString() : "";
 
-        String token = jwtUtil.generateToken(
+        String token = jwtUtil.generateAccessToken(
                 user.getId().toString(),
                 user.getRole().name(),
                 airlineIdStr,
                 user.getEmail(),
                 user.getFullName()
         );
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
         return ResponseEntity.ok(Map.of(
                 "message", "Contraseña establecida correctamente",
-                "token", token
+                "token", token,
+                "refreshToken", refreshToken
         ));
     }
 
@@ -227,16 +246,16 @@ public class AuthController {
         if (user.getRole() != UserRole.SUPER_USER) {
             if (!Boolean.TRUE.equals(user.getMfaEnabled()) || user.getMfaSecret() == null) {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Debes configurar autenticación de dos factores antes de cambiar tu contraseña"
+                        "error", ErrorMessages.MFA_NOT_CONFIGURED
                 ));
             }
             if (user.getMfaLocked()) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Cuenta bloqueada por intentos fallidos de MFA"));
+                        .body(Map.of("error", ErrorMessages.MFA_LOCKED));
             }
             if (!mfaService.verifyCode(user.getMfaSecret(), request.totpCode())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Código TOTP inválido"));
+                        .body(Map.of("error", ErrorMessages.TOTP_INVALID));
             }
         }
 
@@ -244,14 +263,20 @@ public class AuthController {
         if (!Boolean.TRUE.equals(user.getMustChangePassword())) {
             if (request.currentPassword() == null || request.currentPassword().isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Se requiere la contraseña actual"
+                        "error", ErrorMessages.CURRENT_PASSWORD_NEEDED
                 ));
             }
             if (user.getPasswordHash() == null ||
                 !passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Contraseña actual incorrecta"));
+                        .body(Map.of("error", ErrorMessages.CURRENT_PASSWORD_WRONG));
             }
+        }
+
+        // Revoke the current access token before issuing a new one
+        String authHeader = servletRequest.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwtUtil.revokeToken(authHeader.substring(7));
         }
 
         // Save new password
@@ -266,17 +291,19 @@ public class AuthController {
         String airlineIdStr = user.getAirline() != null && user.getAirline().getId() != null
                 ? user.getAirline().getId().toString() : "";
 
-        String token = jwtUtil.generateToken(
+        String token = jwtUtil.generateAccessToken(
                 user.getId().toString(),
                 user.getRole().name(),
                 airlineIdStr,
                 user.getEmail(),
                 user.getFullName()
         );
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
 
         return ResponseEntity.ok(Map.of(
                 "message", "Contraseña cambiada correctamente",
-                "token", token
+                "token", token,
+                "refreshToken", refreshToken
         ));
     }
 
@@ -301,12 +328,69 @@ public class AuthController {
                     .collect(Collectors.toList());
         }
         return ResponseEntity.ok(new LoginResponse(
-                null, user.getId(), user.getEmail(), user.getFullName(),
+                null, null, user.getId(), user.getEmail(), user.getFullName(),
                 user.getRole(), user.getAirline() != null ? user.getAirline().getId() : null,
                 hasPasswordSet, userSites,
                 Boolean.TRUE.equals(user.getMustChangePassword()),
                 user.getMfaEnabled()
         ));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", ErrorMessages.REFRESH_TOKEN_REQUIRED));
+        }
+
+        if (jwtUtil.isRevoked(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", ErrorMessages.REFRESH_TOKEN_REVOCADO));
+        }
+
+        try {
+            if (!jwtUtil.isValid(refreshToken)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", ErrorMessages.REFRESH_TOKEN_EXPIRED));
+            }
+
+            String tokenType = jwtUtil.getTokenType(refreshToken);
+            if (!"refresh".equals(tokenType)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", ErrorMessages.REFRESH_TOKEN_WRONG_TYPE));
+            }
+
+            String userId = jwtUtil.parseToken(refreshToken).getSubject();
+            AppUser user = userRepository.findById(
+                    java.util.UUID.fromString(userId)).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", ErrorMessages.USER_NOT_FOUND));
+            }
+            if (!Boolean.TRUE.equals(user.getIsActive())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", ErrorMessages.USER_INACTIVE));
+            }
+
+            String airlineIdStr = user.getAirline() != null && user.getAirline().getId() != null
+                    ? user.getAirline().getId().toString() : "";
+
+            String newAccessToken = jwtUtil.generateAccessToken(
+                    user.getId().toString(),
+                    user.getRole().name(),
+                    airlineIdStr,
+                    user.getEmail(),
+                    user.getFullName()
+            );
+
+            return ResponseEntity.ok(Map.of(
+                    "accessToken", newAccessToken,
+                    "refreshToken", refreshToken
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", ErrorMessages.REFRESH_TOKEN_INVALID));
+        }
     }
 
     @GetMapping("/heartbeat")

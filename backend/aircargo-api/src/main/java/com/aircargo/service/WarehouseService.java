@@ -69,9 +69,13 @@ public class WarehouseService {
     /**
      * Recalcula fulfillment de bookings vinculados al MAWB sumando piezas y pesos de TODOS
      * los recibos de bodega del MAWB.
+     * Si las piezas recibidas superan las reservadas (skids), actualiza el booking para
+     * reflejar la cantidad fisica real.
+     * @return lista de mensajes de correccion aplicadas (vacia si no hubo cambios)
      */
-    private void recalculateBookingFulfillment(UUID mawbId) {
-        if (mawbId == null) return;
+    private List<String> recalculateBookingFulfillment(UUID mawbId) {
+        List<String> corrections = new java.util.ArrayList<>();
+        if (mawbId == null) return corrections;
         List<WarehouseReceipt> allReceipts = receiptRepository.findByMawbId(mawbId);
         // Usar SUM de todos los recibos: cada recibo contiene un conjunto unico de piezas
         // (el recibo general tiene todas las piezas, no hay duplicacion).
@@ -86,6 +90,14 @@ public class WarehouseService {
         for (Booking bk : bookings) {
             bk.setReceivedKg(totalReceivedKg);
             int reservedSkids = bk.getSkids() != null ? bk.getSkids() : 0;
+
+            // Si las piezas recibidas superan las reservadas, corregir el booking
+            if (totalReceivedPieces > reservedSkids) {
+                bk.setSkids(totalReceivedPieces);
+                corrections.add("Booking corregido: " + reservedSkids + " → " + totalReceivedPieces + " skids (recibidas " + totalReceivedPieces + " piezas fisicas)");
+                reservedSkids = totalReceivedPieces;
+            }
+
             if (reservedSkids > 0) {
                 BigDecimal pct = BigDecimal.valueOf(totalReceivedPieces)
                         .multiply(BigDecimal.valueOf(100))
@@ -100,6 +112,35 @@ public class WarehouseService {
             }
             bookingRepository.save(bk);
         }
+        return corrections;
+    }
+
+    /**
+     * Valida si emitir un recibo provocaria correcciones en el Booking.
+     * NO guarda nada — solo calcula y retorna las correcciones potenciales.
+     * Usado por el endpoint /validate para mostrar dialogo de confirmacion al usuario.
+     */
+    public List<String> validateBookingCorrections(UUID mawbId, int newPieceCount) {
+        List<String> corrections = new java.util.ArrayList<>();
+        if (mawbId == null) return corrections;
+
+        // Sumar piezas existentes de recibos previos (no incluir el nuevo aun)
+        List<WarehouseReceipt> existingReceipts = receiptRepository.findByMawbId(mawbId);
+        int currentReceivedPieces = existingReceipts.stream()
+                .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
+                .sum();
+
+        // Proyectar el total DESPUES de emitir el nuevo recibo
+        int projectedTotal = currentReceivedPieces + newPieceCount;
+
+        List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
+        for (Booking bk : bookings) {
+            int reservedSkids = bk.getSkids() != null ? bk.getSkids() : 0;
+            if (projectedTotal > reservedSkids) {
+                corrections.add("Booking corregido: " + reservedSkids + " → " + projectedTotal + " skids (recibidas " + projectedTotal + " piezas fisicas)");
+            }
+        }
+        return corrections;
     }
 
     /**
@@ -208,7 +249,8 @@ public class WarehouseService {
 
         if (mawbIdForLock != null) {
             syncBookingsAwbNumber(mawbIdForLock);
-            recalculateBookingFulfillment(mawbIdForLock);
+            List<String> bookingCorrections = recalculateBookingFulfillment(mawbIdForLock);
+            savedReceipt.setBookingCorrections(bookingCorrections);
             eventPublisher.publishEvent(new ReceiptCreatedEvent(
                 savedReceipt.getId(),
                 savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
@@ -302,7 +344,8 @@ public class WarehouseService {
         if (mawbId != null) {
             recalculateMawbTotals(mawbId, savedReceipt);
             syncBookingsAwbNumber(mawbId);
-            recalculateBookingFulfillment(mawbId);
+            List<String> bookingCorrections = recalculateBookingFulfillment(mawbId);
+            savedReceipt.setBookingCorrections(bookingCorrections);
         }
 
         if (!evictedReceiptIds.contains(savedReceipt.getId())) {

@@ -1,5 +1,6 @@
 package com.aircargo.service;
 
+import com.aircargo.dto.PageResponse;
 import com.aircargo.dto.UldAwbDTO;
 import com.aircargo.dto.UldDTO;
 import com.aircargo.common.entity.Airline;
@@ -9,6 +10,9 @@ import com.aircargo.entity.UldAwb;
 import com.aircargo.repository.FlightRepository;
 import com.aircargo.repository.UldAwbRepository;
 import com.aircargo.repository.UldRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +59,7 @@ public class UldServiceImpl implements UldService{
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UldDTO> getAll(UUID airlineId, UUID flightId) {
         List<Uld> results;
         if (flightId != null) results = uldRepository.findByFlightId(flightId);
@@ -78,6 +83,34 @@ public class UldServiceImpl implements UldService{
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UldDTO> getAll(UUID airlineId, UUID flightId, int page, int size) {
+        PageRequest pageReq = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Uld> result;
+        if (flightId != null) result = uldRepository.findByFlightId(flightId, pageReq);
+        else if (airlineId != null) result = uldRepository.findByAirlineId(airlineId, pageReq);
+        else result = uldRepository.findAll(pageReq);
+
+        List<UldDTO> dtos = result.getContent().stream()
+                .map(UldDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        List<UUID> uldIds = dtos.stream().map(UldDTO::getId).collect(Collectors.toList());
+        if (!uldIds.isEmpty()) {
+            List<UldAwb> allAwbs = uldAwbRepository.findByUldIdIn(uldIds);
+            Map<UUID, List<UldAwbDTO>> awbMap = allAwbs.stream()
+                    .collect(Collectors.groupingBy(
+                            awb -> awb.getUld().getId(),
+                            Collectors.mapping(UldAwbDTO::fromEntity, Collectors.toList())
+                    ));
+            dtos.forEach(dto -> dto.setAwbs(awbMap.getOrDefault(dto.getId(), List.of())));
+        }
+
+        return PageResponse.of(dtos, page, size, result.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<UldDTO> getById(UUID id) {
         return uldRepository.findById(id)
                 .map(UldDTO::fromEntity)

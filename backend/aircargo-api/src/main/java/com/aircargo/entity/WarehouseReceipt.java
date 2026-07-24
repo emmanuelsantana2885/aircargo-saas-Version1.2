@@ -206,6 +206,10 @@ public class WarehouseReceipt {
     @Builder.Default
     private List<ReceiptPiece> pieces = new ArrayList<>();
 
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    private List<String> bookingCorrections = new ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private OffsetDateTime createdAt;

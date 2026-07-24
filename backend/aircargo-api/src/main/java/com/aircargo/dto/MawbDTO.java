@@ -5,6 +5,8 @@ import com.aircargo.common.entity.CommodityType;
 import com.aircargo.entity.Flight;
 import com.aircargo.entity.Mawb;
 import com.aircargo.entity.MawbStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Setter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,12 +26,22 @@ public class MawbDTO {
     private UUID id;
     private UUID airlineId;
     private UUID flightId;
+
+    @NotBlank(message = "awbNumber es requerido")
     private String awbNumber;
+
     private String shipperName;
     private String consigneeName;
+
+    @NotNull(message = "origin es requerido")
     private String origin;
+
+    @NotNull(message = "destination es requerido")
     private String destination;
+
+    @NotNull(message = "pieces es requerido")
     private Integer pieces;
+
     private BigDecimal reportedWeightKg;
     private BigDecimal chargeableWeightKg;
     private CommodityType commodityType;

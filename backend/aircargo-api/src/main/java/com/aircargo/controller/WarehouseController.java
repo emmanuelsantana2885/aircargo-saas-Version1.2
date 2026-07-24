@@ -1,5 +1,6 @@
 package com.aircargo.controller;
 
+import com.aircargo.config.ErrorMessages;
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.entity.WarehouseReceipt;
 import com.aircargo.entity.ReceiptPiece;
@@ -11,6 +12,9 @@ import com.aircargo.service.ReceiptExportService;
 import com.aircargo.service.ReceiptFullPdfService;
 import com.aircargo.service.WarehouseService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.core.io.InputStreamResource;
 
 import java.io.ByteArrayInputStream;
@@ -63,11 +67,16 @@ public class WarehouseController {
      * DTO interno temporal para recibir de golpe el encabezado y sus piezas en el payload JSON.
      */
     public static class ReceiptPayload {
+        @NotNull(message = "El recibo es requerido")
         public WarehouseReceipt receipt;
+
+        @NotNull(message = "Las piezas son requeridas")
+        @NotEmpty(message = "Debe incluir al menos una pieza")
         public List<ReceiptPiece> pieces;
+
         public List<SupportingDoc> supportingDocs;
         public Boolean appendOnly;
-        public UUID mawbId; // para resolver airline desde MAWB si no viene en receipt
+        public UUID mawbId;
     }
 
     public static class SupportingDoc {
@@ -80,12 +89,12 @@ public class WarehouseController {
      * Endpoint para emitir un nuevo recibo de bodega con cálculo en tiempo real de dimensiones.
      */
 @PostMapping("/emit")
-    public ResponseEntity<?> emitWarehouseReceipt(@RequestBody ReceiptPayload payload,
+    public ResponseEntity<?> emitWarehouseReceipt(@Valid @RequestBody ReceiptPayload payload,
                                                    @AuthenticationPrincipal UserPrincipal principal,
                                                    HttpServletRequest request) {
         try {
             if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "DATOS INCOMPLETOS: El recibo debe contener al menos una pieza para cubicar."));
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
             }
 
             // Auto-resolve MAWB from mawbId if provided (frontend sends it at payload.mawbId)
@@ -116,7 +125,39 @@ public class WarehouseController {
             return ResponseEntity.ok(processed);
 
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Error procesando el recibo en bodega: " + ex.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_PROCESS_ERROR, ex.getMessage())));
+        }
+    }
+
+    /**
+     * Endpoint de validacion (dry-run): calcula si emitir el recibo provocaria
+     * correcciones en el Booking (received > reserved) SIN guardar nada.
+     * Retorna { valid: true, corrections: [...] }
+     */
+    @PostMapping("/validate")
+    public ResponseEntity<?> validateWarehouseReceipt(@Valid @RequestBody ReceiptPayload payload) {
+        try {
+            if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE_SHORT));
+            }
+
+            UUID mawbId = payload.mawbId;
+            if (mawbId == null && payload.receipt.getMawb() != null) {
+                mawbId = payload.receipt.getMawb().getId();
+            }
+
+            int newPieceCount = payload.pieces.stream()
+                    .mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1)
+                    .sum();
+
+            List<String> corrections = warehouseService.validateBookingCorrections(mawbId, newPieceCount);
+            return ResponseEntity.ok(Map.of(
+                    "valid", true,
+                    "corrections", corrections,
+                    "willCorrect", !corrections.isEmpty()
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_VALIDATION_ERROR, ex.getMessage())));
         }
     }
 
@@ -124,12 +165,12 @@ public class WarehouseController {
      * Endpoint para actualizar un recibo existente con nuevas piezas y evidencias (no acumulativo).
      */
     @PutMapping("/{receiptId}/emit")
-    public ResponseEntity<?> updateWarehouseReceipt(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
+    public ResponseEntity<?> updateWarehouseReceipt(@PathVariable UUID receiptId, @Valid @RequestBody ReceiptPayload payload,
                                                      @AuthenticationPrincipal UserPrincipal principal,
                                                      HttpServletRequest request) {
         try {
             if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "DATOS INCOMPLETOS: El recibo debe contener al menos una pieza para cubicar."));
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
             }
 
             // Auto-resolve MAWB from mawbId if provided (frontend sends it at payload.mawbId)
@@ -160,7 +201,7 @@ public class WarehouseController {
             return ResponseEntity.ok(processed);
 
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Error actualizando recibo: " + ex.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_UPDATE_ERROR, ex.getMessage())));
         }
     }
 
@@ -190,7 +231,7 @@ public class WarehouseController {
                 })
                 .orElse(ResponseEntity.notFound().build());
         } catch (Exception ex) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", "Error obteniendo evidencias: " + ex.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_EVIDENCE_JSON_ERROR, ex.getMessage())));
         }
     }
 
@@ -208,7 +249,7 @@ public class WarehouseController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", "Error generando documento de evidencias: " + ex.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_EVIDENCE_HTML_ERROR, ex.getMessage())));
         }
     }
 
@@ -226,7 +267,7 @@ public class WarehouseController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", "Error generando PDF de evidencias: " + ex.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_EVIDENCE_PDF_ERROR, ex.getMessage())));
         }
     }
 
@@ -248,7 +289,33 @@ public class WarehouseController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", "Error exportando recibo: " + ex.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_EXPORT_ERROR, ex.getMessage())));
+        }
+    }
+
+    /**
+     * Endpoint for mobile clients: returns a downloadable URL for the receipt Excel export.
+     */
+    @GetMapping("/{receiptId}/export-url")
+    public ResponseEntity<?> getExportUrl(@PathVariable UUID receiptId) {
+        try {
+            WarehouseReceipt receipt = receiptRepository.findById(receiptId)
+                    .orElseThrow(() -> new IllegalArgumentException(String.format(ErrorMessages.RECEIPT_NOT_FOUND, receiptId)));
+            String mawbNum = receipt.getMawb() != null
+                    ? receipt.getMawb().getAwbNumber() : receiptId.toString().substring(0, 8);
+            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + ".xlsx";
+            String encodedFilename = java.net.URLEncoder.encode(filename, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+            String url = "/api/warehouse/receipts/" + receiptId + "/export?filename=" + encodedFilename;
+            return ResponseEntity.ok(Map.of(
+                    "url", url,
+                    "filename", filename,
+                    "contentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_EXPORT_URL_ERROR, ex.getMessage())));
         }
     }
 
@@ -270,7 +337,7 @@ public class WarehouseController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", "Error generando PDF del recibo: " + ex.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_PDF_ERROR, ex.getMessage())));
         }
     }
 

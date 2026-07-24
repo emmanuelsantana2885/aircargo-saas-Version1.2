@@ -1,8 +1,8 @@
 import api from './client'
 
 export const mawbsApi = {
-  getAll: () => api.get('/cargo/mawbs'),
-  getByFlight: (flightId) => api.get(`/cargo/mawbs/flight/${flightId}`),
+  getAll: (params = {}) => api.get('/cargo/mawbs', { params }),
+  getByFlight: (flightId, params = {}) => api.get(`/cargo/mawbs/flight/${flightId}`, { params }),
   create: (dto) => api.post('/cargo/mawbs', dto),
   update: (mawbId, dto) => api.put(`/cargo/mawbs/${mawbId}`, dto),
   updateStatus: (mawbId, status) => api.patch(`/cargo/mawbs/${mawbId}/status`, { status }),

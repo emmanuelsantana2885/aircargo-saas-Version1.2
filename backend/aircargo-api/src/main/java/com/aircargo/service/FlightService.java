@@ -1,6 +1,7 @@
 package com.aircargo.service;
 
 import com.aircargo.dto.FlightDTO;
+import com.aircargo.dto.PageResponse;
 import com.aircargo.entity.FlightStatus;
 
 import java.time.LocalDate;
@@ -9,6 +10,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface FlightService {
+
+    PageResponse<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber, int page, int size);
 
     List<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber);
 

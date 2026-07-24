@@ -1,6 +1,7 @@
 package com.aircargo.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,11 +27,13 @@ public class Hawb {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mawb_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Mawb mawb;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -66,9 +69,11 @@ public class Hawb {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private OffsetDateTime updatedAt;
 }

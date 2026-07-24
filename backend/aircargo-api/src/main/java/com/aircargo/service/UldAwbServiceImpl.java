@@ -138,7 +138,7 @@ public class UldAwbServiceImpl implements UldAwbService {
             target.setMawb(null);
         }
 
-        target.setMawblabel(dto.getMawbLabel());
+        target.setMawbLabel(dto.getMawbLabel());
         target.setDescription(dto.getDescription());
         target.setDestination(dto.getDestination());
         target.setPieces(dto.getPieces());

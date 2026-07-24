@@ -1,16 +1,24 @@
 package com.aircargo.controller;
 
+import com.aircargo.config.ErrorMessages;
+import com.aircargo.config.ScanEventListener;
 import com.aircargo.dto.ScanLookupDTO;
 import com.aircargo.dto.ScanPieceRequest;
 import com.aircargo.dto.ScanPieceResult;
+import com.aircargo.entity.Uld;
 import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.repository.UldRepository;
 import com.aircargo.service.AuditService;
 import com.aircargo.service.ScanService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
 import java.util.UUID;
@@ -21,10 +29,23 @@ public class ScanController {
 
     private final ScanService scanService;
     private final AuditService auditService;
+    private final ScanEventListener scanEventListener;
+    private final UldRepository uldRepository;
+    private final ObjectMapper objectMapper;
 
-    public ScanController(ScanService scanService, AuditService auditService) {
+    public ScanController(ScanService scanService, AuditService auditService,
+                          ScanEventListener scanEventListener, UldRepository uldRepository,
+                          ObjectMapper objectMapper) {
         this.scanService = scanService;
         this.auditService = auditService;
+        this.scanEventListener = scanEventListener;
+        this.uldRepository = uldRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    @GetMapping(value = "/events/{flightId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter events(@PathVariable UUID flightId) {
+        return scanEventListener.register(flightId);
     }
 
     @GetMapping("/lookup")
@@ -33,7 +54,7 @@ public class ScanController {
         ScanLookupDTO result = scanService.lookup(code, uldId);
         if (result == null) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Código no reconocido: " + code
+                    "error", String.format(ErrorMessages.CODE_NOT_RECOGNIZED, code)
             ));
         }
         return ResponseEntity.ok(result);
@@ -61,6 +82,18 @@ public class ScanController {
                         "{\"awbNumber\":\"" + request.getAwbNumber() +
                         "\",\"pieceNumber\":" + result.getPieceNumber() + "}",
                         httpRequest.getRemoteAddr());
+
+                uldRepository.findById(request.getUldId()).ifPresent(uld -> {
+                    if (uld.getFlight() != null) {
+                        try {
+                            scanEventListener.broadcastScanEvent(
+                                    uld.getFlight().getId(),
+                                    "piece-scanned",
+                                    objectMapper.writeValueAsString(result));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                });
             }
 
             return ResponseEntity.ok(result);
@@ -78,9 +111,9 @@ public class ScanController {
         boolean removed = scanService.undoLastPiece(uldId, mawbId);
         if (!removed) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", "No hay piezas para deshacer"
+                    "error", ErrorMessages.NO_PIECES_TO_UNDO
             ));
         }
-        return ResponseEntity.ok(Map.of("success", true, "message", "Última pieza eliminada"));
+        return ResponseEntity.ok(Map.of("success", true, "message", ErrorMessages.LAST_PIECE_REMOVED));
     }
 }

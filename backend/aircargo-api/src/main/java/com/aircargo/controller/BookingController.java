@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.dto.BookingAwbUpdateRequest;
 import com.aircargo.dto.BookingDTO;
+import com.aircargo.dto.PageResponse;
 import com.aircargo.service.AuditService;
 import com.aircargo.service.BookingService;
 
@@ -43,6 +44,15 @@ public class BookingController {
             @RequestParam(required = false) UUID airlineId,
             @RequestParam(required = false) UUID flightId) {
         return bookingService.getAll(airlineId, flightId);
+    }
+
+    @GetMapping(params = {"page", "size"})
+    public PageResponse<BookingDTO> getAllPaginated(
+            @RequestParam(required = false) UUID airlineId,
+            @RequestParam(required = false) UUID flightId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return bookingService.getAll(airlineId, flightId, page, size);
     }
 
     @GetMapping("/{id}")

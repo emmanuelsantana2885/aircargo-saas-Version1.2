@@ -41,7 +41,7 @@ public class UldAwb {
     private Mawb mawb;
 
     @Column(name = "mawb_label", length = 50)
-    private String mawblabel;
+    private String mawbLabel;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

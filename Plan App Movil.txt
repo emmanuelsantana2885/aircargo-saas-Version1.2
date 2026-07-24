@@ -1,0 +1,835 @@
+================================================================================
+  AIRCARGO — PLAN DE DESARROLLO APP MÓVIL
+  Análisis Completo: Backend / Frontend / UI-UX / APIs BI / Stack Tecnológico
+  Generado: 2026-07-24 | Versión: 1.0
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 1 — ANÁLISIS DEL BACKEND ACTUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Stack: Spring Boot 3.3 | Java 21 | PostgreSQL 16 | JPA + Flyway | Port 9091
+Migraciones: V33 (Flyway) | Tests: 68 (todos pasan)
+
+1.1 CONTROLADORES Y ENDPOINTS (23 controllers, ~120 endpoints)
+
+┌─────────────────────────────────┬────────────────────────────────────────────┐
+│ Controlador                     │ Endpoints                                  │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ AuthController                  │ POST login, refresh, set-password,         │
+│ /api/auth/*                     │ change-password; GET me, heartbeat         │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ AirlineController               │ CRUD airlines                              │
+│ /api/airlines                   │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ AppUserController               │ CRUD users, reset-password, connected,     │
+│ /api/users/*                    │ MFA setup/enable/disable/lock/unlock,      │
+│                                 │ generate-temp-password                     │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ BookingController               │ CRUD bookings (paginated), updateAwb       │
+│ /api/bookings/*                 │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ FlightController                │ CRUD flights (paginated con filtros)       │
+│ /api/flights/*                  │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ MawbController                  │ CRUD MAWBs (paginated), status update,     │
+│ /api/cargo/mawbs/*              │ supporting-docs CRUD + PDF                 │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ HawbController                  │ CRUD HAWBs (paginated)                     │
+│ /api/cargo/hawbs/*              │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ UldController                   │ CRUD ULDs (paginated), assign-flight,      │
+│ /api/ulds/*                     │ transfer                                   │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ UldAwbController                │ CRUD ULD-AWB links                         │
+│ /api/uld-awbs/*                 │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ WarehouseController             │ emit/validate/update receipts, pieces,     │
+│ /api/warehouse/receipts/*       │ supporting-docs (JSON/HTML/PDF),           │
+│                                 │ export (Excel + URL)                       │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ WarehouseReceiptController      │ CRUD receipts                              │
+│ /api/receipts/*                 │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ LoadPlanningController          │ Close plan, get plan, upload manifest,     │
+│ /api/load-planning/*            │ export manifest, pallet sheets PDF         │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ FlightManifestController        │ Finalize flight manifest                   │
+│ /api/cargo/flights/*            │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ ScanController                  │ SSE events, lookup, register piece,        │
+│ /api/scan/*                     │ undo last piece                           │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ AuditLogController              │ Audit logs (paginated, filter by user)     │
+│ /api/audit-logs/*               │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ SiteController                  │ CRUD sites                                 │
+│ /api/sites/*                    │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ DuaRecordController             │ CRUD DUA records (customs compliance)      │
+│ /api/compliance/*               │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ ExportController                 │ Export data (CSV/XLSX/JSON), import        │
+│ /api/exports/*                  │ load planning                              │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ BiController                    │ BI dashboards: flights, bookings, mawbs,   │
+│ /api/bi/*                       │ receipts, ulds, dashboard, daily           │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ RolePermissionController        │ CRUD role-permissions, views               │
+│ /api/role-permissions/*         │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ MawbTrackingController          │ MAWB lifecycle timeline                    │
+│ /api/tracking/*                 │                                            │
+├─────────────────────────────────┼────────────────────────────────────────────┤
+│ FileController                  │ Upload/download files                      │
+│ /api/files/*                    │                                            │
+└─────────────────────────────────┴────────────────────────────────────────────┘
+
+1.2 ENTIDADES (26 tipos)
+
+  Core Business:
+  - Flight (id, airline, flightNumber, origin, destination, aircraftReg,
+    aircraftType, flightDate, status, maxPayloadKg, totalPositions)
+  - Booking (id, airline, flight, mawb, clientName, awbNumber, skids,
+    reservedKg, confirmedKg, receivedKg, fulfillmentPct, commodityType)
+  - Mawb (id, airline, flight, awbNumber, shipperName, consigneeName,
+    origin, destination, pieces, reportedWeightKg, status, supportingDocs)
+  - Hawb (id, mawb, airline, hawbNumber, consigneeName, destination,
+    pieces, weightKg, commodityType)
+  - Uld (id, airline, flight, uldNumber, uldType, position, sealNumber,
+    tareLbs, grossWeightLbs, status, pieces→UldPiece)
+  - UldAwb (id, uld, mawb, mawbLabel, description, destination, pieces)
+  - UldPiece (id, uld, mawb, awbNumber, hawbNumber, pieceNumber,
+    source, scannedBy, scannedAt)
+
+  Warehouse:
+  - WarehouseReceipt (id, airline, mawb, shipperName, consigneeName,
+    awbReportedPieces, pieceCount, signatures, supportingDocs, pieces→ReceiptPiece)
+  - ReceiptPiece (id, receipt, pieceNumber, pieces, lengthIn, widthIn,
+    heightIn, scaleWeightLbs, dimWeightLbs, chargeableLbs)
+
+  Auth & Users:
+  - AppUser (id, airline, email, fullName, role, passwordHash, mfaSecret,
+    mfaEnabled, isActive, sites)
+  - Site (id, code, name, country, isActive)
+
+  Config:
+  - Airline (id, code, name, iataCode, country, isActive)
+  - UldTypeConfig (id, airline, uldType, defaultTareLbs, maxGrossLbs)
+
+  Compliance:
+  - DuaRecord (id, mawb, duaNumber, documentUrl, status, duaDate)
+
+  Audit:
+  - AuditLog (id, userId, email, fullName, action, entityType, entityId,
+    details, ipAddress, createdAt)
+
+  Permissions:
+  - RolePermission (id, role, viewPermission, canAccess)
+  - ViewPermission (id, code, name, description, category, isActive)
+
+  Enums:
+  - UserRole: READ_ONLY, WAREHOUSE_ASSISTANT, OPERATIONS, TRAFFIC,
+    LOAD_PLANNER, ADMIN, SUPER_USER, BI_USER
+  - FlightStatus: SCHEDULED, BOARDING, DEPARTED, ARRIVED, CANCELLED, DELAYED
+  - MawbStatus: BOOKED, RECEIVED, MANIFESTED, DEPARTED, ARRIVED, CANCELLED
+  - UldStatus: OPEN, BUILT, SEALED, LOADED, OFFLOADED, LEFT_BEHIND
+  - UldType: PMC, PAH, PAG, PAJ, AAY, AAZ, AAD, PIP, BULK, AMP, AMJ
+  - CommodityType: 18 valores (DRY_CARGO, ELECTRONICS, PERISHABLE, etc.)
+  - AircraftType: 12 valores (MD11, B747, B757, etc.)
+  - DuaStatus: PENDING, COMPLETED, REJECTED
+  - PieceSource: BARCODE, MANUAL
+
+1.3 SEGURIDAD Y ROLES
+
+  8 roles con permisos por vista:
+  ┌───────────────────┬─────┬──────┬──────┬──────┬──────┬─────┬─────┬─────┬──────────┐
+  │ Rol               │ Dsh │ Book │ Rcpt │ Flt  │ MAWB │ LP  │ ULD │ Usr │ Settings │
+  ├───────────────────┼─────┼──────┼──────┼──────┼──────┼─────┼─────┼─────┼──────────┤
+  │ READ_ONLY         │ ✅  │ ✅*  │ ✅*  │ ✅*  │ ✅*  │ ✅* │ ✅* │ ❌  │ ❌       │
+  │ WAREHOUSE_ASSIST  │ ✅  │ ❌   │ ✅   │ ❌   │ ❌   │ ❌  │ ❌  │ ❌  │ ❌       │
+  │ OPERATIONS        │ ✅  │ ❌   │ ❌   │ ✅   │ ✅   │ ✅  │ ✅  │ ❌  │ ❌       │
+  │ TRAFFIC           │ ✅  │ ✅   │ ❌   │ ❌   │ ✅   │ ✅  │ ✅  │ ❌  │ ❌       │
+  │ LOAD_PLANNER      │ ✅  │ ❌   │ ❌   │ ✅   │ ❌   │ ✅  │ ✅  │ ❌  │ ❌       │
+  │ ADMIN             │ ✅  │ ✅   │ ✅   │ ✅   │ ✅   │ ✅  │ ✅  │ ✅  │ ❌       │
+  │ SUPER_USER        │ ✅  │ ✅   │ ✅   │ ✅   │ ✅   │ ✅  │ ✅  │ ✅  │ ✅       │
+  │ BI_USER           │ ✅  │ ❌   │ ❌   │ ❌   │ ❌   │ ❌  │ ❌  │ ❌  │ ❌       │
+  └───────────────────┴─────┴──────┴──────┴──────┴──────┴─────┴─────┴─────┴──────────┘
+
+  JWT: Access token 15min + Refresh token 7 días
+  Revocación: In-memory blacklist en JwtUtil
+  MFA: TOTP via dev.samstevens.totp
+
+1.4 CACHING
+
+  Caffeine (in-process):
+  - flights: 500 entries, TTL 5 min
+  - airlines: 200 entries, TTL 10 min
+  - receipt-exports: 100 entries, TTL 2 min
+
+  HTTP Cache-Control headers (CacheHeadersFilter):
+  - /api/airlines, /api/uld-types → max-age=300
+  - /api/flights, /api/bookings, /api/mawbs → no-cache, must-revalidate
+
+1.5 ASYNC & EVENTS
+
+  @EnableAsync + @EnableScheduling en aplicación principal
+  SSE: ScanEventListener (ConcurrentHashMap<UUID, SseEmitter>)
+  Events: ReceiptCreatedEvent → ReceiptEventListener (stub)
+  Compresión Gzip habilitada (min 1024 bytes)
+
+1.6 DEPENDENCIAS PRINCIPALES
+
+  Spring Boot 3.3, Java 21, PostgreSQL 16, Flyway, JPA
+  spring-boot-starter-security + JJWT 0.12.6
+  Apache POI 5.2.5 (Excel)
+  openhtmltopdf 1.0.10 (PDF)
+  Caffeine (cache)
+  springdoc-openapi 2.6.0 (Swagger UI)
+  TOTP (MFA)
+  H2 (test)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 2 — ANÁLISIS DEL FRONTEND ACTUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Stack: Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5 + Tailwind 3 + TypeScript
+       Axios 1.18 + xlsx 0.18 + html5-qrcode 2.3 + @tabler/icons
+
+2.1 VISTAS (14 activas)
+
+┌──────────────────────────┬────────┬──────────────────────────────────────────┐
+│ Vista                    │ Líneas │ Funcionalidad                            │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ WarehouseReceiptsView    │ 2507   │ Complejo: MAWB table, 5-step form,      │
+│                          │        │ HAWB management, pieces, signatures,     │
+│                          │        │ evidence upload, PDF/Excel export        │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ MawbsView                │ 1391   │ Matrix MAWB×vuelo, chalkboard texture,  │
+│                          │        │ SVG mini arcs, sticky columns, minimap  │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ LoadPlanningView         │ 1055   │ Drag-and-drop ULDs, position grid,      │
+│                          │        │ import/export manifest, pallet sheets    │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ UldsView                 │ 877    │ ULD list expandable, barcode scan,       │
+│                          │        │ flight selector, status badges           │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ SettingsView             │ 730    │ Users CRUD + Sites management tabs       │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ BookingsView             │ 742    │ Flight selector, MAWB status, import     │
+│                          │        │ XLSX, flujograma visual                  │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ UsersView                │ 639    │ Connected users live + audit log         │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ DashboardView            │ 478    │ Flight payload table with expandable     │
+│                          │        │ drill-down, commodity bar chart          │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ ExportsView              │ 441    │ Data viewer + CSV export + XLSX import   │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ FlightsView              │ 324    │ Flight CRUD grid table                   │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ LoginView                │ 305    │ 3-step: email+pass, MFA TOTP, site      │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ ChangePasswordView       │ 210    │ Forced password change + MFA             │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ MfaSetupView             │ 169    │ QR code → TOTP verify → success          │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ SetPasswordView          │ 157    │ First-time password setup                │
+├──────────────────────────┼────────┼──────────────────────────────────────────┤
+│ RampUploadView           │ 162    │ Drag-drop XLSX ramp manifest upload      │
+└──────────────────────────┴────────┴──────────────────────────────────────────┘
+
+2.2 COMPONENTES
+
+  Functionales: CameraCapture, CommodityChips, ConfirmDialog,
+    FlightDetail, ScanPanel, SignaturePad, ToastNotifications, WarehouseForm
+  Layout: Sidebar (responsive), Header
+  No usados: 5 icon components de template Vite
+
+2.3 STORES (Pinia)
+
+  - auth: token, refreshToken, user info, sites, RBAC canView()
+  - app: flights, airlines, bookings, mawbs, receipts, ulds, uldAwbs
+    (shallowRef para performance, paginación por page/size)
+  - ulds: flights, selectedFlight, uldsByFlight, floatingUlDs
+  - toast: notifications (success/error/warning/info/rich HTML)
+
+2.4 API LAYER (17 archivos, ~100 métodos)
+
+  client.js: Axios + Bearer token interceptor + 401 refresh flow
+  api files: auth, airlines, bookings, exports, flights, hawbs, mawbs,
+    receipts, roles, scan, sites, uldAwbs, ulds, uldTypeConfig, users, bi
+
+2.5 DEPENDENCIAS
+
+  Production: vue 3.5, vue-router 5, pinia 3, axios, date-fns,
+    html5-qrcode, @tabler/icons, lucide-vue-next, xlsx
+  Dev: vite 8, @vitejs/plugin-vue 6, tailwind 3, eslint, postcss
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 3 — ANÁLISIS UI/UX Y MEJORAS PROPUESTAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 FORTALEZAS ACTUALES
+
+  ✅ Diseño consistente con Tailwind (monochrome, dark headers)
+  ✅ Responsive con breakpoints (tablet 768-1023px, mobile <768px)
+  ✅ Touch-friendly sizing (48dp targets)
+  ✅ Feedback visual: toast notifications, status badges, confirm dialogs
+  ✅ Keyboard shortcuts (Ctrl+G/B/F/L/U/R/M)
+  ✅ Real-time: SSE para scan events, heartbeat cada 60s
+  ✅ Firmas digitales con canvas touch
+  ✅ Cámara integrada para evidencias
+  ✅ Barcode scanning (html5-qrcode)
+  ✅ Import/Export XLSX + CSV
+
+3.2 DEBILIDADES Y MEJORAS PARA MÓVIL
+
+  ❌ NO es PWA (sin service worker, manifest, ni offline)
+  ❌ NO hay i18n formal (strings hardcoded en español/inglés mix)
+  ❌ Tablas anchas (>10 columnas) sin optimización mobile real
+  ❌ MawbsView (1391 líneas) es demasiado compleja para pantalla chica
+  ❌ WarehouseReceiptsView (2507 líneas) necesita simplificación mobile
+  ❌ LoadPlanningView con drag-and-drop no funciona bien en touch
+  ❌ Sin dark mode toggle (solo dark theme fijo)
+  ❌ Sin pull-to-refresh en listados
+  ❌ Sin skeleton loading states
+  ❌ Sin animaciones de transición entre vistas
+
+3.3 MEJORAS UI/UX ESPECÍFICAS
+
+  PARA APP MÓVIL NATIVA (Kotlin/Compose):
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ Pantalla          │ Diseño Mobile                                   │
+  ├───────────────────┼─────────────────────────────────────────────────┤
+  │ Login             │ Full-screen, logo centrado, input grandes,      │
+  │                   │ botón primario ancho, biometric prompt          │
+  ├───────────────────┼─────────────────────────────────────────────────┤
+  │ Dashboard         │ Cards KPI (4 columnas 2x2): Vuelos Hoy,        │
+  │                   │ ULDs Pendientes, Receipts, Alertas peso         │
+  │                   │ Gráfico Vico (barras) en vez de tabla          │
+  ├───────────────────┼─────────────────────────────────────────────────┤
+  │ Scanner           │ Full-screen camera, viewfinder overlay,        │
+  │                   │ ULD activo arriba, scan history bottom sheet,  │
+  │                   │ haptic + beep, undo swipe                      │
+  ├───────────────────┼─────────────────────────────────────────────────┤
+  │ Receipts          │ LazyColumn pull-to-refresh, search bar,        │
+  │                   │ FAB para crear, swipe para editar/eliminar,    │
+  │                   │ Step wizard en bottom sheet                     │
+  ├───────────────────┼─────────────────────────────────────────────────┤
+  │ ULDs              │ Cards con ULD#, tipo badge, piezas/total,      │
+  │                   │ status badge coloreado, tap para detalle,      │
+  │                   │ FAB crear + scan toggle                        │
+  ├───────────────────┼─────────────────────────────────────────────────┤
+  │ Perfil/Settings   │ Avatar grande, nombre/email, role badge,       │
+  │                   │ toggle biometric, site selector, logout        │
+  └───────────────────┴─────────────────────────────────────────────────┘
+
+  PARA WEB ACTUAL (mejoras incrementales):
+  - Agregar vite-plugin-pwa (Workbox) para offline básico
+  - Skeleton loading en todas las tablas
+  - Pull-to-refresh en mobile (<768px)
+  - Lazy loading de imágenes y componentes pesados
+  - Toast mejorado con acción (undo, navigate-to)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 4 — APIs DE CONEXIÓN PARA BI / POWER BI / TABLEAU / CHART.JS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 ENDPOINTS BI EXISTENTES (/api/bi/*)
+
+  ┌─────────────────────────────┬─────────────────────────────────────────────┐
+  │ Endpoint                    │ Descripción + Uso BI                        │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/dashboard       │ Resumen ejecutivo: vuelos activos,          │
+  │                             │ ULDs, receipts, peso total.                 │
+  │                             │ → Chart.js: doughnut de status de vuelos   │
+  │                             │ → Power BI: card visual KPIs                │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/flights         │ Vuelos con filtros fecha.                   │
+  │                             │ → Chart.js: bar chart vuelos por día       │
+  │                             │ → Tableau: heatmap vuelos por ruta         │
+  │                             │ → Power BI: table con drill-down           │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/bookings        │ Bookings con filtros fecha.                 │
+  │                             │ → Chart.js: line chart fulfillment trend   │
+  │                             │ → Tableau: scatter peso vs posiciones      │
+  │                             │ → Power BI: pie chart commodity types      │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/mawbs           │ MAWBs agregados.                           │
+  │                             │ → Chart.js: stacked bar status flow        │
+  │                             │ → Tableau: treemap shipper → destination   │
+  │                             │ → Power BI: matrix MAWB × flight           │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/receipts        │ Receipts con métricas.                      │
+  │                             │ → Chart.js: area chart receipts/día        │
+  │                             │ → Tableau: bar chart peso por destino      │
+  │                             │ → Power BI: KPI cards receipts procesados  │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/ulds            │ ULDs con distribución.                      │
+  │                             │ → Chart.js: pie chart por tipo ULD         │
+  │                             │ → Tableau: map ULDs por posición aircraft  │
+  │                             │ → Power BI: gauge peso vs capacidad        │
+  ├─────────────────────────────┼─────────────────────────────────────────────┤
+  │ GET /api/bi/daily           │ Métricas diarias con rango de fechas.      │
+  │                             │ → Chart.js: multi-line chart trends        │
+  │                             │ → Tableau: time series con filtros         │
+  │                             │ → Power BI: line chart con forecast        │
+  └─────────────────────────────┴─────────────────────────────────────────────┘
+
+4.2 ENDPOINTS DE EXPORTACIÓN PARA BI
+
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │ Endpoint                        │ Formato │ Uso BI                          │
+  ├─────────────────────────────────┼─────────┼─────────────────────────────────┤
+  │ GET /api/exports/flights        │ CSV/XLSX │ Power BI: Import Data            │
+  │ GET /api/exports/bookings       │ CSV/XLSX │ Tableau: Text File connector    │
+  │ GET /api/exports/mawbs          │ CSV/XLSX │ Chart.js: manual parsing        │
+  │ GET /api/exports/receipts       │ CSV/XLSX │ Power BI: scheduled refresh     │
+  │ GET /api/exports/ulds           │ CSV/XLSX │ Tableau: Hyper extract          │
+  │ GET /api/exports/audit-logs     │ CSV/XLSX │ Compliance reporting            │
+  │ GET /api/exports/{type}?format=json │ JSON  │ Chart.js: fetch + parse         │
+  └─────────────────────────────────┴─────────┴─────────────────────────────────┘
+
+4.3 CONEXIONES ESPECÍFICAS POR HERRAMIENTA
+
+  ═══════════════════════════════════════════════════════════════════════════
+  POWER BI
+  ═══════════════════════════════════════════════════════════════════════════
+
+  Método 1 — Direct Query (RECOMENDADO):
+  - Power BI → Get Data → OData Feed
+  - URL: http://localhost:9091/odata/ (requiere agregar OData adapter)
+  - Auto-refresh cada 15 min
+  - Mejor para dashboards ejecutivos live
+
+  Método 2 — Import CSV/XLSX:
+  - Power BI → Get Data → Web
+  - URL: http://localhost:9091/api/exports/flights?format=csv
+  - Requiere autenticación Bearer token
+  - Programar refresh diario en Power BI Service
+
+  Método 3 — JSON connector:
+  - Power BI → Get Data → JSON
+  - URL: http://localhost:9091/api/bi/dashboard
+  - Parse anidado: records→content→fields
+  - Ideal para KPIs de executive dashboard
+
+  Métodos de autenticación Power BI:
+  - Option A: API Key en header (Power BI → Edit Credentials → API Key)
+  - Option B: OAuth2 con Azure AD (requiere registrar app en Azure)
+  - Option C: Personal Access Token (PAT) desde backend
+
+  Dashboards Power BI recomendados:
+  1. Executive Dashboard: vuelos/día, peso total, utilization %
+  2. Operations Monitor: ULDs status, scan rate, pending receipts
+  3. Compliance Report: DUA status, customs completion %
+  4. Fleet Utilization: aircraft type vs payload, route analysis
+
+  ═══════════════════════════════════════════════════════════════════════════
+  TABLEAU
+  ═══════════════════════════════════════════════════════════════════════════
+
+  Método 1 — Web Data Connector (RECOMENDADO):
+  - Tableau → Data Sources → Web Data Connector
+  - URL: http://localhost:9091/api/bi/flights?dateFrom=2026-01-01
+  - Autenticación: Bearer token en header
+  - Actualización: extract refresh cada hora
+
+  Método 2 — CSV/XLSX Extract:
+  - Tableau → Connect → Text File / Excel
+  - Descargar de: /api/exports/{type}?format=csv
+  - Programar con Tableau Prep Builder
+  - Mejor para data warehouse historial
+
+  Método 3 — MySQL/PostgreSQL Direct:
+  - Tableau → Connect → PostgreSQL
+  - Host: localhost:5432, Database: aircargo
+  - Lectura directa de tablas (sin API layer)
+  - ⚠ Requiere credenciales de DB (no recomendado para producción)
+
+  Tablas Tableau recomendadas:
+  1. Flight Operations: flights × bookings × ULDs (joined)
+  2. Cargo Tracking: mawbs × hawbs × pieces (status flow)
+  3. Warehouse Performance: receipts × pieces (processing time)
+  4. Route Analysis: origin × destination × weight (map viz)
+
+  ═══════════════════════════════════════════════════════════════════════════
+  CHART.JS (integrado en la app web)
+  ═══════════════════════════════════════════════════════════════════════════
+
+  Conexión actual: axios → /api/bi/* endpoints
+  Librería: chart.js 4.x + vue-chartjs 5.x
+
+  Gráficos existentes en el frontend:
+  - FlightDetail.vue: barras horizontales de commodity por vuelo
+  - MawbsView.vue: SVG mini arcs (no Chart.js)
+
+  Gráficos propuestos para agregar:
+  ┌──────────────────────────────┬───────────────────────────────────────┐
+  │ Dashboard                    │ Tipo Chart.js                         │
+  ├──────────────────────────────┼───────────────────────────────────────┤
+  │ Vuelos por día               │ Bar chart (GET /api/bi/daily)         │
+  │ ULDs por tipo                │ Doughnut (GET /api/bi/ulds)           │
+  │ Receipts procesados/día      │ Line chart (GET /api/bi/receipts)     │
+  │ Peso por ruta                │ Horizontal bar (GET /api/bi/flights)  │
+  │ Fulfillment %                │ Gauge (custom plugin)                 │
+  │ Scan rate/hora               │ Area chart (GET /api/scan/events)     │
+  └──────────────────────────────┴───────────────────────────────────────┘
+
+  Integración:
+  import { Bar, Doughnut, Line } from 'vue-chartjs'
+  import { ref, onMounted } from 'vue'
+  const data = await biApi.getDashboard()
+  // Map to Chart.js dataset format
+
+4.4 ENDPOINTS NECESARIOS PARA BI (pendientes de crear)
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ Endpoint                        │ Descripción                           │
+  ├─────────────────────────────────┼───────────────────────────────────────┤
+  │ GET /api/bi/realtime            │ Métricas en tiempo real (cada 30s)    │
+  │ GET /api/bi/airport-ops         │ Operaciones por airport (SDQ, MIA)    │
+  │ GET /api/bi/commodity-breakdown │ Peso por commodity type               │
+  │ GET /api/bi/route-analysis      │ Volumen por ruta (origin→dest)        │
+  │ GET /api/bi/scanner-metrics     │ Piezas escaneadas/hora, error rate    │
+  │ GET /api/bi/customs-compliance  │ DUA completion rate, avg time         │
+  │ GET /api/bi/fleet-utilization   │ Aircraft utilization %                │
+  │ GET /api/bi/forecast            │ Proyección de volumen (30 días)       │
+  └─────────────────────────────────┴───────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 5 — STACK TECNOLÓGICO COMPLETO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 APP MÓVIL (Kotlin + Android)
+
+  ┌───────────────────┬──────────────────────────────┬────────────────────────────┐
+  │ Categoría         │ Tecnología                   │ Justificación              │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Lenguaje          │ Kotlin 2.0+                  │ Estándar Android, null-    │
+  │                   │                              │ safe, coroutines           │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Target SDK        │ 35 (Android 15)              │ Play Store requirement     │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Min SDK           │ 26 (Android 8.0)             │ 95%+ dispositivos activos  │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Build             │ Gradle Kotlin DSL            │ Type-safe, autocompletado  │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Arquitectura      │ MVVM + Clean Architecture    │ Separation of concerns     │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ DI                │ Hilt (Dagger)                │ Compile-time, Android      │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ UI                │ Jetpack Compose + Material3  │ Declarativo, moderno       │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Theme             │ Material3 Dark Theme         │ Alto contraste bodega      │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Navigation        │ Navigation Compose           │ Type-safe routes           │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ State             │ StateFlow + CASH             │ Lifecycle-aware            │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ HTTP Client       │ Retrofit 2 + OkHttp 4        │ Estándar industry          │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ JSON              │ Kotlinx Serialization        │ Type-safe, Kotlin-first    │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Local DB          │ Room (SQLite)                │ Type-safe queries          │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Secure Storage    │ EncryptedSharedPreferences   │ AES-256 para tokens        │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Barcode           │ ML Kit Barcode Scanning      │ Google, offline, multi-    │
+  │                   │                              │ format                     │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Camera            │ CameraX                     │ Lifecycle-aware, torch     │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Images            │ Coil 3 (Compose)             │ Kotlin-first, cache        │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Charts            │ Vico (Compose charts)        │ Ligero, Material3          │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Offline/Sync      │ WorkManager                  │ Persistent, retry, queue   │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Auth              │ BiometricPrompt              │ Face + fingerprint         │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Security          │ Network Security Config      │ Certificate pinning        │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Root Detection    │ RootBeer                     │ Optional, warn-only        │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Unit Testing      │ JUnit 5 + MockK              │ Kotlin mocking             │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ UI Testing        │ Compose Testing + Espresso   │ Semantics + screenshots    │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ E2E Testing       │ Maestro                      │ YAML-based flows           │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Crash Reporting   │ Firebase Crashlytics          │ Stack traces, custom keys  │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Analytics         │ Firebase Analytics            │ Custom events              │
+  └───────────────────┴──────────────────────────────┴────────────────────────────┘
+
+5.2 BACKEND (mejoras a implementar)
+
+  ┌───────────────────┬──────────────────────────────┬────────────────────────────┐
+  │ Categoría         │ Tecnología                   │ Notas                      │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Rate Limiting     │ Bucket4j + ConcurrentHashMap │ 100/min general, 20/min   │
+  │                   │                              │ scan endpoints             │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ WebSocket         │ Spring WebSocket + STOMP     │ Real-time ULD/scan events  │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Device Control    │ JPA Entity + SecurityFilter  │ IP whitelist, fingerprint  │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ OData Adapter     │ odata-service (optional)     │ Power BI direct connect    │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ API Versioning    │ /api/v1/ prefix + header     │ Backward compatibility     │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Monitoring        │ Spring Actuator + Micrometer │ Health, metrics, Prometheus│
+  └───────────────────┴──────────────────────────────┴────────────────────────────┘
+
+5.3 FRONTEND WEB (mejoras)
+
+  ┌───────────────────┬──────────────────────────────┬────────────────────────────┐
+  │ Categoría         │ Tecnología                   │ Notas                      │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ PWA               │ vite-plugin-pwa + Workbox    │ Offline, manifest, icons   │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Charts            │ chart.js 4 + vue-chartjs 5   │ Dashboard BI charts        │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ i18n              │ vue-i18n                     │ ES/EN locale switching     │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ WebSocket         │ sockjs-client + stompjs      │ Real-time updates          │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Loading           │ vue-skeleton-loading         │ Skeleton screens           │
+  └───────────────────┴──────────────────────────────┴────────────────────────────┘
+
+5.4 CI/CD & DEVOPS
+
+  ┌───────────────────┬──────────────────────────────┬────────────────────────────┐
+  │ Categoría         │ Tecnología                   │ Notas                      │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ CI Mobile         │ GitHub Actions                │ build → test → lint →      │
+  │                   │                              │ assemble                   │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Distribution      │ Firebase App Distribution     │ Beta auto-distribute       │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Store             │ Google Play Console           │ Internal → Closed → Open  │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Containerization  │ Docker + docker-compose       │ Backend + PostgreSQL       │
+  ├───────────────────┼──────────────────────────────┼────────────────────────────┤
+  │ Reverse Proxy     │ Nginx                        │ SSL, SPA fallback, gzip    │
+  └───────────────────┴──────────────────────────────┴────────────────────────────┘
+
+5.5 BASE DE DATOS
+
+  PostgreSQL 16 (Alpine Docker)
+  - 23 tablas (flyway V33)
+  - UUID primary keys en todas las tablas
+  - JSONB para supporting_docs (actualmente text, futuro upgrade)
+  - Índices en: userId, action, createdAt, entityType, uldId, mawbId
+  - Conexión: HikariCP pool (max 10, timeout 30s)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 6 — PLAN DE DESARROLLO (18 SEMANAS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Equipo: 2 devs Kotlin + 1 backend dev
+Esfuerzo total: ~248 person-días
+Dependencia crítica: Phase 0 (backend prep) → todo lo demás
+
+FASE 0: PREPARACIÓN BACKEND (Semana 0, Ago 3-17)
+───────────────────────────────────────────────────
+  0.1  Paginación endpoints GET                    [Alta]  5d
+  0.2  Refresh token (access 15min + refresh 7d)   [Alta]  4d
+  0.3  Entity DeviceControl + endpoints             [Alta]  5d
+  0.4  SecurityFilter IP validation                 [Alta]  3d
+  0.5  Optimizar payloads (lazy supportingDocs)     [Media] 3d
+  0.6  Rate limiting (Bucket4j)                     [Media] 2d
+  0.7  WebSocket STOMP (puede ser Fase 2)           [Baja]  5d
+  0.8  API versioning /api/v1/                      [Media] 2d
+  0.9  Tests para nuevos endpoints                   [Alta]  4d
+
+FASE 1: CONFIGURACIÓN PROYECTO ANDROID (Semanas 1-2)
+───────────────────────────────────────────────────────
+  1.1  Crear proyecto Kotlin + Gradle               [Alta]  2d
+  1.2  Arquitectura MVVM + Clean Architecture       [Alta]  3d
+  1.3  Hilt (Dependency Injection)                  [Alta]  2d
+  1.4  Retrofit + OkHttp + Moshi/Kotlinx Serial     [Alta]  3d
+  1.5  Room DB (offline cache + drafts)             [Alta]  3d
+  1.6  Auth module (login + refresh + MFA TOTP)     [Alta]  4d
+  1.7  Navigation Compose + rutas tipadas           [Alta]  2d
+  1.8  Theme Material3 + modo handheld              [Media] 2d
+  1.9  CI/CD: GitHub Actions + Firebase Distrib     [Media] 3d
+  1.10 Device fingerprinting (POST /api/devices)    [Alta]  2d
+
+FASE 2: SCANNING DE CÓDIGOS DE BARRAS/QR (Semanas 3-5)
+───────────────────────────────────────────────────────
+  2.1  ML Kit Barcode Scanning                      [Alta]  3d
+  2.2  CameraX integration + preview + torch        [Alta]  3d
+  2.3  UI Scanner pantalla completa                 [Alta]  3d
+  2.4  Integrar /api/scan/lookup + /api/scan/piece  [Alta]  3d
+  2.5  Detección auto tipo código (MAWB/HAWB/ULD)   [Alta]  2d
+  2.6  Scan history local (Room) + sync             [Media] 2d
+  2.7  Feedback haptico + audio                     [Media] 1d
+  2.8  Undo piece con swipe gesture                 [Alta]  2d
+  2.9  Modo offline: cola de piezas + sync          [Media] 4d
+  2.10 Multi-ULD: cambiar ULD activo                [Alta]  2d
+  2.11 Tests: unit + UI tests                       [Media] 3d
+
+FASE 3: RECEIPTOS DE BODEGA MÓVIL (Semanas 5-8)
+─────────────────────────────────────────────────
+  3.1  Lista receipts pull-to-refresh + search      [Alta]  3d
+  3.2  Form Step 1: datos generales                 [Alta]  4d
+  3.3  Form Step 2: piezas (dimensions + weights)   [Alta]  5d
+  3.4  Form Step 3: remarks + checkboxes            [Media] 1d
+  3.5  Form Step 4: evidencias (fotos + cámara)     [Alta]  3d
+  3.6  Form Step 5: firmas (dock, delivered, broker) [Alta]  3d
+  3.7  Submit: POST /api/warehouse/receipts/emit    [Alta]  2d
+  3.8  Draft auto-save Room cada 30s                [Media] 2d
+  3.9  Descarga PDF/Excel completado                [Media] 1d
+  3.10 Gestión evidencias MAWB (modal)              [Media] 3d
+  3.11 Modo offline: drafting sin conexión          [Baja]  4d
+
+FASE 4: GESTIÓN DE EQUIPOS VIA IP (Semanas 8-10)
+─────────────────────────────────────────────────
+  4.1  Admin panel: tabla dispositivos              [Alta]  4d
+  4.2  Whitelist IPs por site                       [Alta]  3d
+  4.3  Bloqueo/desbloqueo remoto                    [Alta]  2d
+  4.4  Geofencing básico (alerta por IP)            [Media] 3d
+  4.5  Heartbeat dispositivo cada 5 min             [Alta]  2d
+  4.6  Dashboard devices (stats + table)            [Media] 3d
+  4.7  Auto-lock por inactividad >15min             [Alta]  2d
+  4.8  Audit log para acciones de dispositivo       [Media] 2d
+  4.9  Tests: registration + IP validation          [Alta]  3d
+
+FASE 5: GESTIÓN DE ULDs MÓVIL (Semanas 10-12)
+───────────────────────────────────────────────
+  5.1  Lista ULDs por vuelo + pull-to-refresh       [Alta]  3d
+  5.2  Detalle ULD: piezas, links, peso             [Alta]  3d
+  5.3  Crear/editar ULD desde móvil                 [Media] 3d
+  5.4  Asignar ULD a vuelo                          [Alta]  2d
+  5.5  Transfer ULD entre vuelos                    [Media] 2d
+  5.6  Status workflow: OPEN→BUILT→SEALED→LOADED    [Alta]  2d
+  5.7  Pallet sheet viewer (PDF)                    [Media] 1d
+
+FASE 6: OFFLINE + SINCRONIZACIÓN (Semanas 12-14)
+─────────────────────────────────────────────────
+  6.1  Estrategia offline-first: Room source truth  [Alta]  3d
+  6.2  Sync manager: WorkManager cola de ops        [Alta]  4d
+  6.3  Conflict resolution: merge strategy          [Media] 3d
+  6.4  Connectivity listener: online/offline        [Alta]  2d
+  6.5  Cache datos maestros (airlines, flights)     [Media] 2d
+
+FASE 7: PULIDO, TESTING Y DESPLIEGUE (Semanas 14-18)
+─────────────────────────────────────────────────────
+  7.1  UI polish: animaciones, transiciones         [Media] 3d
+  7.2  Accessibility: TalkBack, content desc        [Media] 2d
+  7.3  Performance: lazy loading, Coil, profiling   [Alta]  3d
+  7.4  Security audit: tokens, cert pinning, root   [Alta]  3d
+  7.5  E2E tests: Espresso + Compose Testing        [Media] 5d
+  7.6  UAT con equipo de bodega (3-5 beta)          [Alta]  5d
+  7.7  Build release: signed APK + AAB              [Alta]  2d
+  7.8  Documentación: README, API docs, user guide  [Media] 3d
+  7.9  Deploy Play Store (internal → closed → open) [Alta]  5d
+  7.10 Post-release: Crashlytics + Analytics        [Alta]  3d
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 7 — DISPPOSITIVOS RECOMENDADOS PARA BODEGA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  RUGGED (Enterprise):
+  - Samsung Galaxy XCover 6 Pro (IP68, barcode scanner integrado)
+  - Zebra TC21/TC26 (pistol grip, scanner laser, enterprise management)
+  - Honeywell CT60 (rugged, 2D imager, enterprise Android)
+
+  CONSUMER (Budget):
+  - Samsung Galaxy A15/A25 (affordable, good camera, Android 14)
+  - Motorola Moto G Power (batería 5000mAh, día completo)
+  - Cualquier smartphone con cámara 8MP+ y Android 8.0+
+
+  REQUISITOS MÍNIMOS:
+  - Android 8.0+ (API 26)
+  - Cámara 8MP+ (para barcode scanning)
+  - 3GB+ RAM
+  - WiFi (para sync en bodega)
+  - Batería 4000mAh+ (para día completo de scanning)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 8 — FLUJO DE USO EN BODEGA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FLUJO 1 — Escaneo de ULD + Piezas:
+  ───────────────────────────────────
+  1. Operador abre app → Login (email + password + MFA)
+  2. Selecciona site (SDQ, MIA, etc.)
+  3. Toca "Scanner" → Se activa cámara
+  4. Escanea ULD number (PMC1234567) → app resuelve tipo + vuelo
+  5. Piezas entran por rampa → escanea MAWB barcode
+  6. App muestra: shipper, destination, pieces esperados
+  7. Confirma pieza → POST /api/scan/piece → registro en DB
+  8. Continúa hasta completar ULD
+  9. ULD status cambia a BUILT automáticamente
+
+  FLUJO 2 — Receipt de Bodega:
+  ─────────────────────────────
+  1. Warehouse assistant abre "Receipts"
+  2. Selecciona MAWB (autocompletado desde escaneo)
+  3. Step 1: Datos generales (shipper/consignee pre-llenados)
+  4. Step 2: Captura piezas (dimensiones + pesos en báscula)
+  5. Step 3: Checkboxes (Cash Only, ACOMS, Docs, Customs)
+  6. Step 4: Fotos de evidencia (cámara integrada)
+  7. Step 5: Firmas (dock, delivered by, broker)
+  8. Submit → POST /api/warehouse/receipts/emit
+  9. Descarga PDF del receipt completo
+
+  FLUJO 3 — Dashboard Ejecutivo (Power BI):
+  ───────────────────────────────────────────
+  1. Gerente abre Power BI → Dashboard "AirCargo Ops"
+  2. KPIs en tiempo real: vuelos activos, ULDs pendientes
+  3. Drill-down: click en vuelo → MAWBs → piezas
+  4. Filtros: rango de fechas, airline, route
+  5. Export a PDF/Excel para reportes diarios
+  6. Scheduled refresh cada hora via API
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PARTE 9 — MÉTRICAS DE ÉXITO (KPIs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  DESARROLLO:
+  - 72 tasks completadas en 18 semanas
+  - 0 bugs críticos en release
+  - Code coverage >70% (unit tests)
+  - Build time <5 min (CI)
+
+  OPERACIONES:
+  - Scan rate: >60 piezas/hora por operador
+  - Receipt processing: <5 min por receipt
+  - Error rate: <1% de scans fallidos
+  - Uptime: >99.5% (app + backend)
+
+  ADOPTION:
+  - 100% de bodega usando app en 4 semanas post-release
+  - <2 min tiempo promedio de login → primer scan
+  - NPS >40 (encuesta usuarios)
+
+  BI/ANALYTICS:
+  - Dashboard load time <3s
+  - Data freshness <15min (Power BI refresh)
+  - Report generation <10s (PDF/Excel)
+
+
+================================================================================
+ FIN DEL DOCUMENTO
+================================================================================
+
+Archivos relacionados:
+- Aircargo_Mobile_App_Plan.xlsx (plan detallado con dependencias)
+- HAWB_Scan_Analysis.xlsx (análisis de bugs de scan)
+- backend/aircargo-api/src/main/resources/db/migration/V1__init.sql
+- frontend/src/views/*.vue (14 vistas activas)
+- Swagger UI: http://localhost:9091/swagger-ui.html (cuando backend esté corriendo)

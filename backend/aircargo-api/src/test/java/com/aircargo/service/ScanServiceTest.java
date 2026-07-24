@@ -26,6 +26,7 @@ class ScanServiceTest {
     @Mock private UldAwbRepository uldAwbRepository;
     @Mock private UldPieceRepository uldPieceRepository;
     @Mock private WarehouseReceiptRepository receiptRepository;
+    @Mock private BookingRepository bookingRepository;
 
     private ScanService service;
 
@@ -37,7 +38,7 @@ class ScanServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         service = new ScanService(mawbRepository, hawbRepository, uldRepository,
-                uldAwbRepository, uldPieceRepository, receiptRepository);
+                uldAwbRepository, uldPieceRepository, receiptRepository, bookingRepository);
     }
 
     private Mawb makeMawb(String awbNumber, int pieces, MawbStatus status) {
@@ -172,6 +173,7 @@ class ScanServiceTest {
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
         when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(uldAwbRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -188,6 +190,7 @@ class ScanServiceTest {
         assertEquals("00012345678", result.getAwbNumber());
         assertEquals(1, result.getTotalOnUld());
         assertEquals(11, result.getAvailablePieces());
+        assertNull(result.getWarning());
 
         // Verify UldPiece was saved
         ArgumentCaptor<UldPiece> captor = ArgumentCaptor.forClass(UldPiece.class);
@@ -201,6 +204,32 @@ class ScanServiceTest {
     }
 
     @Test
+    void registerPiece_no_booking_warning() {
+        Mawb mawb = makeMawb("00012345678", 12, MawbStatus.BOOKED);
+        Uld uld = makeUld("PMC-12345");
+
+        when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
+        when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
+        when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
+        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
+        when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(uldAwbRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ScanPieceRequest req = new ScanPieceRequest();
+        req.setUldId(uldId);
+        req.setAwbNumber("000-12345678");
+        req.setSource("BARCODE");
+
+        ScanPieceResult result = service.registerPiece(req, UUID.randomUUID());
+
+        assertTrue(result.isSuccess());
+        assertNotNull(result.getWarning());
+        assertTrue(result.getWarning().contains("no tiene Booking vinculado"));
+    }
+
+    @Test
     void registerPiece_second_piece_increments() {
         Mawb mawb = makeMawb("00012345678", 12, MawbStatus.BOOKED);
         Uld uld = makeUld("PMC-12345");
@@ -209,6 +238,7 @@ class ScanServiceTest {
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(1L);
         when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
 
         UldAwb existingAwb = new UldAwb();
         existingAwb.setPieces(1);
@@ -276,6 +306,7 @@ class ScanServiceTest {
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
         when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(uldAwbRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -306,6 +337,7 @@ class ScanServiceTest {
         when(hawbRepository.findByHawbNumber("HAWB555")).thenReturn(Optional.of(hawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
         when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(uldAwbRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -335,6 +367,7 @@ class ScanServiceTest {
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
         when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(uldAwbRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -401,6 +434,7 @@ class ScanServiceTest {
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(7L);
         when(receiptRepository.findByMawbId(mawbId)).thenReturn(List.of(receipt));
+        when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
 
         ScanPieceRequest req = new ScanPieceRequest();
         req.setUldId(uldId);

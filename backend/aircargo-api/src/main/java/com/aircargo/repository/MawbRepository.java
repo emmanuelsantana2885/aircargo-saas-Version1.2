@@ -2,6 +2,8 @@ package com.aircargo.repository;
 
 import com.aircargo.entity.Mawb;
 import com.aircargo.entity.MawbStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -18,6 +20,8 @@ public interface MawbRepository extends JpaRepository<Mawb, UUID> {
     List<Mawb> findByAirlineId(UUID airlineId);
 
     List<Mawb> findByFlightId(UUID flightId);
+
+    Page<Mawb> findByFlightId(UUID flightId, Pageable pageable);
 
     List<Mawb> findByAirlineIdAndStatus(UUID airlineId, MawbStatus status);
 

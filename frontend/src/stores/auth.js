@@ -16,6 +16,7 @@ function loadStored() {
 export const useAuthStore = defineStore('auth', () => {
   const stored = loadStored()
   const token = ref(stored?.token || '')
+  const refreshToken = ref(stored?.refreshToken || '')
   const userId = ref(stored?.userId || null)
   const email = ref(stored?.email || '')
   const fullName = ref(stored?.fullName || '')
@@ -41,6 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
   function persist() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       token: token.value,
+      refreshToken: refreshToken.value,
       userId: userId.value,
       email: email.value,
       fullName: fullName.value,
@@ -54,10 +56,27 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
+  async function doRefreshToken() {
+    if (!refreshToken.value) return false
+    try {
+      const res = await authApi.refresh(refreshToken.value)
+      const data = res.data
+      token.value = data.accessToken || data.token
+      refreshToken.value = data.refreshToken || refreshToken.value
+      persist()
+      return true
+    } catch (e) {
+      console.warn('Refresh token failed, logging out:', e)
+      logout()
+      return false
+    }
+  }
+
   async function login(loginEmail, password, totpCode) {
     const res = await authApi.login(loginEmail, password, totpCode)
     const data = res.data
     token.value = data.token
+    refreshToken.value = data.refreshToken || ''
     userId.value = data.userId
     email.value = data.email
     fullName.value = data.fullName
@@ -96,6 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     token.value = ''
+    refreshToken.value = ''
     userId.value = null
     email.value = ''
     fullName.value = ''
@@ -125,10 +145,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    token, userId, email, fullName, role, airlineId, hasPasswordSet,
+    token, refreshToken, userId, email, fullName, role, airlineId, hasPasswordSet,
     sites, selectedSiteId, selectedSite, mfaEnabled, mustChangePassword,
     isAuthenticated, hasToken, initials,
     login, confirmSite, logout, canView,
-    refreshProfile, persist,
+    refreshProfile, persist, doRefreshToken,
   }
 })

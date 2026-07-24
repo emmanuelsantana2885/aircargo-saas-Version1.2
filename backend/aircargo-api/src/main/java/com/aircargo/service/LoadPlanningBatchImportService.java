@@ -231,7 +231,7 @@ public class LoadPlanningBatchImportService {
                 UldAwb uldAwb = new UldAwb();
                 uldAwb.setUld(currentUld);
                 uldAwb.setMawb(mawb);
-                uldAwb.setMawblabel(mawbLabel);
+                uldAwb.setMawbLabel(mawbLabel);
                 uldAwb.setDescription(commodity);
                 uldAwb.setDestination(dest);
                 uldAwb.setPieces(pieces);
