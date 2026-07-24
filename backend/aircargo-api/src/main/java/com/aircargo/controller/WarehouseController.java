@@ -12,9 +12,7 @@ import com.aircargo.service.ReceiptExportService;
 import com.aircargo.service.ReceiptFullPdfService;
 import com.aircargo.service.WarehouseService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotEmpty;
+
 import org.springframework.core.io.InputStreamResource;
 
 import java.io.ByteArrayInputStream;
@@ -64,19 +62,127 @@ public class WarehouseController {
     private final MawbRepository mawbRepository;
 
     /**
+     * DTO plano para recibir datos del recibo desde el frontend (sin entidades JPA lazy).
+     */
+    public static class ReceiptData {
+        public UUID airlineId;
+        public UUID hawbId;
+        public String gatewayCfs;
+        public String shipperName;
+        public String consigneeName;
+        public String origin;
+        public String destination;
+        public Integer awbReportedPieces;
+        public java.math.BigDecimal mawbWeightGreatest;
+        public java.math.BigDecimal dimFactorIntl;
+        public java.math.BigDecimal dimFactorDom;
+        public Integer pieceCount;
+        public Boolean cashOnly;
+        public Boolean bookedInAcoms;
+        public Boolean docsProvided;
+        public Boolean customsCompleted;
+        public Boolean preBuilt;
+        public String remarks;
+        public String dockSignature;
+        public String printName;
+        public String deliveredByName;
+        public String deliveredByIdNum;
+        public String deliveredBySigUrl;
+        public String receivedByName;
+        public String receivedBySigUrl;
+        public String brokerName;
+        public String brokerIdNum;
+        public String brokerSigUrl;
+        public String startDatetime;
+        public String receiptDate;
+    }
+
+    /**
      * DTO interno temporal para recibir de golpe el encabezado y sus piezas en el payload JSON.
      */
     public static class ReceiptPayload {
-        @NotNull(message = "El recibo es requerido")
-        public WarehouseReceipt receipt;
+        public ReceiptData receipt;
 
-        @NotNull(message = "Las piezas son requeridas")
-        @NotEmpty(message = "Debe incluir al menos una pieza")
-        public List<ReceiptPiece> pieces;
+        public List<ReceiptPieceData> pieces;
 
         public List<SupportingDoc> supportingDocs;
         public Boolean appendOnly;
         public UUID mawbId;
+    }
+
+    public static class ReceiptPieceData {
+        public Integer pieceNumber;
+        public Integer pieces;
+        public UUID hawbId;
+        public java.math.BigDecimal lengthIn;
+        public java.math.BigDecimal widthIn;
+        public java.math.BigDecimal heightIn;
+        public java.math.BigDecimal scaleWeightLbs;
+        public java.math.BigDecimal scaleWeightKg;
+        public java.math.BigDecimal dimWeightLbs;
+        public java.math.BigDecimal dimWeightKg;
+        public java.math.BigDecimal chargeableLbs;
+        public java.math.BigDecimal chargeableKg;
+
+        public ReceiptPiece toEntity() {
+            ReceiptPiece p = new ReceiptPiece();
+            p.setPieceNumber(pieceNumber);
+            p.setPieces(pieces != null ? pieces : 1);
+            p.setHawbId(hawbId);
+            p.setLengthIn(lengthIn != null ? lengthIn : java.math.BigDecimal.ZERO);
+            p.setWidthIn(widthIn != null ? widthIn : java.math.BigDecimal.ZERO);
+            p.setHeightIn(heightIn != null ? heightIn : java.math.BigDecimal.ZERO);
+            p.setScaleWeightLbs(scaleWeightLbs != null ? scaleWeightLbs : java.math.BigDecimal.ZERO);
+            p.setScaleWeightKg(scaleWeightKg != null ? scaleWeightKg : java.math.BigDecimal.ZERO);
+            p.setDimWeightLbs(dimWeightLbs != null ? dimWeightLbs : java.math.BigDecimal.ZERO);
+            p.setDimWeightKg(dimWeightKg != null ? dimWeightKg : java.math.BigDecimal.ZERO);
+            p.setChargeableLbs(chargeableLbs != null ? chargeableLbs : java.math.BigDecimal.ZERO);
+            p.setChargeableKg(chargeableKg != null ? chargeableKg : java.math.BigDecimal.ZERO);
+            return p;
+        }
+    }
+
+    /**
+     * Convierte ReceiptData (DTO plano) → WarehouseReceipt (entity JPA).
+     */
+    private WarehouseReceipt toEntity(ReceiptData data, UUID mawbId) {
+        WarehouseReceipt r = new WarehouseReceipt();
+        r.setGatewayCfs(data.gatewayCfs != null ? data.gatewayCfs : "SDQ");
+        r.setShipperName(data.shipperName);
+        r.setConsigneeName(data.consigneeName);
+        r.setOrigin(data.origin);
+        r.setDestination(data.destination);
+        r.setAwbReportedPieces(data.awbReportedPieces);
+        r.setMawbWeightGreatest(data.mawbWeightGreatest);
+        r.setDimFactorIntl(data.dimFactorIntl);
+        r.setDimFactorDom(data.dimFactorDom);
+        r.setPieceCount(data.pieceCount);
+        r.setCashOnly(Boolean.TRUE.equals(data.cashOnly));
+        r.setBookedInAcoms(Boolean.TRUE.equals(data.bookedInAcoms));
+        r.setDocsProvided(Boolean.TRUE.equals(data.docsProvided));
+        r.setCustomsCompleted(Boolean.TRUE.equals(data.customsCompleted));
+        r.setPreBuilt(Boolean.TRUE.equals(data.preBuilt));
+        r.setRemarks(data.remarks);
+        r.setDockSignature(data.dockSignature);
+        r.setPrintName(data.printName);
+        r.setDeliveredByName(data.deliveredByName);
+        r.setDeliveredByIdNum(data.deliveredByIdNum);
+        r.setDeliveredBySigUrl(data.deliveredBySigUrl);
+        r.setReceivedByName(data.receivedByName);
+        r.setReceivedBySigUrl(data.receivedBySigUrl);
+        r.setBrokerName(data.brokerName);
+        r.setBrokerIdNum(data.brokerIdNum);
+        r.setBrokerSigUrl(data.brokerSigUrl);
+        r.setHawbId(data.hawbId);
+        if (data.airlineId != null) {
+            com.aircargo.common.entity.Airline airline = new com.aircargo.common.entity.Airline();
+            airline.setId(data.airlineId);
+            r.setAirline(airline);
+        }
+        if (mawbId != null) {
+            mawbRepository.findById(mawbId).ifPresent(r::setMawb);
+        }
+        return r;
     }
 
     public static class SupportingDoc {
@@ -89,7 +195,7 @@ public class WarehouseController {
      * Endpoint para emitir un nuevo recibo de bodega con cálculo en tiempo real de dimensiones.
      */
 @PostMapping("/emit")
-    public ResponseEntity<?> emitWarehouseReceipt(@Valid @RequestBody ReceiptPayload payload,
+    public ResponseEntity<?> emitWarehouseReceipt(@RequestBody ReceiptPayload payload,
                                                    @AuthenticationPrincipal UserPrincipal principal,
                                                    HttpServletRequest request) {
         try {
@@ -97,10 +203,10 @@ public class WarehouseController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
             }
 
-            // Auto-resolve MAWB from mawbId if provided (frontend sends it at payload.mawbId)
-            if (payload.receipt.getMawb() == null && payload.mawbId != null) {
-                mawbRepository.findById(payload.mawbId).ifPresent(payload.receipt::setMawb);
-            }
+            WarehouseReceipt receipt = toEntity(payload.receipt, payload.mawbId);
+            List<ReceiptPiece> pieces = payload.pieces.stream()
+                    .map(ReceiptPieceData::toEntity)
+                    .collect(Collectors.toList());
 
             List<Map<String, String>> docsMap = null;
             if (payload.supportingDocs != null) {
@@ -112,7 +218,7 @@ public class WarehouseController {
                     ))
                     .collect(Collectors.toList());
             }
-            WarehouseReceipt processed = warehouseService.processWarehouseReceipt(payload.receipt, payload.pieces, docsMap, !Boolean.TRUE.equals(payload.appendOnly));
+            WarehouseReceipt processed = warehouseService.processWarehouseReceipt(receipt, pieces, docsMap, !Boolean.TRUE.equals(payload.appendOnly));
             if (principal != null) {
                 String mawbNum = processed.getMawb() != null ? processed.getMawb().getAwbNumber() : "";
                 auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
@@ -135,20 +241,16 @@ public class WarehouseController {
      * Retorna { valid: true, corrections: [...] }
      */
     @PostMapping("/validate")
-    public ResponseEntity<?> validateWarehouseReceipt(@Valid @RequestBody ReceiptPayload payload) {
+    public ResponseEntity<?> validateWarehouseReceipt(@RequestBody ReceiptPayload payload) {
         try {
-            if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE_SHORT));
-            }
-
             UUID mawbId = payload.mawbId;
-            if (mawbId == null && payload.receipt.getMawb() != null) {
-                mawbId = payload.receipt.getMawb().getId();
-            }
 
-            int newPieceCount = payload.pieces.stream()
-                    .mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1)
-                    .sum();
+            int newPieceCount = 0;
+            if (payload.pieces != null) {
+                newPieceCount = payload.pieces.stream()
+                        .mapToInt(p -> p.pieces != null ? p.pieces : 1)
+                        .sum();
+            }
 
             List<String> corrections = warehouseService.validateBookingCorrections(mawbId, newPieceCount);
             return ResponseEntity.ok(Map.of(
@@ -165,7 +267,7 @@ public class WarehouseController {
      * Endpoint para actualizar un recibo existente con nuevas piezas y evidencias (no acumulativo).
      */
     @PutMapping("/{receiptId}/emit")
-    public ResponseEntity<?> updateWarehouseReceipt(@PathVariable UUID receiptId, @Valid @RequestBody ReceiptPayload payload,
+    public ResponseEntity<?> updateWarehouseReceipt(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
                                                      @AuthenticationPrincipal UserPrincipal principal,
                                                      HttpServletRequest request) {
         try {
@@ -173,10 +275,10 @@ public class WarehouseController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
             }
 
-            // Auto-resolve MAWB from mawbId if provided (frontend sends it at payload.mawbId)
-            if (payload.receipt.getMawb() == null && payload.mawbId != null) {
-                mawbRepository.findById(payload.mawbId).ifPresent(payload.receipt::setMawb);
-            }
+            WarehouseReceipt receipt = toEntity(payload.receipt, payload.mawbId);
+            List<ReceiptPiece> pieces = payload.pieces.stream()
+                    .map(ReceiptPieceData::toEntity)
+                    .collect(Collectors.toList());
 
             List<Map<String, String>> docsMap = null;
             if (payload.supportingDocs != null) {
@@ -188,7 +290,7 @@ public class WarehouseController {
                     ))
                     .collect(Collectors.toList());
             }
-            WarehouseReceipt processed = warehouseService.updateWarehouseReceipt(receiptId, payload.receipt, payload.pieces, docsMap);
+            WarehouseReceipt processed = warehouseService.updateWarehouseReceipt(receiptId, receipt, pieces, docsMap);
             if (principal != null) {
                 String mawbNum = processed.getMawb() != null ? processed.getMawb().getAwbNumber() : "";
                 auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
