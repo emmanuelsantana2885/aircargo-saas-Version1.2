@@ -228,7 +228,13 @@ public class WarehouseController {
             }
             final UUID receiptId = processed.getId();
             java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
-            return ResponseEntity.ok(processed);
+            final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "id", receiptId,
+                    "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
+                    "pieceCount", totalPieces
+            ));
 
         } catch (Exception ex) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_PROCESS_ERROR, ex.getMessage())));
@@ -300,7 +306,13 @@ public class WarehouseController {
             }
             final UUID savedId = processed.getId();
             java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
-            return ResponseEntity.ok(processed);
+            final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "id", savedId,
+                    "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
+                    "pieceCount", totalPieces
+            ));
 
         } catch (Exception ex) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_UPDATE_ERROR, ex.getMessage())));

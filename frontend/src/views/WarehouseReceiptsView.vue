@@ -2066,7 +2066,7 @@ async function submitReceipt(m) {
       return {
         mawbId: m.id,
         receipt: {
-          airline: { id: m.airline?.id || m.airlineId },
+          airlineId: m.airline?.id || m.airlineId || null,
           hawbId: hawbId,
           gatewayCfs: f.gatewayCfs || 'SDQ',
           shipperName: f.shipperName ?? m.shipperName ?? '',
