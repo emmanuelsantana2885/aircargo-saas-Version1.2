@@ -432,6 +432,9 @@ public class WarehouseService {
         if (source.getHawbId() != null) {
             target.setHawbId(source.getHawbId());
         }
+        if (source.getAirline() != null) {
+            target.setAirline(source.getAirline());
+        }
         target.setGatewayCfs(source.getGatewayCfs());
         target.setShipperName(source.getShipperName());
         target.setConsigneeName(source.getConsigneeName());
@@ -457,6 +460,7 @@ public class WarehouseService {
         target.setBrokerIdNum(source.getBrokerIdNum());
         target.setBrokerSigUrl(source.getBrokerSigUrl());
         target.setReceiptDate(source.getReceiptDate());
+        target.setStartDatetime(source.getStartDatetime());
         target.setDimFactorIntl(source.getDimFactorIntl());
         target.setDimFactorDom(source.getDimFactorDom());
         target.setShipperReportedWeight(source.getShipperReportedWeight());

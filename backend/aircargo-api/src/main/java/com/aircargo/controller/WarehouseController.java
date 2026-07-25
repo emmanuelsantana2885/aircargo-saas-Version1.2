@@ -192,6 +192,12 @@ public class WarehouseController {
         if (mawbId != null) {
             mawbRepository.findById(mawbId).ifPresent(r::setMawb);
         }
+        if (data.startDatetime != null) {
+            try { r.setStartDatetime(java.time.OffsetDateTime.parse(data.startDatetime)); } catch (Exception ignored) {}
+        }
+        if (data.receiptDate != null) {
+            try { r.setReceiptDate(java.time.OffsetDateTime.parse(data.receiptDate)); } catch (Exception ignored) {}
+        }
         return r;
     }
 
