@@ -1433,23 +1433,30 @@ async function loadExistingReceiptData(m) {
     const piecesRes = await receiptsApi.getPieces(sourceReceipt.id)
     const loadedPieces = piecesRes.data || []
     if (loadedPieces.length > 0) {
-      f.pieces = loadedPieces.map((p, pi) => {
-        const piece = {
+      const dk = f.dimFactorKg || 366
+      const dl = f.dimFactorLbs || 194
+      f.pieces = loadedPieces.map((p) => {
+        const l = Number(p.lengthIn) || 0
+        const w = Number(p.widthIn) || 0
+        const h = Number(p.heightIn) || 0
+        const qty = p.pieces || 1
+        const vol = l * w * h * qty
+        const dimKg = vol > 0 ? vol / dk : 0
+        const dimLbs = vol > 0 ? vol / dl : 0
+        const skg = p.scaleWeightLbs ? Number(p.scaleWeightLbs) / 2.20462 : 0
+        const chgKg = Math.max(dimKg, skg)
+        return {
           pieces: p.pieces ?? 1,
           hawbId: p.hawbId ?? null,
           lengthIn: p.lengthIn ?? null,
           widthIn: p.widthIn ?? null,
           heightIn: p.heightIn ?? null,
           scaleWeightLbs: p.scaleWeightLbs ?? null,
-          dimWeight: 0, dimWeightLbs: 0,
-          scaleWeightKg: p.scaleWeightKg ?? 0, dimWeightKg: 0,
-          chargeableKg: 0, chargeableLbs: 0,
+          dimWeight: dimLbs, dimWeightLbs: dimLbs,
+          scaleWeightKg: skg, dimWeightKg: dimKg,
+          chargeableKg: chgKg, chargeableLbs: chgKg * 2.20462,
         }
-        // Recalculate derived values from stored dimensions/scale
-        calcPiece(m.id, pi)
-        return piece
       })
-      // MAWB weight = suma de pesos de bascula de todas las piezas cargadas
       f.mawbWeightGreatest = totalScaleLbs(m.id, null)
     }
   } catch (e) { toast.error(extractError(e)) }
