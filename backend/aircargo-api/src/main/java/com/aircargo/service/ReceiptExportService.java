@@ -79,12 +79,6 @@ public class ReceiptExportService {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
                 .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
 
-        // Serve persisted Excel if available
-        if (receipt.getExcelData() != null && receipt.getExcelData().length > 0) {
-            log.info("Receipt {} served from persisted Excel ({}KB)", receiptId, receipt.getExcelData().length / 1024);
-            return new ByteArrayInputStream(receipt.getExcelData());
-        }
-
         List<ReceiptPiece> pieces = pieceRepository.findByReceiptId(receiptId);
         byte[] data = buildFromTemplate(receipt, pieces);
 
