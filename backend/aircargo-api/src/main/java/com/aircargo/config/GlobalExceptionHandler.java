@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -37,6 +38,13 @@ public class GlobalExceptionHandler {
         log.warn("Conflict: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 ApiError.of(409, "Conflict", ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        log.warn("Malformed request body at {}: {}", req.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest().body(
+                ApiError.of(400, "Bad Request", "Cuerpo de solicitud inválido: " + ex.getMostSpecificCause().getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -40,14 +40,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 if (jwtUtil.isRevoked(token)) {
                     SecurityContextHolder.clearContext();
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token revoked");
+                    writeUnauthorized(response, "Token revoked");
                     return;
                 }
                 Claims claims = jwtUtil.parseToken(token);
                 String role = claims.get("role", String.class);
                 if (role == null) {
                     SecurityContextHolder.clearContext();
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                    writeUnauthorized(response, "Invalid token");
                     return;
                 }
                 String userId = claims.getSubject();
@@ -62,10 +62,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (Exception e) {
                 SecurityContextHolder.clearContext();
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired or invalid");
+                writeUnauthorized(response, "Token expired or invalid");
                 return;
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
+        response.getWriter().flush();
     }
 }
