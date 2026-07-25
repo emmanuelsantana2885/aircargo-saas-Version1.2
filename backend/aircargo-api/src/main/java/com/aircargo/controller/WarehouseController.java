@@ -66,7 +66,7 @@ public class WarehouseController {
      */
     public static class ReceiptData {
         public UUID airlineId;
-        public UUID hawbId;
+        public String hawbId;
         public String gatewayCfs;
         public String shipperName;
         public String consigneeName;
@@ -113,7 +113,7 @@ public class WarehouseController {
     public static class ReceiptPieceData {
         public Integer pieceNumber;
         public Integer pieces;
-        public UUID hawbId;
+        public String hawbId;
         public java.math.BigDecimal lengthIn;
         public java.math.BigDecimal widthIn;
         public java.math.BigDecimal heightIn;
@@ -128,7 +128,11 @@ public class WarehouseController {
             ReceiptPiece p = new ReceiptPiece();
             p.setPieceNumber(pieceNumber);
             p.setPieces(pieces != null ? pieces : 1);
-            p.setHawbId(hawbId);
+            UUID parsedHawbId = null;
+            if (hawbId != null) {
+                try { parsedHawbId = UUID.fromString(hawbId); } catch (IllegalArgumentException ignored) {}
+            }
+            p.setHawbId(parsedHawbId);
             p.setLengthIn(lengthIn != null ? lengthIn : java.math.BigDecimal.ZERO);
             p.setWidthIn(widthIn != null ? widthIn : java.math.BigDecimal.ZERO);
             p.setHeightIn(heightIn != null ? heightIn : java.math.BigDecimal.ZERO);
@@ -173,7 +177,11 @@ public class WarehouseController {
         r.setBrokerName(data.brokerName);
         r.setBrokerIdNum(data.brokerIdNum);
         r.setBrokerSigUrl(data.brokerSigUrl);
-        r.setHawbId(data.hawbId);
+        UUID parsedHawbId = null;
+        if (data.hawbId != null) {
+            try { parsedHawbId = UUID.fromString(data.hawbId); } catch (IllegalArgumentException ignored) {}
+        }
+        r.setHawbId(parsedHawbId);
         if (data.airlineId != null) {
             com.aircargo.common.entity.Airline airline = new com.aircargo.common.entity.Airline();
             airline.setId(data.airlineId);
