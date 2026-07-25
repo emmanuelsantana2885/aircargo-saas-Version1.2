@@ -239,7 +239,7 @@ public class WarehouseService {
                 }
             }
 
-            pieceRepository.deleteByReceiptId(receiptId);
+            existing.getPieces().clear();
             receiptRepository.flush();
             existing = receiptRepository.save(existing);
         }
@@ -312,7 +312,7 @@ public class WarehouseService {
                         }
                     }
                     evictedReceiptIds.add(existing.getId());
-                    pieceRepository.deleteByReceiptId(existing.getId());
+                    existing.getPieces().clear();
                     pieceRepository.flush();
                     savedReceipt = receiptRepository.save(existing);
                 } else {
@@ -367,6 +367,12 @@ public class WarehouseService {
         double dimFactorLbs = (receipt.getDimFactorDom() != null) ? receipt.getDimFactorDom().doubleValue() : 194.0;
         BigDecimal lbsToKgFactor = BigDecimal.valueOf(0.45359237);
 
+        int totalPieceQty = 0;
+        BigDecimal totalActualLbs = BigDecimal.ZERO;
+        BigDecimal totalActualKg = BigDecimal.ZERO;
+        BigDecimal totalDimKg = BigDecimal.ZERO;
+        BigDecimal totalDimLbs = BigDecimal.ZERO;
+
         for (ReceiptPiece piece : pieces) {
             piece.setId(null);
             piece.setReceipt(receipt);
@@ -392,28 +398,19 @@ public class WarehouseService {
             BigDecimal swLbs = piece.getScaleWeightLbs() != null ? piece.getScaleWeightLbs() : BigDecimal.ZERO;
             piece.setChargeableLbs(swLbs.max(dimWeightLbs).setScale(3, RoundingMode.HALF_UP));
 
+            receipt.getPieces().add(piece);
             pieceRepository.save(piece);
+
+            totalPieceQty += qty;
+            totalActualLbs = totalActualLbs.add(swLbs);
+            totalActualKg = totalActualKg.add(scaleKg);
+            totalDimKg = totalDimKg.add(dimWeightKg);
+            totalDimLbs = totalDimLbs.add(dimWeightLbs);
         }
 
-        List<ReceiptPiece> savedPieces = pieceRepository.findByReceiptId(receipt.getId());
-        int totalPieceQty = savedPieces.stream()
-            .mapToInt(p -> p.getPieces() != null && p.getPieces() > 0 ? p.getPieces() : 1)
-            .sum();
+        pieceRepository.flush();
+
         receipt.setPieceCount(totalPieceQty);
-
-        BigDecimal totalActualLbs = savedPieces.stream()
-            .map(p -> p.getScaleWeightLbs() != null ? p.getScaleWeightLbs() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalActualKg = savedPieces.stream()
-            .map(p -> p.getScaleWeightKg() != null ? p.getScaleWeightKg() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalDimKg = savedPieces.stream()
-            .map(p -> p.getDimWeightKg() != null ? p.getDimWeightKg() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalDimLbs = savedPieces.stream()
-            .map(p -> p.getDimWeightLbs() != null ? p.getDimWeightLbs() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         receipt.setActualWeightLbs(totalActualLbs);
         receipt.setActualWeightKg(totalActualKg);
         receipt.setChargeableWeightLbs(totalActualLbs.max(totalDimLbs));

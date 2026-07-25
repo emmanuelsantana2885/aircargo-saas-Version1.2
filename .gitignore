@@ -12,3 +12,7 @@ frontend/dist/
 .vscode/
 frontend/test-results/
 yay/
+*.log
+.cp.txt
+AnalyzeRef.java
+frontend/--force

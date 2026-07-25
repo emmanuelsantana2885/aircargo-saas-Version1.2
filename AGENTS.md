@@ -2,13 +2,21 @@
 
 ## Structure
 
-Monorepo with three directories:
+Monorepo with three main directories + microservices scaffolding:
 
 | Dir | Stack | Entrypoint / notes |
 |-----|-------|-------------------|
-| `frontend/` | Vue 3 + Vite + Pinia + Vue Router + Tailwind + TS | Vite dev on port 5173, proxy `/api` → `localhost:9091` |
+| `frontend/` | Vue 3 + Vite + Pinia + Vue Router + Tailwind + JS | Vite dev on port 5173, proxy `/api` → `localhost:9091` |
 | `backend/aircargo-api/` | Spring Boot 3.3 + Java 21 + Maven + JPA + Flyway + PostgreSQL | `com.aircargo.AircargoApiApplication`, port 9091 |
+| `backend/aircargo-common/` | Shared entities, JWT, DTOs | Used by all backend modules |
+| `backend/aircargo-auth-service/` | Spring Boot (fully implemented) | Auth, User, Site, Audit, MFA, RolePermission |
+| `backend/aircargo-flight-service/` | Spring Boot (implemented) | Flight CRUD with SecurityConfig, AuditService |
+| `backend/aircargo-gateway/` | Spring Cloud Gateway (stub) | Routing config only |
+| `backend/aircargo-{booking,mawb,warehouse,uld,load-planning,export,notification}-service/` | Stubs | Only `*Application.java` — no logic migrated yet |
 | `database/migrations/` | PostgreSQL Flyway migrations | Root copy — see "Migrations" below |
+| `docker/` | Docker Compose files | `docker-compose.infrastructure.yml` (Postgres+RabbitMQ), `docker-compose.services.yml` (11 services) |
+| `k8s/` | Kubernetes manifests | Full K8s deployment for all services |
+| `docker-compose.yml` | Main monolith compose | PostgreSQL + aircargo-api + nginx + certbot |
 
 ## Commands
 
@@ -16,8 +24,8 @@ Monorepo with three directories:
 # Frontend
 npm install          # in frontend/
 npm run dev          # Vite dev server (port 5173)
-npm run type-check   # vue-tsc --build
-npm run build        # type-check + vite build (via npm-run-all2)
+npm run lint         # ESLint (flat config, no --ext)
+npm run build        # Vite build
 
 # Backend
 mvn test                               # unit + integration tests (H2, Flyway disabled)
@@ -31,7 +39,7 @@ docker compose up -d                   # PostgreSQL 16 alpine on :5432
 ## Hard-coded constants
 
 - UPS airline UUID `00000000-0000-0000-0000-000000000001` is hard-coded in every frontend API file and seeded in `V1__init.sql` (backend copy only). Never change it without updating both sides.
-- Vite proxy in `frontend/vite.config.ts` assumes backend is on `localhost:9091`.
+- Vite proxy in `frontend/vite.config.js` assumes backend is on `localhost:9091`.
 
 ## Migrations
 
@@ -170,7 +178,7 @@ Seven roles with the following view permissions (enforced on both frontend route
 
 ### Authentication Implementation
 - **Backend**: `JwtUtil` (jjwt 0.12.6), `JwtAuthFilter` (OncePerRequestFilter), `SecurityConfig` (filter chain with URL-based role checks), `AuthController` (POST `/api/auth/login`)
-- **Frontend**: `stores/auth.js` (Pinia store + localStorage persistence), `views/LoginView.vue` (email-only login), `router/index.ts` (navigation guards with role-based permission checks), `api/client.js` (token injection interceptor + 401 auto-redirect)
+- **Frontend**: `stores/auth.js` (Pinia store + localStorage persistence), `views/LoginView.vue` (email-only login), `router/index.js` (navigation guards with role-based permission checks), `api/client.js` (token injection interceptor + 401 auto-redirect)
 - Tests use `@Profile("test")` security config that permits all requests
 
 ## Backend quirks
@@ -185,10 +193,9 @@ Seven roles with the following view permissions (enforced on both frontend route
 
 ## Frontend quirks
 
-- **Stale files (removed):** `src/stores/ulds.js` was deleted — superseded by `src/stores/ulds.ts`. `src/stores/counter.ts` is a Pinia template leftover. The API layer (`src/api/*.js`) is plain JS while stores are mixed JS/TS.
+- **Stale files (removed):** `src/stores/ulds.js` is the active store. No TypeScript files exist in the frontend.
 - **No frontend tests** exist (no vitest/jest config found).
 - `README.md` is the default Vite template — ignore it.
-- **Pre-existing type-check errors:** missing `env.d.ts` for `.vue` module declarations, `ulds.ts` strict mode issues. These do not block the Vite build.
 
 ## Recent session changes (June 2026)
 
@@ -248,7 +255,7 @@ Seven roles with the following view permissions (enforced on both frontend route
 | `frontend/src/stores/auth.js` | Added `hasPasswordSet` ref (persisted); `login()` now accepts optional password parameter |
 | `frontend/src/views/LoginView.vue` | Added password input (shown when backend returns 428); "Establecer contraseña" link redirects to /set-password |
 | `frontend/src/views/SetPasswordView.vue` | **NEW** — first-time password setup page; fields: email (readonly from query), currentPassword (only if has existing password), newPassword, confirm; validates match + min 6 chars; auto-redirects to /login after success |
-| `frontend/src/router/index.ts` | Added `/set-password` route; both `/login` and `/set-password` marked as `publicPaths` (no auth required) |
+| `frontend/src/router/index.js` | Added `/set-password` route; both `/login` and `/set-password` marked as `publicPaths` (no auth required) |
 
 ## Recent session changes (June 29, 2026 — Settings + Users Views + Audit)
 
@@ -275,7 +282,7 @@ Seven roles with the following view permissions (enforced on both frontend route
 | `frontend/src/api/users.js` | **NEW** — all user CRUD + resetPassword + getConnected + getAuditLogs + heartbeat |
 | `frontend/src/views/SettingsView.vue` | **NEW** — user management: list/create/edit/delete users, reset passwords, role assignment, active toggle |
 | `frontend/src/views/UsersView.vue` | **NEW** — connected users (live cards with green dot) + audit log table with user filter + action colors |
-| `frontend/src/router/index.ts` | Added `/users` → UsersView + `/settings` → SettingsView routes |
+| `frontend/src/router/index.js` | Added `/users` → UsersView + `/settings` → SettingsView routes |
 | `frontend/src/components/layout/Header.vue` | Added `/settings`: 'Configuración' title |
 | `frontend/src/App.vue` | Heartbeat interval (60s) calls `GET /api/auth/heartbeat` when authenticated |
 
@@ -297,8 +304,7 @@ Entity types auditadas: `FLIGHT`, `BOOKING`, `MAWB`, `ULD`, `RECEIPT`. Cada crea
 ## Build
 
 ```sh
-npm run build         # Vite build succeeds (type-check has pre-existing errors)
-npm run type-check    # Fails on pre-existing .vue module declarations + ulds.ts strict mode
+npm run build         # Vite build succeeds
 ```
 
 ## Recent session changes (June 29, 2026 — RBAC + Cache + Async)
@@ -333,10 +339,10 @@ npm run type-check    # Fails on pre-existing .vue module declarations + ulds.ts
 | `frontend/src/api/auth.js` | **NEW** — `authApi.login(email)` |
 | `frontend/src/stores/auth.js` | **NEW** — Pinia auth store with localStorage persistence, `canView()` permission check |
 | `frontend/src/views/LoginView.vue` | **NEW** — email-only login form |
-| `frontend/src/router/index.ts` | Added `/login` route, `beforeEach` guards (auth check + role permission check) |
+| `frontend/src/router/index.js` | Added `/login` route, `beforeEach` guards (auth check + role permission check) |
 | `frontend/src/App.vue` | Renders `<Sidebar>` only when authenticated; login view when not |
 | `frontend/src/components/layout/Sidebar.vue` | Dynamic nav items by `canView()`, real user info from auth store, logout button |
 
 ## Import paths
 
-Frontend uses `@/` → `./src/` (configured in `vite.config.ts` and `tsconfig.app.json`).
+Frontend uses `@/` → `./src/` (configured in `vite.config.js`).
