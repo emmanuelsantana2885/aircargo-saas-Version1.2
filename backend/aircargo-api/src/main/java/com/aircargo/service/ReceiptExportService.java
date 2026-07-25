@@ -157,7 +157,7 @@ public class ReceiptExportService {
             Sheet sheet = wb.getSheet("DockReceipt");
             if (sheet == null) sheet = wb.getSheetAt(0);
 
-            fillHeaderFields(sheet, receipt);
+            fillHeaderFields(sheet, receipt, pieces);
             fillPiecesData(sheet, receipt, pieces);
             fillRemarks(sheet, receipt);
             fillSignatures(sheet, receipt);
@@ -187,7 +187,7 @@ public class ReceiptExportService {
         }
     }
 
-    private void fillHeaderFields(Sheet sheet, WarehouseReceipt receipt) {
+    private void fillHeaderFields(Sheet sheet, WarehouseReceipt receipt, List<ReceiptPiece> pieces) {
         String awbNum = receipt.getMawb() != null ? receipt.getMawb().getAwbNumber() : "";
 
         setStringValue(sheet, ROW_GATEWAY, COL_D, safe(receipt.getGatewayCfs(), "SDQ"));
@@ -195,8 +195,11 @@ public class ReceiptExportService {
         setStringValue(sheet, ROW_MAWB_NUM, COL_D, awbNum);
         setStringValue(sheet, ROW_ORIGIN, COL_D, safe(receipt.getOrigin(), ""));
         setStringValue(sheet, ROW_DESTINATION, COL_D, safe(receipt.getDestination(), ""));
-        setNumericValue(sheet, ROW_AWB_PIECES, COL_D,
-                receipt.getAwbReportedPieces() != null ? receipt.getAwbReportedPieces() : 0);
+
+        int totalPieceCount = pieces.stream()
+                .mapToInt(p -> p.getPieces() != null && p.getPieces() > 0 ? p.getPieces() : 1)
+                .sum();
+        setNumericValue(sheet, ROW_AWB_PIECES, COL_D, totalPieceCount);
 
         // MAWB weight (D10) — referenced by G22 formula =+D10
         double mawbWeight = receipt.getMawbWeightGreatest() != null
