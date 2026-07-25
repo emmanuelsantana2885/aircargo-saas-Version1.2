@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
@@ -235,7 +237,15 @@ public class WarehouseController {
                         request.getRemoteAddr());
             }
             final UUID receiptId = processed.getId();
-            java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override public void afterCommit() {
+                        java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
+                    }
+                });
+            } else {
+                java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
+            }
             final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -313,7 +323,15 @@ public class WarehouseController {
                         request.getRemoteAddr());
             }
             final UUID savedId = processed.getId();
-            java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override public void afterCommit() {
+                        java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
+                    }
+                });
+            } else {
+                java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
+            }
             final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -406,6 +424,7 @@ public class WarehouseController {
             String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + ".xlsx";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
                     .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .body(new InputStreamResource(excel));
         } catch (IllegalArgumentException ex) {
