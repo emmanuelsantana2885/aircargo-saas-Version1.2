@@ -49,6 +49,26 @@ Flyway migrations live in **two places** with **different content**:
 
 The backend copy also seeds the UPS airline row; the root copy does not. Keep both in sync.
 
+## Recent session changes (July 26, 2026 — Receipt Correction Superseding System)
+
+| File | Change |
+|------|--------|
+| `backend/.../entity/WarehouseReceipt.java` | Added `correctionOfId` (UUID FK), `correctionNumber` (Integer, default 1), `superseded` (Boolean, default false) |
+| `backend/.../dto/WarehouseReceiptDTO.java` | Added `correctionOfId`, `correctionNumber`, `superseded` fields + entity mapping |
+| `backend/.../repository/WarehouseReceiptRepository.java` | Added `findBySupersededFalse()`, `findByAirlineIdAndSupersededFalse(UUID)`, `findByMawbIdAndSupersededFalse(UUID)`, `findByMawbIdOrderByCreatedAtAsc(UUID)`, `supersedeOthers(UUID, UUID)` native query |
+| `backend/.../service/WarehouseReceiptServiceImpl.java` | `getAll()` now uses `findBySupersededFalse()` / `findByAirlineIdAndSupersededFalse()` to exclude superseded receipts from GET /api/receipts |
+| `backend/.../service/WarehouseService.java` | **NEW**: `createCorrection()` — creates new receipt linked to original, supersedes ALL active receipts for the MAWB; **Changed**: `processWarehouseReceipt` purge branch now marks old receipts `superseded=true` instead of DELETE |
+| `backend/.../controller/WarehouseController.java` | **NEW**: `POST /{receiptId}/correct` endpoint calling `createCorrection()` with audit logging (action=RECEIPT_CORRECTION) |
+| `backend/.../service/ExportService.java` | Audit export now includes `RECEIPT_CORRECTION` entity type; added `receiptAuditJson()` helper; CSV export includes `details` column |
+| `backend/resources/db/migration/V35__add_correction_fields_to_warehouse_receipt.sql` | **NEW** — adds `correction_of_id` (UUID FK), `correction_number` (int DEFAULT 1), `superseded` (boolean DEFAULT false) + index |
+| `backend/resources/db/migration/V36__supersede_old_receipts.sql` | **NEW** — retroactive CTE: marks all but the newest general receipt per MAWB as superseded; same for HAWB receipts per (MAWB, HAWB); ensures non-superseded have correction_number >= 1 |
+| `database/migrations/V35__add_correction_fields_to_warehouse_receipt.sql` | Synced from backend |
+| `database/migrations/V36__supersede_old_receipts.sql` | Synced from backend |
+| `backend/.../test/.../WarehouseReceiptServiceImplTest.java` | `getAll_filtersByAirlineId` updated to mock `findByAirlineIdAndSupersededFalse` |
+| `frontend/src/api/receipts.js` | Added `createCorrection(receiptId, payload)` → `POST /warehouse/receipts/{id}/correct` |
+| `frontend/src/stores/app.js` | `loadReceipts()` default page size 50 → 500 to ensure all receipts available for superseded filtering |
+| `frontend/src/views/WarehouseReceiptsView.vue` | **`loadExistingReceiptData()`**: sorts receipts by createdAt, filters `activeReceipts` (non-superseded), prefers general non-superseded; maps `_correctionNumber` + `_isSuperseded`; HAWB receipt map only includes non-superseded; loads `receivedByName`, `receivedBySig`, `receiptDate`, `startDatetime` from source receipt; **`receiptTotals`**: skips `r.superseded`; **`receiptById`**: skips `r.superseded`; **`executeEmit()`**: uses `createCorrection()` instead of `updateEmit()` for existing receipts; **UI**: edit icon on MAWB row, amber highlight for existing receipts, "Crear Nueva Versión" button with correction badge + OBSOLETO indicator, removed separate "Editar Recibo" button; **`initForm()`**: added `receivedByName`, `receivedBySig`, `receiptDate`, `startDatetime`, `_correctionNumber`, `_isSuperseded`; **`calcPiece`/`totalChargeableLbs`**: fixed to use `max(scaleLbs, dimLbs)` directly; **`submitReceipt`**: preserves `receivedByName`/`receivedBySig`/`receiptDate`/`startDatetime` from existing receipt; remarks strip duplicate "— RECIBO GENERAL" suffixes; **`onMounted`**: added else-if branch for already-expanded MAWB on page reload |
+
 ## Recent session changes (July 20, 2026 — ULD Barcode Scanning + Dashboard Commodity Fix)
 
 | File | Change |
