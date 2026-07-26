@@ -1906,7 +1906,7 @@ async function downloadReceiptById(m) {
 async function downloadReceiptByIdAuto(receiptId, awbNumber) {
   try {
     const res = await receiptsApi.export(receiptId)
-    const filename = `RECIBO_DE_BODEGA_AWB ${awbNumber || receiptId.slice(0, 8)}.xlsx`
+    const filename = `RECIBO_DE_BODEGA_AWB ${awbNumber || receiptId.slice(0, 8)}${receiptVersionTag(receiptId)}.xlsx`
     const url = URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = url
@@ -1921,7 +1921,7 @@ async function downloadReceiptByIdAuto(receiptId, awbNumber) {
 async function downloadReceiptPdfAuto(receiptId, awbNumber) {
   try {
     const res = await receiptsApi.getFullPdf(receiptId)
-    const filename = `RECIBO_DE_BODEGA_AWB ${awbNumber || receiptId.slice(0, 8)}.pdf`
+    const filename = `RECIBO_DE_BODEGA_AWB ${awbNumber || receiptId.slice(0, 8)}${receiptVersionTag(receiptId)}.pdf`
     const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = url
@@ -2257,6 +2257,12 @@ const receiptById = computed(() => {
   return map
 })
 
+function receiptVersionTag(receiptId) {
+  const r = (store.receipts || []).find(x => x.id === receiptId)
+  const v = r?.correctionNumber ?? 1
+  return '-V' + v
+}
+
 // ── Evidence Preview ──
 const evidencePreview = reactive({ show: false, item: null })
 
@@ -2413,7 +2419,7 @@ async function printPreview(m) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `RECIBO_DE_BODEGA_AWB ${m.awbNumber || receiptId.slice(0, 8)}.pdf`
+    a.download = `RECIBO_DE_BODEGA_AWB ${m.awbNumber || receiptId.slice(0, 8)}${receiptVersionTag(receiptId)}.pdf`
     a.click()
     URL.revokeObjectURL(url)
   } catch (e) {

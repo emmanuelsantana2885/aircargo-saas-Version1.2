@@ -1225,11 +1225,12 @@ function receiptForMawb(row) {
 function downloadReceiptXlsx(row) {
   const rec = receiptForMawb(row)
   if (!rec) { toast.warning('No hay recibo para este MAWB'); return }
+  const vTag = '-V' + (rec.correctionNumber ?? 1)
   receiptsApi.export(rec.id).then(res => {
     const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url
-    a.download = 'RECIBO_DE_BODEGA_AWB ' + (row.awbNumber || '—') + '.xlsx'
+    a.download = 'RECIBO_DE_BODEGA_AWB ' + (row.awbNumber || '—') + vTag + '.xlsx'
     a.click(); URL.revokeObjectURL(url)
   }).catch(e => toast.error('Error descargando Excel: ' + extractError(e)))
 }
@@ -1237,11 +1238,12 @@ function downloadReceiptXlsx(row) {
 function downloadReceiptPdf(row) {
   const rec = receiptForMawb(row)
   if (!rec) { toast.warning('No hay recibo para este MAWB'); return }
+  const vTag = '-V' + (rec.correctionNumber ?? 1)
   receiptsApi.getFullPdf(rec.id).then(res => {
     const blob = new Blob([res.data], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url
-    a.download = 'RECIBO_DE_BODEGA_AWB ' + (row.awbNumber || '—') + '.pdf'
+    a.download = 'RECIBO_DE_BODEGA_AWB ' + (row.awbNumber || '—') + vTag + '.pdf'
     a.click(); URL.revokeObjectURL(url)
   }).catch(e => toast.error('Error descargando PDF: ' + extractError(e)))
 }

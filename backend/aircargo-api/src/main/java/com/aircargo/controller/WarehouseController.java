@@ -498,7 +498,8 @@ public class WarehouseController {
             WarehouseReceipt receipt = receiptRepository.findById(receiptId).orElse(null);
             String mawbNum = receipt != null && receipt.getMawb() != null
                     ? receipt.getMawb().getAwbNumber() : receiptId.toString().substring(0, 8);
-            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + ".xlsx";
+            String versionTag = receiptVersionTag(receipt);
+            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + versionTag + ".xlsx";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
@@ -521,7 +522,8 @@ public class WarehouseController {
                     .orElseThrow(() -> new IllegalArgumentException(String.format(ErrorMessages.RECEIPT_NOT_FOUND, receiptId)));
             String mawbNum = receipt.getMawb() != null
                     ? receipt.getMawb().getAwbNumber() : receiptId.toString().substring(0, 8);
-            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + ".xlsx";
+            String versionTag = receiptVersionTag(receipt);
+            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + versionTag + ".xlsx";
             String encodedFilename = java.net.URLEncoder.encode(filename, java.nio.charset.StandardCharsets.UTF_8)
                     .replace("+", "%20");
             String url = "/api/warehouse/receipts/" + receiptId + "/export?filename=" + encodedFilename;
@@ -547,7 +549,8 @@ public class WarehouseController {
             WarehouseReceipt receipt = receiptRepository.findById(receiptId).orElse(null);
             String mawbNum = receipt != null && receipt.getMawb() != null
                     ? receipt.getMawb().getAwbNumber() : receiptId.toString().substring(0, 8);
-            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + ".pdf";
+            String versionTag = receiptVersionTag(receipt);
+            String filename = "RECIBO_DE_BODEGA_AWB " + mawbNum + versionTag + ".pdf";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .contentType(MediaType.APPLICATION_PDF)
@@ -578,5 +581,11 @@ public class WarehouseController {
 
     private static String safe(String s) {
         return com.aircargo.common.util.TextUtil.safe(s);
+    }
+
+    private static String receiptVersionTag(WarehouseReceipt receipt) {
+        if (receipt == null) return "";
+        int version = receipt.getCorrectionNumber() != null ? receipt.getCorrectionNumber() : 1;
+        return "-V" + version;
     }
 }
