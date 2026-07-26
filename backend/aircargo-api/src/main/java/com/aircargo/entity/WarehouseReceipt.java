@@ -217,6 +217,12 @@ public class WarehouseReceipt {
     @Column(name = "superseded")
     private Boolean superseded = false;
 
+    @Column(name = "correction_reason", length = 500)
+    private String correctionReason;
+
+    @Column(name = "corrected_by_name", length = 150)
+    private String correctedByName;
+
     @Transient
     @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
     private List<String> bookingCorrections = new ArrayList<>();

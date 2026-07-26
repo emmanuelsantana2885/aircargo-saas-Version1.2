@@ -69,7 +69,7 @@ class ScanServiceTest {
     void lookup_mawb_found() {
         Mawb mawb = makeMawb("00012345678", 12, MawbStatus.BOOKED);
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(uldAwbRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
 
         ScanLookupDTO result = service.lookup("000-12345678", null);
@@ -87,7 +87,7 @@ class ScanServiceTest {
     void lookup_mawb_with_dashes_normalized() {
         Mawb mawb = makeMawb("01612345678", 5, MawbStatus.RECEIVED);
         when(mawbRepository.findByAwbNumber("01612345678")).thenReturn(Optional.of(mawb));
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(uldAwbRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
 
         ScanLookupDTO result = service.lookup("016-12345678", null);
@@ -108,7 +108,7 @@ class ScanServiceTest {
 
         when(mawbRepository.findByAwbNumber("HAWB999")).thenReturn(Optional.empty());
         when(hawbRepository.findByHawbNumber("HAWB999")).thenReturn(Optional.of(hawb));
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(uldAwbRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
 
         ScanLookupDTO result = service.lookup("HAWB999", null);
@@ -152,7 +152,7 @@ class ScanServiceTest {
     void lookup_existing_on_uld() {
         Mawb mawb = makeMawb("00012345678", 12, MawbStatus.BOOKED);
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(uldAwbRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(3L);
 
@@ -172,7 +172,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -211,7 +211,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -237,7 +237,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(1L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
 
         UldAwb existingAwb = new UldAwb();
@@ -267,7 +267,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(3L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
 
         ScanPieceRequest req = new ScanPieceRequest();
         req.setUldId(uldId);
@@ -305,7 +305,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -336,7 +336,7 @@ class ScanServiceTest {
         when(mawbRepository.findByAwbNumber("HAWB555")).thenReturn(Optional.empty());
         when(hawbRepository.findByHawbNumber("HAWB555")).thenReturn(Optional.of(hawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -366,7 +366,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(0L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(Collections.emptyList());
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(Collections.emptyList());
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
         when(uldAwbRepository.findByUldIdAndMawbId(uldId, mawbId)).thenReturn(Optional.empty());
         when(uldPieceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -433,7 +433,7 @@ class ScanServiceTest {
         when(uldRepository.findById(uldId)).thenReturn(Optional.of(uld));
         when(mawbRepository.findByAwbNumber("00012345678")).thenReturn(Optional.of(mawb));
         when(uldPieceRepository.countByUldIdAndMawbId(uldId, mawbId)).thenReturn(7L);
-        when(receiptRepository.findByMawbId(mawbId)).thenReturn(List.of(receipt));
+        when(receiptRepository.findByMawbIdAndSupersededFalse(mawbId)).thenReturn(List.of(receipt));
         when(bookingRepository.findByMawbId(mawbId)).thenReturn(List.of(new Booking()));
 
         ScanPieceRequest req = new ScanPieceRequest();

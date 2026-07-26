@@ -743,16 +743,22 @@
                     Siguiente &#9654;
                   </button>
                 </div>
-                <div v-else>
+                <div v-else class="flex items-center gap-2">
+                  <div v-if="receiptForms[m.id]._existingReceiptId" class="flex-1">
+                    <input v-model="receiptForms[m.id].correctionReason" type="text"
+                      placeholder="Motivo de corrección (requerido)"
+                      class="w-full text-[10px] font-mono px-2.5 py-1.5 rounded border border-amber-400 bg-amber-50 outline-none focus:border-amber-600 transition"
+                      :class="{'border-red-400 bg-red-50': !receiptForms[m.id].correctionReason?.trim()}" />
+                  </div>
                   <button @click="printPreview(m)"
-                    class="text-[10px] px-2.5 py-1 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-slate-100 transition mr-1.5"
+                    class="text-[10px] px-2.5 py-1 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-slate-100 transition shrink-0"
                     title="Vista previa para impresión">
                     &#128424; Vista Previa
                   </button>
-                  <button @click="openConfirmModal(m)" :disabled="submitting"
-                    class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white transition disabled:opacity-50"
-                    :class="receiptForms[m.id]._existingReceiptId ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-800 hover:bg-slate-700'">
-                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#10003; Actualizar Recibo' : '&#10003; Confirmar Recibo') }}</span>
+                  <button @click="openConfirmModal(m)" :disabled="submitting || (receiptForms[m.id]._existingReceiptId && !receiptForms[m.id].correctionReason?.trim())"
+                    class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white transition disabled:opacity-50 shrink-0"
+                    :class="receiptForms[m.id]._existingReceiptId ? 'bg-amber-700 hover:bg-amber-600' : 'bg-slate-800 hover:bg-slate-700'">
+                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#10003; Corregir Recibo' : '&#10003; Confirmar Recibo') }}</span>
                   </button>
                 </div>
               </div>
@@ -1379,9 +1385,8 @@ function initForm(m) {
       receiptDate: null,
       startDatetime: null,
       _existingReceiptId: null,
-      _existingHawbReceiptIds: {},
       _correctionNumber: 1,
-      _isSuperseded: false,
+      correctionReason: '',
       pieceCount: 0,
       totalWeightKg: 0,
     }
@@ -1408,14 +1413,7 @@ async function loadExistingReceiptData(m) {
       : existingReceipts[existingReceipts.length - 1]
   f._existingReceiptId = sourceReceipt?.id ?? null
   f._correctionNumber = sourceReceipt?.correctionNumber ?? 1
-  f._isSuperseded = !!sourceReceipt?.superseded
-  // Mapa de hawbId → receiptId para los recibos por HAWB (prefer non-superseded)
-  f._existingHawbReceiptIds = {}
-  for (const r of existingReceipts) {
-    if (r.hawbId && !r.superseded) {
-      f._existingHawbReceiptIds[r.hawbId] = r.id
-    }
-  }
+  f.correctionReason = ''
   f.gatewayCfs = sourceReceipt.gatewayCfs ?? 'SDQ'
   f.shipperName = sourceReceipt.shipperName ?? f.shipperName
   f.consigneeName = sourceReceipt.consigneeName ?? f.consigneeName
@@ -2082,12 +2080,12 @@ async function submitReceipt(m) {
       }
     }
 
-    function buildPayload(pieceList, remarkSuffix, appendOnly = false, hawbId = null) {
+    function buildPayload(pieceList, remarkSuffix) {
       return {
         mawbId: m.id,
         receipt: {
           airlineId: m.airline?.id || m.airlineId || null,
-          hawbId: hawbId,
+          hawbId: hawbs.length <= 1 ? (hawbs[0]?._hawbId || null) : null,
           gatewayCfs: f.gatewayCfs || 'SDQ',
           shipperName: f.shipperName ?? m.shipperName ?? '',
           consigneeName: f.consigneeName ?? m.consigneeName ?? '',
@@ -2120,7 +2118,7 @@ async function submitReceipt(m) {
         pieces: pieceList.map((p, i) => ({
           pieceNumber: i + 1,
           pieces: p.pieces || 1,
-          hawbId: p.hawbId || hawbId,
+          hawbId: p.hawbId || null,
           lengthIn: p.lengthIn || 0,
           widthIn: p.widthIn || 0,
           heightIn: p.heightIn || 0,
@@ -2136,7 +2134,7 @@ async function submitReceipt(m) {
           type: ev.type,
           url: ev.url,
         })),
-        appendOnly,
+        correctionReason: f.correctionReason || '',
       }
     }
 
@@ -2182,29 +2180,20 @@ async function executeEmit(m, hawbs, payload) {
   if (!f) return
 
   const isVersioned = !!f._existingReceiptId
-  if (f._editedReceiptRef && !isVersioned) {
-    console.warn('[executeEmit] MAWB', m.awbNumber, 'was edited but _existingReceiptId is null — falling back to create')
+  if (isVersioned && !f.correctionReason?.trim()) {
+    alert('El motivo de la corrección es obligatorio')
+    return
   }
 
-  if (hawbs.length <= 1) {
-    let res
-    if (isVersioned) {
-      res = await receiptsApi.updateEmit(f._existingReceiptId, payload)
-      res = res.data
-    } else {
-      res = await store.emitReceipt(payload)
-    }
-    const receiptId = res?.id || null
-    if (receiptId) generatedReceiptId.value = receiptId
-  } else if (isVersioned) {
-    const genRes = await receiptsApi.updateEmit(f._existingReceiptId, payload)
-    const lastId = genRes?.data?.id || null
-    if (lastId) generatedReceiptId.value = lastId
+  let res
+  if (isVersioned) {
+    res = await receiptsApi.createCorrection(f._existingReceiptId, payload)
+    res = res.data
   } else {
-    const genRes = await store.emitReceipt(payload)
-    const lastId = genRes?.id || null
-    if (lastId) generatedReceiptId.value = lastId
+    res = await store.emitReceipt(payload)
   }
+  const receiptId = res?.id || null
+  if (receiptId) generatedReceiptId.value = receiptId
 
   await store.loadReceipts()
   await loadExistingReceiptData(m)
@@ -2220,7 +2209,7 @@ async function executeEmit(m, hawbs, payload) {
   const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
   const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
   const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
-  const label = isVersioned ? 'Recibo actualizado' : 'Recibo generado'
+  const label = isVersioned ? 'Corrección aplicada' : 'Recibo generado'
   successMsg.value = label +
     ` — ${totalPieces(m.id, null)} pzas, ${totalKg.toFixed(1)} KGS / ${totalLbs.toFixed(1)} LBS (facturable: ${chargeKg.toFixed(1)} KGS)`
   if (successTimer) clearTimeout(successTimer)

@@ -43,8 +43,8 @@ public class MawbTrackingService {
                     b.getCreatedAt(), "RESERVA", b.getAwbNumber()));
         }
 
-        // 3. Warehouse Receipts
-        List<WarehouseReceipt> receipts = receiptRepository.findByMawbId(mawbId);
+        // 3. Warehouse Receipts (only active)
+        List<WarehouseReceipt> receipts = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
         for (WarehouseReceipt r : receipts) {
             events.add(event("Recibo de Bodega", "Recibo emitido: " + r.getPieceCount() + " piezas, " +
                     (r.getActualWeightKg() != null ? r.getActualWeightKg() + " kg" : "0 kg"),
@@ -83,7 +83,7 @@ public class MawbTrackingService {
             item.put("pieces", m.getPieces());
             item.put("status", m.getStatus() != null ? m.getStatus().name() : "BOOKED");
             item.put("createdAt", m.getCreatedAt());
-            List<WarehouseReceipt> receipts = receiptRepository.findByMawbId(m.getId());
+            List<WarehouseReceipt> receipts = receiptRepository.findByMawbIdAndSupersededFalse(m.getId());
             boolean hasReceipt = !receipts.isEmpty();
             item.put("hasReceipt", hasReceipt);
             List<UldAwb> uldLinks = uldAwbRepository.findByMawbId(m.getId());

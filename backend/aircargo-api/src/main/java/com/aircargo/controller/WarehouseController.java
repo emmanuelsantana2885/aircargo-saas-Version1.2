@@ -44,9 +44,10 @@ public class WarehouseController {
     private final ReceiptExportService exportService;
     private final ReceiptFullPdfService receiptFullPdfService;
     private final AuditService auditService;
+    private final MawbRepository mawbRepository;
 
-    public WarehouseController(WarehouseService warehouseService, 
-                               WarehouseReceiptRepository receiptRepository, 
+    public WarehouseController(WarehouseService warehouseService,
+                               WarehouseReceiptRepository receiptRepository,
                                ReceiptPieceRepository pieceRepository,
                                ReceiptExportService exportService,
                                ReceiptFullPdfService receiptFullPdfService,
@@ -61,11 +62,10 @@ public class WarehouseController {
         this.mawbRepository = mawbRepository;
     }
 
-    private final MawbRepository mawbRepository;
+    // ═══════════════════════════════════════════════════════════════════
+    //  DTOs
+    // ═══════════════════════════════════════════════════════════════════
 
-    /**
-     * DTO plano para recibir datos del recibo desde el frontend (sin entidades JPA lazy).
-     */
     public static class ReceiptData {
         public UUID airlineId;
         public String hawbId;
@@ -99,17 +99,12 @@ public class WarehouseController {
         public String receiptDate;
     }
 
-    /**
-     * DTO interno temporal para recibir de golpe el encabezado y sus piezas en el payload JSON.
-     */
     public static class ReceiptPayload {
         public ReceiptData receipt;
-
         public List<ReceiptPieceData> pieces;
-
         public List<SupportingDoc> supportingDocs;
-        public Boolean appendOnly;
         public UUID mawbId;
+        public String correctionReason;
     }
 
     public static class ReceiptPieceData {
@@ -148,9 +143,16 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Convierte ReceiptData (DTO plano) → WarehouseReceipt (entity JPA).
-     */
+    public static class SupportingDoc {
+        public String name;
+        public String type;
+        public String url;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Entity mapping
+    // ═══════════════════════════════════════════════════════════════════
+
     private WarehouseReceipt toEntity(ReceiptData data, UUID mawbId) {
         WarehouseReceipt r = new WarehouseReceipt();
         r.setGatewayCfs(data.gatewayCfs != null ? data.gatewayCfs : "SDQ");
@@ -201,16 +203,26 @@ public class WarehouseController {
         return r;
     }
 
-    public static class SupportingDoc {
-        public String name;
-        public String type;
-        public String url;
+    private List<Map<String, String>> toDocsMap(List<SupportingDoc> docs) {
+        if (docs == null) return null;
+        return docs.stream()
+            .map(d -> Map.of(
+                "name", d.name != null ? d.name : "",
+                "type", d.type != null ? d.type : "",
+                "url", d.url != null ? d.url : ""
+            ))
+            .collect(Collectors.toList());
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  ENDPOINTS — Emit / Correct / Validate
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
-     * Endpoint para emitir un nuevo recibo de bodega con cálculo en tiempo real de dimensiones.
+     * Emitir un nuevo recibo de bodega (primera emisión).
+     * El backend agrupa piezas por hawbId y crea un receipt por cada HAWB.
      */
-@PostMapping("/emit")
+    @PostMapping("/emit")
     public ResponseEntity<?> emitWarehouseReceipt(@RequestBody ReceiptPayload payload,
                                                    @AuthenticationPrincipal UserPrincipal principal,
                                                    HttpServletRequest request) {
@@ -223,41 +235,31 @@ public class WarehouseController {
             List<ReceiptPiece> pieces = payload.pieces.stream()
                     .map(ReceiptPieceData::toEntity)
                     .collect(Collectors.toList());
+            List<Map<String, String>> docsMap = toDocsMap(payload.supportingDocs);
 
-            List<Map<String, String>> docsMap = null;
-            if (payload.supportingDocs != null) {
-                docsMap = payload.supportingDocs.stream()
-                    .map(d -> Map.of(
-                        "name", d.name != null ? d.name : "",
-                        "type", d.type != null ? d.type : "",
-                        "url", d.url != null ? d.url : ""
-                    ))
-                    .collect(Collectors.toList());
-            }
-            WarehouseReceipt processed = warehouseService.processWarehouseReceipt(receipt, pieces, docsMap, !Boolean.TRUE.equals(payload.appendOnly));
+            List<WarehouseReceipt> created = warehouseService.createReceipt(receipt, pieces, docsMap);
+
             if (principal != null) {
-                String mawbNum = processed.getMawb() != null ? processed.getMawb().getAwbNumber() : "";
+                String mawbNum = receipt.getMawb() != null ? receipt.getMawb().getAwbNumber() : "";
+                int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
                 auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                        "CREATE", "RECEIPT", processed.getId().toString(),
-                        "{\"mawb\":\"" + safe(mawbNum) + "\",\"pieces\":" + (payload.pieces != null ? payload.pieces.size() : 0) + "}",
+                        "CREATE", "RECEIPT", created.isEmpty() ? "" : created.get(created.size() - 1).getId().toString(),
+                        "{\"mawb\":\"" + safe(mawbNum) + "\",\"pieces\":" + totalPieces
+                            + ",\"receipts\":" + created.size() + "}",
                         request.getRemoteAddr());
             }
-            final UUID receiptId = processed.getId();
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override public void afterCommit() {
-                        java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
-                    }
-                });
-            } else {
-                java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
+
+            UUID lastId = created.isEmpty() ? null : created.get(created.size() - 1).getId();
+            if (lastId != null) {
+                asyncGenerateArtifacts(lastId);
             }
             final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "id", receiptId,
+                    "id", lastId != null ? lastId.toString() : "",
                     "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
-                    "pieceCount", totalPieces
+                    "pieceCount", totalPieces,
+                    "receiptCount", created.size()
             ));
 
         } catch (Exception ex) {
@@ -266,9 +268,68 @@ public class WarehouseController {
     }
 
     /**
+     * Crear una corrección de un recibo existente (Adjustment Transaction).
+     * Requiere correctionReason obligatorio. Genera un nuevo recibo y superseda el anterior.
+     */
+    @PostMapping("/{receiptId}/correct")
+    public ResponseEntity<?> createCorrection(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
+                                               @AuthenticationPrincipal UserPrincipal principal,
+                                               HttpServletRequest request) {
+        try {
+            if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
+            }
+
+            String correctionReason = payload.correctionReason != null ? payload.correctionReason.trim() : "";
+            if (correctionReason.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_CORRECTION_REASON_MISSING));
+            }
+
+            String correctedByName = principal != null ? principal.fullName() : "System";
+
+            WarehouseReceipt correctionEntity = toEntity(payload.receipt, payload.mawbId);
+            List<ReceiptPiece> pieces = payload.pieces.stream()
+                    .map(ReceiptPieceData::toEntity)
+                    .collect(Collectors.toList());
+            List<Map<String, String>> docsMap = toDocsMap(payload.supportingDocs);
+
+            WarehouseReceipt saved = warehouseService.createCorrection(receiptId, correctionEntity, pieces, docsMap,
+                    correctionReason, correctedByName);
+
+            if (principal != null) {
+                String mawbNum = saved.getMawb() != null ? saved.getMawb().getAwbNumber() : "";
+                int totalPieces = pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
+                auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                        "CREATE", "RECEIPT_CORRECTION", saved.getId().toString(),
+                        "{\"originalReceipt\":\"" + receiptId + "\",\"mawb\":\"" + safe(mawbNum)
+                            + "\",\"correctionNumber\":" + saved.getCorrectionNumber()
+                            + ",\"correctionReason\":\"" + safe(correctionReason)
+                            + "\",\"correctedBy\":\"" + safe(correctedByName)
+                            + "\",\"pieces\":" + totalPieces + "}",
+                        request.getRemoteAddr());
+            }
+
+            asyncGenerateArtifacts(saved.getId());
+
+            final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "id", saved.getId(),
+                    "correctionNumber", saved.getCorrectionNumber(),
+                    "correctionReason", correctionReason,
+                    "correctedByName", correctedByName,
+                    "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
+                    "pieceCount", totalPieces
+            ));
+
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_CORRECTION_ERROR, ex.getMessage())));
+        }
+    }
+
+    /**
      * Endpoint de validacion (dry-run): calcula si emitir el recibo provocaria
      * correcciones en el Booking (received > reserved) SIN guardar nada.
-     * Retorna { valid: true, corrections: [...] }
      */
     @PostMapping("/validate")
     public ResponseEntity<?> validateWarehouseReceipt(@RequestBody ReceiptPayload payload) {
@@ -293,146 +354,15 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Endpoint para actualizar un recibo existente con nuevas piezas y evidencias (no acumulativo).
-     */
-    @PutMapping("/{receiptId}/emit")
-    public ResponseEntity<?> updateWarehouseReceipt(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
-                                                     @AuthenticationPrincipal UserPrincipal principal,
-                                                     HttpServletRequest request) {
-        try {
-            if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
-            }
+    // ═══════════════════════════════════════════════════════════════════
+    //  ENDPOINTS — Read / Export
+    // ═══════════════════════════════════════════════════════════════════
 
-            WarehouseReceipt receipt = toEntity(payload.receipt, payload.mawbId);
-            List<ReceiptPiece> pieces = payload.pieces.stream()
-                    .map(ReceiptPieceData::toEntity)
-                    .collect(Collectors.toList());
-
-            List<Map<String, String>> docsMap = null;
-            if (payload.supportingDocs != null) {
-                docsMap = payload.supportingDocs.stream()
-                    .map(d -> Map.of(
-                        "name", d.name != null ? d.name : "",
-                        "type", d.type != null ? d.type : "",
-                        "url", d.url != null ? d.url : ""
-                    ))
-                    .collect(Collectors.toList());
-            }
-            WarehouseReceipt processed = warehouseService.updateWarehouseReceipt(receiptId, receipt, pieces, docsMap);
-            if (principal != null) {
-                String mawbNum = processed.getMawb() != null ? processed.getMawb().getAwbNumber() : "";
-                int totalPieces = pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
-                String details = "{\"mawb\":\"" + safe(mawbNum) + "\",\"pieces\":" + totalPieces
-                    + ",\"actualKg\":" + (processed.getActualWeightKg() != null ? processed.getActualWeightKg() : 0)
-                    + ",\"actualLbs\":" + (processed.getActualWeightLbs() != null ? processed.getActualWeightLbs() : 0)
-                    + ",\"chargeableKg\":" + (processed.getChargeableWeightKg() != null ? processed.getChargeableWeightKg() : 0)
-                    + ",\"chargeableLbs\":" + (processed.getChargeableWeightLbs() != null ? processed.getChargeableWeightLbs() : 0) + "}";
-                auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                        "UPDATE", "RECEIPT", receiptId.toString(),
-                        details,
-                        request.getRemoteAddr());
-            }
-            final UUID savedId = processed.getId();
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override public void afterCommit() {
-                        java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
-                    }
-                });
-            } else {
-                java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
-            }
-            final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "id", savedId,
-                    "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
-                    "pieceCount", totalPieces
-            ));
-
-        } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_UPDATE_ERROR, ex.getMessage())));
-        }
-    }
-
-    /**
-     * Endpoint para crear una corrección de un recibo existente.
-     * Genera un nuevo recibo vinculado al original y marca el original como superseded.
-     */
-    @PostMapping("/{receiptId}/correct")
-    public ResponseEntity<?> createCorrection(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
-                                               @AuthenticationPrincipal UserPrincipal principal,
-                                               HttpServletRequest request) {
-        try {
-            if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
-            }
-
-            WarehouseReceipt correctionEntity = toEntity(payload.receipt, payload.mawbId);
-            List<ReceiptPiece> pieces = payload.pieces.stream()
-                    .map(ReceiptPieceData::toEntity)
-                    .collect(Collectors.toList());
-
-            List<Map<String, String>> docsMap = null;
-            if (payload.supportingDocs != null) {
-                docsMap = payload.supportingDocs.stream()
-                    .map(d -> Map.of(
-                        "name", d.name != null ? d.name : "",
-                        "type", d.type != null ? d.type : "",
-                        "url", d.url != null ? d.url : ""
-                    ))
-                    .collect(Collectors.toList());
-            }
-
-            WarehouseReceipt saved = warehouseService.createCorrection(receiptId, correctionEntity, pieces, docsMap);
-
-            if (principal != null) {
-                String mawbNum = saved.getMawb() != null ? saved.getMawb().getAwbNumber() : "";
-                auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                        "CREATE", "RECEIPT_CORRECTION", saved.getId().toString(),
-                        "{\"originalReceipt\":\"" + receiptId + "\",\"mawb\":\"" + safe(mawbNum)
-                            + "\",\"correctionNumber\":" + saved.getCorrectionNumber() + "}",
-                        request.getRemoteAddr());
-            }
-
-            final UUID savedId = saved.getId();
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override public void afterCommit() {
-                        java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
-                    }
-                });
-            } else {
-                java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
-            }
-
-            final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "id", savedId,
-                    "correctionNumber", saved.getCorrectionNumber(),
-                    "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
-                    "pieceCount", totalPieces
-            ));
-
-        } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Error creando corrección: " + ex.getMessage()));
-        }
-    }
-
-    /**
-     * Endpoint para consultar el desglose de piezas cubicadas asociadas a un recibo.
-     */
     @GetMapping("/{receiptId}/pieces")
     public ResponseEntity<List<ReceiptPiece>> getPiecesByReceipt(@PathVariable UUID receiptId) {
         return ResponseEntity.ok(pieceRepository.findByReceiptId(receiptId));
     }
 
-    /**
-     * Endpoint para consultar las evidencias documentales de un recibo en formato JSON.
-     */
     @GetMapping("/{receiptId}/supporting-docs")
     public ResponseEntity<?> getSupportingDocsJson(@PathVariable UUID receiptId) {
         try {
@@ -452,9 +382,6 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Endpoint para generar HTML con todas las evidencias documentales de un recibo.
-     */
     @GetMapping("/{receiptId}/supporting-docs/html")
     public ResponseEntity<?> getSupportingDocsHtml(@PathVariable UUID receiptId) {
         try {
@@ -470,9 +397,6 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Endpoint para generar PDF con todas las evidencias documentales de un recibo.
-     */
     @GetMapping("/{receiptId}/supporting-docs/pdf")
     public ResponseEntity<?> getSupportingDocsPdf(@PathVariable UUID receiptId) {
         try {
@@ -488,9 +412,6 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Endpoint para exportar un recibo de bodega a Excel con desglose completo.
-     */
     @GetMapping("/{receiptId}/export")
     public ResponseEntity<?> exportReceipt(@PathVariable UUID receiptId) {
         try {
@@ -512,9 +433,6 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Endpoint for mobile clients: returns a downloadable URL for the receipt Excel export.
-     */
     @GetMapping("/{receiptId}/export-url")
     public ResponseEntity<?> getExportUrl(@PathVariable UUID receiptId) {
         try {
@@ -539,9 +457,6 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Endpoint para descargar el PDF completo del recibo de bodega (piezas + firmas + anexo HAWB).
-     */
     @GetMapping("/{receiptId}/pdf")
     public ResponseEntity<?> getReceiptPdf(@PathVariable UUID receiptId) {
         try {
@@ -562,10 +477,22 @@ public class WarehouseController {
         }
     }
 
-    /**
-     * Generates and persists PDF + XLSX artifacts for a receipt. Called AFTER the main
-     * transaction commits so heavy rendering (openhtmltopdf / POI) does not block the DB.
-     */
+    // ═══════════════════════════════════════════════════════════════════
+    //  INTERNAL
+    // ═══════════════════════════════════════════════════════════════════
+
+    private void asyncGenerateArtifacts(UUID receiptId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() {
+                    java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
+                }
+            });
+        } else {
+            java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(receiptId));
+        }
+    }
+
     private void generatePersistedArtifacts(UUID receiptId) {
         try {
             receiptFullPdfService.generateReceiptPdf(receiptId);

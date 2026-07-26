@@ -68,7 +68,7 @@ public class UldAwbServiceImpl implements UldAwbService {
                 int totalPieces = existingPieces + newPieces;
                 int reservedPieces = mawb.getPieces() != null ? mawb.getPieces() : 0;
 
-                int receivedPieces = receiptRepository.findByMawbId(mawb.getId()).stream()
+                int receivedPieces = receiptRepository.findByMawbIdAndSupersededFalse(mawb.getId()).stream()
                         .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
                         .sum();
 

@@ -81,6 +81,8 @@ public class WarehouseReceiptDTO {
     private UUID correctionOfId;
     private Integer correctionNumber;
     private Boolean superseded;
+    private String correctionReason;
+    private String correctedByName;
 
     private List<ReceiptPieceDTO> pieces;
 
@@ -142,6 +144,8 @@ public class WarehouseReceiptDTO {
                 .correctionOfId(entity.getCorrectionOfId())
                 .correctionNumber(entity.getCorrectionNumber())
                 .superseded(entity.getSuperseded())
+                .correctionReason(entity.getCorrectionReason())
+                .correctedByName(entity.getCorrectedByName())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();   
@@ -214,6 +218,8 @@ public class WarehouseReceiptDTO {
         entity.setCorrectionOfId(dto.getCorrectionOfId());
         entity.setCorrectionNumber(dto.getCorrectionNumber());
         entity.setSuperseded(dto.getSuperseded());
+        entity.setCorrectionReason(dto.getCorrectionReason());
+        entity.setCorrectedByName(dto.getCorrectedByName());
         return entity;
     }
 }

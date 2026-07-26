@@ -8,7 +8,6 @@ export const receiptsApi = {
   export:   (id) => api.get(`/warehouse/receipts/${id}/export`, { params: { t: Date.now() }, responseType: 'blob' }),
   getExportUrl: (id) => api.get(`/warehouse/receipts/${id}/export-url`),
   getFullPdf: (id) => api.get(`/warehouse/receipts/${id}/pdf`, { responseType: 'blob' }),
-  updateEmit: (id, payload) => api.put(`/warehouse/receipts/${id}/emit`, payload),
   createCorrection: (receiptId, payload) => api.post(`/warehouse/receipts/${receiptId}/correct`, payload),
   validate: (payload) => api.post('/warehouse/receipts/validate', payload),
   getSupportingDocsJson: (id) => api.get(`/warehouse/receipts/${id}/supporting-docs`),

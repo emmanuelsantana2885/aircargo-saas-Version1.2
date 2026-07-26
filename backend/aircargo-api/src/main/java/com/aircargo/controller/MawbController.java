@@ -227,8 +227,8 @@ public class MawbController {
                 if (mawbDocsRaw != null && !mawbDocsRaw.isBlank() && !"[]".equals(mawbDocsRaw)) {
                     allDocs.addAll(objectMapper.readValue(mawbDocsRaw, new TypeReference<List<Map<String, String>>>() {}));
                 }
-                // 2. Receipt-level docs
-                List<WarehouseReceipt> receipts = receiptRepository.findByMawbId(mawbId);
+                // 2. Receipt-level docs (only active receipts)
+                List<WarehouseReceipt> receipts = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
                 for (WarehouseReceipt r : receipts) {
                     String raw = r.getSupportingDocs();
                     if (raw != null && !raw.isBlank() && !"[]".equals(raw)) {
@@ -283,7 +283,7 @@ public class MawbController {
                 if (mawbDocsRaw != null && !mawbDocsRaw.isBlank() && !"[]".equals(mawbDocsRaw)) {
                     allDocs.addAll(objectMapper.readValue(mawbDocsRaw, new TypeReference<List<Map<String, String>>>() {}));
                 }
-                List<WarehouseReceipt> receipts = receiptRepository.findByMawbId(mawbId);
+                List<WarehouseReceipt> receipts = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
                 for (WarehouseReceipt r : receipts) {
                     String raw = r.getSupportingDocs();
                     if (raw != null && !raw.isBlank() && !"[]".equals(raw)) {

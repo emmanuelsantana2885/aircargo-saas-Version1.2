@@ -192,7 +192,7 @@ public class ScanService {
     private int getMaxPieces(Mawb mawb) {
         int reserved = mawb.getPieces() != null ? mawb.getPieces() : 0;
 
-        int received = receiptRepository.findByMawbId(mawb.getId()).stream()
+        int received = receiptRepository.findByMawbIdAndSupersededFalse(mawb.getId()).stream()
                 .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
                 .sum();
 
@@ -220,7 +220,7 @@ public class ScanService {
         dto.setDestination(mawb.getDestination());
         dto.setReservedPieces(mawb.getPieces() != null ? mawb.getPieces() : 0);
 
-        int received = receiptRepository.findByMawbId(mawb.getId()).stream()
+        int received = receiptRepository.findByMawbIdAndSupersededFalse(mawb.getId()).stream()
                 .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
                 .sum();
         dto.setReceivedPieces(received);

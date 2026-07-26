@@ -21,9 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -41,151 +41,10 @@ public class WarehouseService {
     private final PdfGenerationService pdfService;
     private final ReceiptExportService receiptExportService;
 
-    // Lock en memoria por MAWB para evitar condiciones de carrera cuando dos usuarios
-    // emiten/actualizan el recibo del mismo MAWB casi al mismo tiempo (evita "lost update").
-    // NOTA: esto serializa solo dentro de esta instancia de la app. Si en el futuro se
-    // despliega en mas de una instancia (horizontal scaling), reemplazar por un lock
-    // a nivel de base de datos (SELECT ... FOR UPDATE sobre la fila del MAWB).
     private final java.util.concurrent.ConcurrentHashMap<UUID, Object> mawbLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
     private Object lockFor(UUID mawbId) {
         return mawbLocks.computeIfAbsent(mawbId, k -> new Object());
-    }
-
-    /**
-     * Sincroniza el awbNumber del MAWB hacia todos los bookings vinculados.
-     */
-    private void syncBookingsAwbNumber(UUID mawbId) {
-        if (mawbId == null) return;
-        mawbRepository.findById(mawbId).ifPresent(mawb -> {
-            List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
-            for (Booking bk : bookings) {
-                bk.setAwbNumber(mawb.getAwbNumber());
-                bookingRepository.save(bk);
-            }
-        });
-    }
-
-    /**
-     * Recalcula fulfillment de bookings vinculados al MAWB sumando piezas y pesos de TODOS
-     * los recibos de bodega del MAWB.
-     * Si las piezas recibidas superan las reservadas (skids), actualiza el booking para
-     * reflejar la cantidad fisica real.
-     * @return lista de mensajes de correccion aplicadas (vacia si no hubo cambios)
-     */
-    private List<String> recalculateBookingFulfillment(UUID mawbId) {
-        List<String> corrections = new java.util.ArrayList<>();
-        if (mawbId == null) return corrections;
-        List<WarehouseReceipt> allReceipts = receiptRepository.findByMawbId(mawbId);
-        // Usar SUM de todos los recibos: cada recibo contiene un conjunto unico de piezas
-        // (el recibo general tiene todas las piezas, no hay duplicacion).
-        int totalReceivedPieces = allReceipts.stream()
-                .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
-                .sum();
-        BigDecimal totalReceivedKg = allReceipts.stream()
-                .map(r -> r.getChargeableWeightKg() != null ? r.getChargeableWeightKg() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
-        for (Booking bk : bookings) {
-            bk.setReceivedKg(totalReceivedKg);
-            int reservedSkids = bk.getSkids() != null ? bk.getSkids() : 0;
-
-            // Si las piezas recibidas superan las reservadas, corregir el booking
-            if (totalReceivedPieces > reservedSkids) {
-                bk.setSkids(totalReceivedPieces);
-                corrections.add("Booking corregido: " + reservedSkids + " → " + totalReceivedPieces + " skids (recibidas " + totalReceivedPieces + " piezas fisicas)");
-                reservedSkids = totalReceivedPieces;
-            }
-
-            if (reservedSkids > 0) {
-                BigDecimal pct = BigDecimal.valueOf(totalReceivedPieces)
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(BigDecimal.valueOf(reservedSkids), 4, RoundingMode.HALF_UP);
-                // Cap at 9999.9999 to avoid precision 8, scale 4 overflow
-                if (pct.compareTo(new BigDecimal("9999.9999")) > 0) {
-                    pct = new BigDecimal("9999.9999");
-                }
-                bk.setFulfillmentPct(pct);
-            } else {
-                bk.setFulfillmentPct(BigDecimal.ZERO);
-            }
-            bookingRepository.save(bk);
-        }
-        return corrections;
-    }
-
-    /**
-     * Valida si emitir un recibo provocaria correcciones en el Booking.
-     * NO guarda nada — solo calcula y retorna las correcciones potenciales.
-     * Usado por el endpoint /validate para mostrar dialogo de confirmacion al usuario.
-     */
-    public List<String> validateBookingCorrections(UUID mawbId, int newPieceCount) {
-        List<String> corrections = new java.util.ArrayList<>();
-        if (mawbId == null) return corrections;
-
-        // Sumar piezas existentes de recibos previos (no incluir el nuevo aun)
-        List<WarehouseReceipt> existingReceipts = receiptRepository.findByMawbId(mawbId);
-        int currentReceivedPieces = existingReceipts.stream()
-                .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
-                .sum();
-
-        // Proyectar el total DESPUES de emitir el nuevo recibo
-        int projectedTotal = currentReceivedPieces + newPieceCount;
-
-        List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
-        for (Booking bk : bookings) {
-            int reservedSkids = bk.getSkids() != null ? bk.getSkids() : 0;
-            if (projectedTotal > reservedSkids) {
-                corrections.add("Booking corregido: " + reservedSkids + " → " + projectedTotal + " skids (recibidas " + projectedTotal + " piezas fisicas)");
-            }
-        }
-        return corrections;
-    }
-
-    /**
-     * Recalcula piezas y peso facturable del MAWB sumando TODOS sus recibos de bodega.
-     * El total de piezas = suma de pieceCount de todos los recibos.
-     * El peso recibido = suma de mawbWeightGreatest (total scale lbs) de todos los recibos.
-     * El recibo general contiene todas las piezas; al editar se reemplazan las piezas
-     * (no se acumulan), por lo que SUM refleja el total real.
-     */
-    private void recalculateMawbTotals(UUID mawbId, WarehouseReceipt sourceReceipt) {
-        if (mawbId == null) return;
-        mawbRepository.findById(mawbId).ifPresent(mawb -> {
-            List<WarehouseReceipt> allReceipts = receiptRepository.findByMawbId(mawbId);
-
-            int totalPieces = allReceipts.stream()
-                    .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
-                    .sum();
-            mawb.setPieces(totalPieces);
-
-            if (totalPieces > 0) {
-                mawb.setStatus(MawbStatus.RECEIVED);
-            }
-
-            BigDecimal totalChargeableKg = allReceipts.stream()
-                    .map(r -> r.getChargeableWeightKg() != null ? r.getChargeableWeightKg() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            mawb.setChargeableWeightKg(totalChargeableKg);
-
-            BigDecimal lbsToKg = BigDecimal.valueOf(0.45359237);
-            BigDecimal greatestLbs = allReceipts.stream()
-                    .map(r -> r.getMawbWeightGreatest() != null ? r.getMawbWeightGreatest() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            if (greatestLbs.compareTo(BigDecimal.ZERO) > 0) {
-                mawb.setReportedWeightKg(greatestLbs.multiply(lbsToKg).setScale(3, RoundingMode.HALF_UP));
-            } else {
-                BigDecimal totalActualKg = allReceipts.stream()
-                        .map(r -> r.getActualWeightKg() != null ? r.getActualWeightKg() : BigDecimal.ZERO)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                if (totalActualKg.compareTo(BigDecimal.ZERO) > 0) {
-                    mawb.setReportedWeightKg(totalActualKg);
-                }
-            }
-            mawbRepository.save(mawb);
-        });
     }
 
     public WarehouseService(WarehouseReceiptRepository receiptRepository,
@@ -210,72 +69,64 @@ public class WarehouseService {
         return objectMapper;
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  PUBLIC API — Create / Correct / Validate
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Crea un recibo de bodega (primera emisión).
+     * Agrupa piezas por hawbId y crea un receipt por cada HAWB + uno general para piezas sin HAWB.
+     * Retorna la lista de receipts creados (el último es el "principal" para la respuesta del controller).
+     */
     @Transactional
-    public WarehouseReceipt processWarehouseReceipt(WarehouseReceipt receipt, List<ReceiptPiece> pieces) {
-        return processWarehouseReceipt(receipt, pieces, null, false);
-    }
+    public List<WarehouseReceipt> createReceipt(WarehouseReceipt base, List<ReceiptPiece> pieces,
+                                                 List<Map<String, String>> supportingDocs) {
+        resolveAirlineIfMissing(base);
+        setSupportingDocs(base, supportingDocs);
 
-    @Transactional
-    public WarehouseReceipt updateWarehouseReceipt(UUID receiptId, WarehouseReceipt receipt, List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs) {
-        WarehouseReceipt existing = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+        UUID mawbId = base.getMawb() != null ? base.getMawb().getId() : null;
 
-        // Auto-resolve airline from MAWB if not provided
-        if (receipt.getAirline() == null && receipt.getMawb() != null) {
-            mawbRepository.findById(receipt.getMawb().getId()).ifPresent(mawb -> {
-                if (mawb.getAirline() != null) receipt.setAirline(mawb.getAirline());
-            });
-        }
+        // Group pieces by hawbId
+        Map<String, List<ReceiptPiece>> grouped = pieces.stream()
+                .collect(Collectors.groupingBy(p -> p.getHawbId() != null ? p.getHawbId().toString() : "__general__"));
 
-        UUID mawbIdForLock = existing.getMawb() != null ? existing.getMawb().getId() : null;
+        List<WarehouseReceipt> created = new ArrayList<>();
 
-        synchronized (mawbIdForLock != null ? lockFor(mawbIdForLock) : new Object()) {
-            copyReceiptFields(existing, receipt);
-            if (supportingDocs != null) {
-                try {
-                    existing.setSupportingDocs(objectMapper.writeValueAsString(supportingDocs));
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException("Error serializando documentos de soporte", e);
+        synchronized (mawbId != null ? lockFor(mawbId) : new Object()) {
+            for (Map.Entry<String, List<ReceiptPiece>> entry : grouped.entrySet()) {
+                WarehouseReceipt receipt = new WarehouseReceipt();
+                copyReceiptFields(receipt, base);
+
+                String hawbKey = entry.getKey();
+                if (!"__general__".equals(hawbKey)) {
+                    receipt.setHawbId(UUID.fromString(hawbKey));
                 }
+
+                setSupportingDocs(receipt, supportingDocs);
+                receipt = receiptRepository.save(receipt);
+                receipt = savePiecesAndRecalculate(receipt, entry.getValue());
+                created.add(receipt);
             }
-
-            // Delete old pieces via JPQL and flush to ensure the DELETE is executed
-            // within this synchronized block, then save the receipt with updated fields.
-            pieceRepository.deleteByReceiptId(receiptId);
-            pieceRepository.flush();
-            receiptRepository.save(existing);
         }
 
-        // Re-fetch receipt to get a clean managed entity (empty pieces collection)
-        // after the JPQL delete, avoiding orphanRemoval stale-state issues.
-        existing = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado después de limpiar piezas: " + receiptId));
-
-        WarehouseReceipt savedReceipt = savePiecesAndRecalculate(existing, pieces);
-        recalculateMawbTotals(mawbIdForLock, savedReceipt);
-
-        if (mawbIdForLock != null) {
-            syncBookingsAwbNumber(mawbIdForLock);
-            List<String> bookingCorrections = recalculateBookingFulfillment(mawbIdForLock);
-            savedReceipt.setBookingCorrections(bookingCorrections);
-            eventPublisher.publishEvent(new ReceiptCreatedEvent(
-                savedReceipt.getId(),
-                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
-                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getAwbNumber() : null
-            ));
+        if (mawbId != null) {
+            postSaveCascade(created.isEmpty() ? base : created.get(0), mawbId);
         }
-
-        receiptExportService.evictCache(receiptId);
-        return savedReceipt;
+        for (WarehouseReceipt r : created) {
+            receiptExportService.evictCache(r.getId());
+        }
+        return created;
     }
 
     /**
-     * Crea una corrección de un recibo existente: genera un nuevo recibo vinculado al original
-     * y marca el original como superseded.
+     * Crea una corrección de un recibo existente (Adjustment Transaction).
+     * Supersede el receipt original, crea uno nuevo con correctionNumber + 1,
+     * y registra el motivo de la corrección y quién la autorizó.
      */
     @Transactional
     public WarehouseReceipt createCorrection(UUID originalReceiptId, WarehouseReceipt correctionData,
-                                              List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs) {
+                                              List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs,
+                                              String correctionReason, String correctedByName) {
         WarehouseReceipt original = receiptRepository.findById(originalReceiptId)
                 .orElseThrow(() -> new IllegalArgumentException("Recibo original no encontrado: " + originalReceiptId));
 
@@ -283,160 +134,181 @@ public class WarehouseService {
 
         WarehouseReceipt correction = new WarehouseReceipt();
         copyReceiptFields(correction, correctionData);
+        resolveAirlineIfMissing(correction);
         correction.setCorrectionOfId(original.getId());
         correction.setCorrectionNumber(nextNumber);
         correction.setSuperseded(false);
+        correction.setCorrectionReason(correctionReason);
+        correction.setCorrectedByName(correctedByName);
 
         if (supportingDocs != null && !supportingDocs.isEmpty()) {
-            try {
-                correction.setSupportingDocs(objectMapper.writeValueAsString(supportingDocs));
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException("Error serializando documentos de soporte", e);
-            }
+            setSupportingDocs(correction, supportingDocs);
         }
 
         UUID mawbId = correction.getMawb() != null ? correction.getMawb().getId() : null;
 
         synchronized (mawbId != null ? lockFor(mawbId) : new Object()) {
-            // Supersede ALL other active receipts for this MAWB (not just the original)
-            // to prevent stale active receipts from race conditions or prior bugs.
+            correction = receiptRepository.save(correction);
             if (mawbId != null) {
-                List<WarehouseReceipt> otherActive = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
-                for (WarehouseReceipt active : otherActive) {
-                    active.setSuperseded(true);
-                    receiptRepository.save(active);
-                }
+                receiptRepository.supersedeOthers(mawbId, correction.getId());
             } else {
                 original.setSuperseded(true);
                 receiptRepository.save(original);
             }
-            correction = receiptRepository.save(correction);
         }
 
         WarehouseReceipt savedReceipt = savePiecesAndRecalculate(correction, pieces);
         if (mawbId != null) {
-            recalculateMawbTotals(mawbId, savedReceipt);
-            syncBookingsAwbNumber(mawbId);
-            recalculateBookingFulfillment(mawbId);
-            eventPublisher.publishEvent(new ReceiptCreatedEvent(
-                savedReceipt.getId(),
-                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
-                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getAwbNumber() : null
-            ));
+            postSaveCascade(savedReceipt, mawbId);
         }
-
         receiptExportService.evictCache(originalReceiptId);
         return savedReceipt;
     }
 
-    @Transactional
-    public WarehouseReceipt processWarehouseReceipt(WarehouseReceipt receipt, List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs) {
-        return processWarehouseReceipt(receipt, pieces, supportingDocs, true);
+    /**
+     * Validación dry-run: calcula si emitir un recibo provocaría correcciones en el Booking
+     * SIN guardar nada.
+     */
+    public List<String> validateBookingCorrections(UUID mawbId, int newPieceCount) {
+        List<String> corrections = new ArrayList<>();
+        if (mawbId == null) return corrections;
+
+        List<WarehouseReceipt> existingReceipts = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
+        int currentReceivedPieces = existingReceipts.stream()
+                .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
+                .sum();
+
+        int projectedTotal = currentReceivedPieces + newPieceCount;
+
+        List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
+        for (Booking bk : bookings) {
+            int reservedSkids = bk.getSkids() != null ? bk.getSkids() : 0;
+            if (projectedTotal > reservedSkids) {
+                corrections.add("Booking corregido: " + reservedSkids + " → " + projectedTotal + " skids (recibidas " + projectedTotal + " piezas fisicas)");
+            }
+        }
+        return corrections;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  INTERNAL — Cascade helpers
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Post-save cascade: recalcula totales del MAWB, sincroniza bookings,
+     * y publica evento. Extraído para eliminar duplicación entre createReceipt y createCorrection.
+     */
+    private void postSaveCascade(WarehouseReceipt saved, UUID mawbId) {
+        if (mawbId == null) return;
+        recalculateMawbTotals(mawbId);
+        syncBookingsAwbNumber(mawbId);
+        List<String> bookingCorrections = recalculateBookingFulfillment(mawbId);
+        saved.setBookingCorrections(bookingCorrections);
+        eventPublisher.publishEvent(new ReceiptCreatedEvent(
+                saved.getId(),
+                saved.getMawb() != null ? saved.getMawb().getId() : null,
+                saved.getMawb() != null ? saved.getMawb().getAwbNumber() : null
+        ));
+    }
+
+    private void syncBookingsAwbNumber(UUID mawbId) {
+        if (mawbId == null) return;
+        mawbRepository.findById(mawbId).ifPresent(mawb -> {
+            List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
+            for (Booking bk : bookings) {
+                bk.setAwbNumber(mawb.getAwbNumber());
+                bookingRepository.save(bk);
+            }
+        });
     }
 
     /**
-     * @param purgeExistingForMawb si es true (comportamiento por defecto/historico), borra cualquier
-     *                             recibo previo del mismo MAWB antes de insertar el nuevo. Si es false,
-     *                             simplemente inserta el nuevo recibo dejando intactos los existentes
-     *                             (usado por el flujo de "recibo general + un recibo por HAWB" para que
-     *                             cada llamada no destruya la anterior dentro de la misma sesion).
+     * Recalcula fulfillment de bookings vinculados al MAWB.
+     * Solo cuenta recibos NO superseded (adjustment transactions).
      */
-    @Transactional
-    public WarehouseReceipt processWarehouseReceipt(WarehouseReceipt receipt, List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs, boolean purgeExistingForMawb) {
-        // Auto-resolve airline from MAWB if not provided
-        if (receipt.getAirline() == null && receipt.getMawb() != null) {
-            mawbRepository.findById(receipt.getMawb().getId()).ifPresent(mawb -> {
-                if (mawb.getAirline() != null) receipt.setAirline(mawb.getAirline());
-            });
-        }
-        if (supportingDocs != null && !supportingDocs.isEmpty()) {
-            try {
-                receipt.setSupportingDocs(objectMapper.writeValueAsString(supportingDocs));
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException("Error serializando documentos de soporte", e);
+    private List<String> recalculateBookingFulfillment(UUID mawbId) {
+        List<String> corrections = new ArrayList<>();
+        if (mawbId == null) return corrections;
+        List<WarehouseReceipt> activeReceipts = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
+        int totalReceivedPieces = activeReceipts.stream()
+                .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
+                .sum();
+        BigDecimal totalReceivedKg = activeReceipts.stream()
+                .map(r -> r.getChargeableWeightKg() != null ? r.getChargeableWeightKg() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Booking> bookings = bookingRepository.findByMawbId(mawbId);
+        for (Booking bk : bookings) {
+            bk.setReceivedKg(totalReceivedKg);
+            int reservedSkids = bk.getSkids() != null ? bk.getSkids() : 0;
+
+            if (totalReceivedPieces > reservedSkids) {
+                bk.setSkids(totalReceivedPieces);
+                corrections.add("Booking corregido: " + reservedSkids + " → " + totalReceivedPieces + " skids (recibidas " + totalReceivedPieces + " piezas fisicas)");
+                reservedSkids = totalReceivedPieces;
             }
-        }
 
-        UUID mawbId = receipt.getMawb() != null ? receipt.getMawb().getId() : null;
-        UUID hawbId = receipt.getHawbId();
-
-        WarehouseReceipt savedReceipt = null;
-        java.util.List<UUID> evictedReceiptIds = new java.util.ArrayList<>();
-
-        if (mawbId != null && hawbId != null && !purgeExistingForMawb) {
-            // HAWB-specific receipt: si ya existe un recibo para este (MAWB, HAWB),
-            // actualizarlo en vez de insertar uno nuevo, evitando duplicacion.
-            synchronized (lockFor(mawbId)) {
-                Optional<WarehouseReceipt> existingOpt = receiptRepository.findByMawbIdAndHawbId(mawbId, hawbId);
-                if (existingOpt.isPresent()) {
-                    WarehouseReceipt existing = existingOpt.get();
-                    copyReceiptFields(existing, receipt);
-                    if (supportingDocs != null) {
-                        try {
-                            existing.setSupportingDocs(objectMapper.writeValueAsString(supportingDocs));
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException("Error serializando documentos de soporte", e);
-                        }
-                    }
-                    evictedReceiptIds.add(existing.getId());
-                    pieceRepository.deleteByReceiptId(existing.getId());
-                    pieceRepository.flush();
-                    receiptRepository.save(existing);
-                } else {
-                    savedReceipt = receiptRepository.save(receipt);
+            if (reservedSkids > 0) {
+                BigDecimal pct = BigDecimal.valueOf(totalReceivedPieces)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(reservedSkids), 4, RoundingMode.HALF_UP);
+                if (pct.compareTo(new BigDecimal("9999.9999")) > 0) {
+                    pct = new BigDecimal("9999.9999");
                 }
+                bk.setFulfillmentPct(pct);
+            } else {
+                bk.setFulfillmentPct(BigDecimal.ZERO);
             }
-            // Re-fetch to get a clean managed entity after JPQL delete
-            if (!evictedReceiptIds.isEmpty() && savedReceipt == null) {
-                savedReceipt = receiptRepository.findById(evictedReceiptIds.get(0)).orElseThrow(() -> new IllegalArgumentException("Recibo HAWB no encontrado tras limpieza de piezas"));
-            } else if (savedReceipt == null) {
-                savedReceipt = receiptRepository.save(receipt);
-            }
-        } else if (mawbId != null && purgeExistingForMawb) {
-            // Instead of deleting old receipts, mark them as superseded so the
-            // correction chain is preserved and GET /api/receipts can filter them.
-            synchronized (lockFor(mawbId)) {
-                List<WarehouseReceipt> existing = receiptRepository.findByMawbId(mawbId);
-                for (WarehouseReceipt existingReceipt : existing) {
-                    if (!Boolean.TRUE.equals(existingReceipt.getSuperseded())) {
-                        existingReceipt.setSuperseded(true);
-                        receiptRepository.save(existingReceipt);
-                        evictedReceiptIds.add(existingReceipt.getId());
-                    }
-                }
-                receiptRepository.flush();
-                savedReceipt = receiptRepository.save(receipt);
-            }
-        } else if (mawbId != null) {
-            synchronized (lockFor(mawbId)) {
-                savedReceipt = receiptRepository.save(receipt);
-            }
-        } else {
-            savedReceipt = receiptRepository.save(receipt);
+            bookingRepository.save(bk);
         }
-
-        savedReceipt = savePiecesAndRecalculate(savedReceipt, pieces);
-
-        if (mawbId != null) {
-            recalculateMawbTotals(mawbId, savedReceipt);
-            syncBookingsAwbNumber(mawbId);
-            List<String> bookingCorrections = recalculateBookingFulfillment(mawbId);
-            savedReceipt.setBookingCorrections(bookingCorrections);
-        }
-
-        if (!evictedReceiptIds.contains(savedReceipt.getId())) {
-            eventPublisher.publishEvent(new ReceiptCreatedEvent(
-                savedReceipt.getId(),
-                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
-                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getAwbNumber() : null
-            ));
-        }
-        receiptExportService.evictCache(savedReceipt.getId());
-        for (UUID oldId : evictedReceiptIds) {
-            receiptExportService.evictCache(oldId);
-        }
-        return savedReceipt;
+        return corrections;
     }
+
+    /**
+     * Recalcula piezas y peso del MAWB sumando solo recibos NO superseded.
+     * Cada recibo activo (por HAWB) contribuye sus piezas al total del MAWB.
+     */
+    private void recalculateMawbTotals(UUID mawbId) {
+        if (mawbId == null) return;
+        mawbRepository.findById(mawbId).ifPresent(mawb -> {
+            List<WarehouseReceipt> activeReceipts = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
+
+            int totalPieces = activeReceipts.stream()
+                    .mapToInt(r -> r.getPieceCount() != null ? r.getPieceCount() : 0)
+                    .sum();
+            mawb.setPieces(totalPieces);
+
+            if (totalPieces > 0) {
+                mawb.setStatus(MawbStatus.RECEIVED);
+            }
+
+            BigDecimal totalChargeableKg = activeReceipts.stream()
+                    .map(r -> r.getChargeableWeightKg() != null ? r.getChargeableWeightKg() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            mawb.setChargeableWeightKg(totalChargeableKg);
+
+            BigDecimal lbsToKg = BigDecimal.valueOf(0.45359237);
+            BigDecimal greatestLbs = activeReceipts.stream()
+                    .map(r -> r.getMawbWeightGreatest() != null ? r.getMawbWeightGreatest() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (greatestLbs.compareTo(BigDecimal.ZERO) > 0) {
+                mawb.setReportedWeightKg(greatestLbs.multiply(lbsToKg).setScale(3, RoundingMode.HALF_UP));
+            } else {
+                BigDecimal totalActualKg = activeReceipts.stream()
+                        .map(r -> r.getActualWeightKg() != null ? r.getActualWeightKg() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                if (totalActualKg.compareTo(BigDecimal.ZERO) > 0) {
+                    mawb.setReportedWeightKg(totalActualKg);
+                }
+            }
+            mawbRepository.save(mawb);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  INTERNAL — Piece management
+    // ═══════════════════════════════════════════════════════════════════
 
     private WarehouseReceipt savePiecesAndRecalculate(WarehouseReceipt receipt, List<ReceiptPiece> pieces) {
         double dimFactorKg = (receipt.getDimFactorIntl() != null) ? receipt.getDimFactorIntl().doubleValue() : 366.0;
@@ -498,6 +370,10 @@ public class WarehouseService {
         return receiptRepository.save(receipt);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  INTERNAL — Field mapping
+    // ═══════════════════════════════════════════════════════════════════
+
     private void copyReceiptFields(WarehouseReceipt target, WarehouseReceipt source) {
         if (source.getMawb() != null) {
             target.setMawb(source.getMawb());
@@ -538,6 +414,28 @@ public class WarehouseService {
         target.setDimFactorDom(source.getDimFactorDom());
         target.setShipperReportedWeight(source.getShipperReportedWeight());
     }
+
+    private void resolveAirlineIfMissing(WarehouseReceipt receipt) {
+        if (receipt.getAirline() == null && receipt.getMawb() != null) {
+            mawbRepository.findById(receipt.getMawb().getId()).ifPresent(mawb -> {
+                if (mawb.getAirline() != null) receipt.setAirline(mawb.getAirline());
+            });
+        }
+    }
+
+    private void setSupportingDocs(WarehouseReceipt receipt, List<Map<String, String>> supportingDocs) {
+        if (supportingDocs != null && !supportingDocs.isEmpty()) {
+            try {
+                receipt.setSupportingDocs(objectMapper.writeValueAsString(supportingDocs));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error serializando documentos de soporte", e);
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Supporting docs — HTML / PDF generation
+    // ═══════════════════════════════════════════════════════════════════
 
     public String generateSupportingDocsHtml(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
@@ -659,14 +557,12 @@ public class WarehouseService {
 
         String footer = "AirCargo \u2014 generado " + java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16);
 
-        // ── Page 1: Signature Evidence ──
         sb.append("<div class='page'>");
         sb.append("<div class='page-header'><h2>Documentaci\u00f3n de Evidencias \u2014 Firmas</h2>");
         sb.append("<div class='meta'>MAWB: ").append(mawbInfo).append(" &#183; ").append(shipperInfo).append("</div></div>");
 
         sb.append("<div class='sig-grid'>");
 
-        // Received by
         sb.append("<div class='sig-card'>");
         sb.append("<h3>Recibido por (Almac\u00e9n)</h3>");
         sb.append("<div class='sig-row'><div class='sig-field'><label>Nombre</label><div class='value'>").append(xmlEscape(receipt.getPrintName() != null ? receipt.getPrintName() : (receipt.getReceivedByName() != null ? receipt.getReceivedByName() : "\u2014"))).append("</div></div></div>");
@@ -677,7 +573,6 @@ public class WarehouseService {
         }
         sb.append("</div>");
 
-        // Delivered by
         sb.append("<div class='sig-card'>");
         sb.append("<h3>Entregado por (Transportista)</h3>");
         sb.append("<div class='sig-row'>");
@@ -689,7 +584,6 @@ public class WarehouseService {
         }
         sb.append("</div>");
 
-        // Broker representative
         sb.append("<div class='sig-card'>");
         sb.append("<h3>Representante de Broker / Agente de Carga</h3>");
         sb.append("<div class='sig-row'>");
@@ -701,11 +595,10 @@ public class WarehouseService {
         }
         sb.append("</div>");
 
-        sb.append("</div>"); // end sig-grid
+        sb.append("</div>");
         sb.append("<div class='footer-text'>").append(footer).append("</div>");
-        sb.append("</div>"); // end page
+        sb.append("</div>");
 
-        // ── Evidence pages ──
         String rawDocs = receipt.getSupportingDocs();
         if (rawDocs != null && !rawDocs.isBlank() && !"[]".equals(rawDocs)) {
             try {

@@ -46,4 +46,6 @@ public final class ErrorMessages {
     public static final String RECEIPT_EVIDENCE_HTML_ERROR = "Error generando documento de evidencias: %s";
     public static final String RECEIPT_EVIDENCE_PDF_ERROR = "Error generando PDF de evidencias: %s";
     public static final String RECEIPT_EXPORT_URL_ERROR = "Error generando URL de exportación: %s";
+    public static final String RECEIPT_CORRECTION_ERROR = "Error creando corrección: %s";
+    public static final String RECEIPT_CORRECTION_REASON_MISSING = "El motivo de la corrección es obligatorio.";
 }

@@ -168,7 +168,7 @@ public class BiService {
                     .sum();
             row.put("dispatchedPieces", dispatchedPieces);
 
-            boolean hasReceipt = receiptRepository.findByMawbId(m.getId()).stream().findFirst().isPresent();
+            boolean hasReceipt = receiptRepository.findByMawbIdAndSupersededFalse(m.getId()).stream().findFirst().isPresent();
             row.put("hasReceipt", hasReceipt);
             row.put("hasDua", duaRecordRepository.existsByMawbId(m.getId()));
             row.put("createdAt", m.getCreatedAt() != null ? m.getCreatedAt().toString() : null);
