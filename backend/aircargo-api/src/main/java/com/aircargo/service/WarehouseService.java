@@ -239,10 +239,17 @@ public class WarehouseService {
                 }
             }
 
-            existing.getPieces().clear();
-            receiptRepository.flush();
-            existing = receiptRepository.save(existing);
+            // Delete old pieces via JPQL and flush to ensure the DELETE is executed
+            // within this synchronized block, then save the receipt with updated fields.
+            pieceRepository.deleteByReceiptId(receiptId);
+            pieceRepository.flush();
+            receiptRepository.save(existing);
         }
+
+        // Re-fetch receipt to get a clean managed entity (empty pieces collection)
+        // after the JPQL delete, avoiding orphanRemoval stale-state issues.
+        existing = receiptRepository.findById(receiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado después de limpiar piezas: " + receiptId));
 
         WarehouseReceipt savedReceipt = savePiecesAndRecalculate(existing, pieces);
         recalculateMawbTotals(mawbIdForLock, savedReceipt);
@@ -353,7 +360,7 @@ public class WarehouseService {
         UUID mawbId = receipt.getMawb() != null ? receipt.getMawb().getId() : null;
         UUID hawbId = receipt.getHawbId();
 
-        WarehouseReceipt savedReceipt;
+        WarehouseReceipt savedReceipt = null;
         java.util.List<UUID> evictedReceiptIds = new java.util.ArrayList<>();
 
         if (mawbId != null && hawbId != null && !purgeExistingForMawb) {
@@ -372,12 +379,18 @@ public class WarehouseService {
                         }
                     }
                     evictedReceiptIds.add(existing.getId());
-                    existing.getPieces().clear();
+                    pieceRepository.deleteByReceiptId(existing.getId());
                     pieceRepository.flush();
-                    savedReceipt = receiptRepository.save(existing);
+                    receiptRepository.save(existing);
                 } else {
                     savedReceipt = receiptRepository.save(receipt);
                 }
+            }
+            // Re-fetch to get a clean managed entity after JPQL delete
+            if (!evictedReceiptIds.isEmpty() && savedReceipt == null) {
+                savedReceipt = receiptRepository.findById(evictedReceiptIds.get(0)).orElseThrow(() -> new IllegalArgumentException("Recibo HAWB no encontrado tras limpieza de piezas"));
+            } else if (savedReceipt == null) {
+                savedReceipt = receiptRepository.save(receipt);
             }
         } else if (mawbId != null && purgeExistingForMawb) {
             // Instead of deleting old receipts, mark them as superseded so the

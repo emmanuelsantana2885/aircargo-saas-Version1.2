@@ -2182,6 +2182,9 @@ async function executeEmit(m, hawbs, payload) {
   if (!f) return
 
   const isVersioned = !!f._existingReceiptId
+  if (f._editedReceiptRef && !isVersioned) {
+    console.warn('[executeEmit] MAWB', m.awbNumber, 'was edited but _existingReceiptId is null — falling back to create')
+  }
 
   if (hawbs.length <= 1) {
     let res
@@ -2225,8 +2228,8 @@ async function executeEmit(m, hawbs, payload) {
 
   const downloadId = generatedReceiptId.value
   if (downloadId) {
-    setTimeout(() => downloadReceiptByIdAuto(downloadId, m.awbNumber), 500)
-    setTimeout(() => downloadReceiptPdfAuto(downloadId, m.awbNumber), 1200)
+    setTimeout(() => downloadReceiptByIdAuto(downloadId, m.awbNumber), 1500)
+    setTimeout(() => downloadReceiptPdfAuto(downloadId, m.awbNumber), 3000)
   }
 }
 
