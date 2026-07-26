@@ -49,6 +49,14 @@ Flyway migrations live in **two places** with **different content**:
 
 The backend copy also seeds the UPS airline row; the root copy does not. Keep both in sync.
 
+## Recent session changes (July 26, 2026 — Receipt Correction Logic Fix)
+
+| File | Change |
+|------|--------|
+| `frontend/src/views/WarehouseReceiptsView.vue` | **CRITICAL FIX**: `executeEmit()` now calls `updateEmit` (PUT /{id}/emit) instead of `createCorrection` (POST /{id}/correct) when editing existing receipts. Edits now UPDATE the same receipt in-place — same ID, same Excel/PDF, same audit trail. UI labels reverted to "Actualizar Recibo" / "Modo edicion". Removed edit icon button and amber highlight. |
+| `backend/.../service/WarehouseService.java` | `copyReceiptFields()` no longer sets `pdfData(null)` / `excelData(null)`. These fields are only null on fresh creates (new entity). On updates, the existing persisted artifacts remain until async `generatePersistedArtifacts` regenerates them after commit. |
+| `backend/.../controller/WarehouseController.java` | `PUT /{receiptId}/emit` audit log now includes `actualKg`, `actualLbs`, `chargeableKg`, `chargeableLbs` for full traceability. |
+
 ## Recent session changes (July 26, 2026 — Receipt Correction Superseding System)
 
 | File | Change |
