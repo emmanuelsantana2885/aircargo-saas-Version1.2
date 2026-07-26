@@ -323,9 +323,15 @@ public class WarehouseController {
             WarehouseReceipt processed = warehouseService.updateWarehouseReceipt(receiptId, receipt, pieces, docsMap);
             if (principal != null) {
                 String mawbNum = processed.getMawb() != null ? processed.getMawb().getAwbNumber() : "";
+                int totalPieces = pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
+                String details = "{\"mawb\":\"" + safe(mawbNum) + "\",\"pieces\":" + totalPieces
+                    + ",\"actualKg\":" + (processed.getActualWeightKg() != null ? processed.getActualWeightKg() : 0)
+                    + ",\"actualLbs\":" + (processed.getActualWeightLbs() != null ? processed.getActualWeightLbs() : 0)
+                    + ",\"chargeableKg\":" + (processed.getChargeableWeightKg() != null ? processed.getChargeableWeightKg() : 0)
+                    + ",\"chargeableLbs\":" + (processed.getChargeableWeightLbs() != null ? processed.getChargeableWeightLbs() : 0) + "}";
                 auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                         "UPDATE", "RECEIPT", receiptId.toString(),
-                        "{\"mawb\":\"" + safe(mawbNum) + "\",\"pieces\":" + (payload.pieces != null ? payload.pieces.size() : 0) + "}",
+                        details,
                         request.getRemoteAddr());
             }
             final UUID savedId = processed.getId();

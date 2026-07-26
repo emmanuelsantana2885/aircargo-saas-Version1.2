@@ -524,8 +524,6 @@ public class WarehouseService {
         target.setDimFactorIntl(source.getDimFactorIntl());
         target.setDimFactorDom(source.getDimFactorDom());
         target.setShipperReportedWeight(source.getShipperReportedWeight());
-        target.setPdfData(null);
-        target.setExcelData(null);
     }
 
     public String generateSupportingDocsHtml(UUID receiptId) {

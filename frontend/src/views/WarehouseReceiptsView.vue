@@ -135,14 +135,6 @@
             <div class="col-span-2 font-mono font-bold text-slate-950 relative z-10 flex items-center gap-1.5">
               <span class="text-[10px] text-slate-950 transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
               {{ m.awbNumber || m.id?.slice(0, 8) || '—' }}
-              <button v-if="receiptById[m.id]" @click.stop="toggleExpand(m)"
-                class="text-amber-600 hover:text-amber-500 transition-colors p-0.5 rounded hover:bg-amber-50"
-                title="Editar recibo existente">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                  <path d="m15 5 4 4"/>
-                </svg>
-              </button>
               <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 1"
                 class="text-[11px] font-black text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded leading-none"
                 title="Múltiples HAWBs">{{ receiptHawbs[m.id].length }} HAWBs</span>
@@ -190,8 +182,7 @@
           </div>
           </div>
 
-          <div v-if="expandedId === m.id && receiptForms[m.id]"
-            :class="receiptForms[m.id]._existingReceiptId ? 'bg-orange-50 border-b border-orange-300' : 'bg-slate-100 border-b border-slate-400'">
+          <div v-if="expandedId === m.id && receiptForms[m.id]" class="bg-slate-100 border-b border-slate-400">
             <div class="p-2 md:p-3 flex flex-col" style="height: calc(100vh - 240px); min-height: 300px;">
               <!-- Step progress bar -->
               <div class="mb-2 shrink-0">
@@ -221,13 +212,7 @@
                     &#9998; Borrador guardado {{ lastDraftSave }}
                   </span>
                   <span v-else-if="receiptForms[m.id]?._existingReceiptId" class="text-[12px] font-mono text-slate-600 italic ml-auto">
-                    &#9998; Editando recibo existente — se crear&aacute; una nueva versi&oacute;n
-                    <span v-if="(receiptForms[m.id]?._correctionNumber || 1) > 1" class="ml-1.5 text-[10px] font-bold text-amber-700 not-italic bg-amber-100 px-1.5 py-0.5 rounded">
-                      v{{ receiptForms[m.id]?._correctionNumber }}
-                    </span>
-                    <span v-if="receiptForms[m.id]?._isSuperseded" class="ml-1.5 text-[10px] font-bold text-red-600 not-italic bg-red-50 px-1.5 py-0.5 rounded">
-                      OBSOLETO
-                    </span>
+                    &#9998; Modo edici&oacute;n
                   </span>
                 </div>
               </div>
@@ -766,8 +751,8 @@
                   </button>
                   <button @click="openConfirmModal(m)" :disabled="submitting"
                     class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white transition disabled:opacity-50"
-                    :class="receiptForms[m.id]._existingReceiptId ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-800 hover:bg-slate-700'">
-                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#9888; Crear Nueva Versi&oacute;n' : '&#10003; Confirmar Recibo') }}</span>
+                    :class="receiptForms[m.id]._existingReceiptId ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-800 hover:bg-slate-700'">
+                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#10003; Actualizar Recibo' : '&#10003; Confirmar Recibo') }}</span>
                   </button>
                 </div>
               </div>
@@ -2198,20 +2183,18 @@ async function executeEmit(m, hawbs, payload) {
 
   const isVersioned = !!f._existingReceiptId
 
-  async function sendReceipt(p) {
-    if (isVersioned) {
-      const res = await receiptsApi.createCorrection(f._existingReceiptId, p)
-      return res.data
-    }
-    return store.emitReceipt(p)
-  }
-
   if (hawbs.length <= 1) {
-    const res = await sendReceipt(payload)
+    let res
+    if (isVersioned) {
+      res = await receiptsApi.updateEmit(f._existingReceiptId, payload)
+      res = res.data
+    } else {
+      res = await store.emitReceipt(payload)
+    }
     const receiptId = res?.id || null
     if (receiptId) generatedReceiptId.value = receiptId
   } else if (isVersioned) {
-    const genRes = await receiptsApi.createCorrection(f._existingReceiptId, payload)
+    const genRes = await receiptsApi.updateEmit(f._existingReceiptId, payload)
     const lastId = genRes?.data?.id || null
     if (lastId) generatedReceiptId.value = lastId
   } else {
@@ -2234,7 +2217,7 @@ async function executeEmit(m, hawbs, payload) {
   const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
   const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
   const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
-  const label = isVersioned ? 'Nueva versión generada' : 'Recibo generado'
+  const label = isVersioned ? 'Recibo actualizado' : 'Recibo generado'
   successMsg.value = label +
     ` — ${totalPieces(m.id, null)} pzas, ${totalKg.toFixed(1)} KGS / ${totalLbs.toFixed(1)} LBS (facturable: ${chargeKg.toFixed(1)} KGS)`
   if (successTimer) clearTimeout(successTimer)
