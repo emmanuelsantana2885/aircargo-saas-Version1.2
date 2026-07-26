@@ -262,6 +262,66 @@ public class WarehouseService {
         return savedReceipt;
     }
 
+    /**
+     * Crea una corrección de un recibo existente: genera un nuevo recibo vinculado al original
+     * y marca el original como superseded.
+     */
+    @Transactional
+    public WarehouseReceipt createCorrection(UUID originalReceiptId, WarehouseReceipt correctionData,
+                                              List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs) {
+        WarehouseReceipt original = receiptRepository.findById(originalReceiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Recibo original no encontrado: " + originalReceiptId));
+
+        int nextNumber = (original.getCorrectionNumber() != null ? original.getCorrectionNumber() : 1) + 1;
+
+        WarehouseReceipt correction = new WarehouseReceipt();
+        copyReceiptFields(correction, correctionData);
+        correction.setCorrectionOfId(original.getId());
+        correction.setCorrectionNumber(nextNumber);
+        correction.setSuperseded(false);
+
+        if (supportingDocs != null && !supportingDocs.isEmpty()) {
+            try {
+                correction.setSupportingDocs(objectMapper.writeValueAsString(supportingDocs));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error serializando documentos de soporte", e);
+            }
+        }
+
+        UUID mawbId = correction.getMawb() != null ? correction.getMawb().getId() : null;
+
+        synchronized (mawbId != null ? lockFor(mawbId) : new Object()) {
+            // Supersede ALL other active receipts for this MAWB (not just the original)
+            // to prevent stale active receipts from race conditions or prior bugs.
+            if (mawbId != null) {
+                List<WarehouseReceipt> otherActive = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
+                for (WarehouseReceipt active : otherActive) {
+                    active.setSuperseded(true);
+                    receiptRepository.save(active);
+                }
+            } else {
+                original.setSuperseded(true);
+                receiptRepository.save(original);
+            }
+            correction = receiptRepository.save(correction);
+        }
+
+        WarehouseReceipt savedReceipt = savePiecesAndRecalculate(correction, pieces);
+        if (mawbId != null) {
+            recalculateMawbTotals(mawbId, savedReceipt);
+            syncBookingsAwbNumber(mawbId);
+            recalculateBookingFulfillment(mawbId);
+            eventPublisher.publishEvent(new ReceiptCreatedEvent(
+                savedReceipt.getId(),
+                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getId() : null,
+                savedReceipt.getMawb() != null ? savedReceipt.getMawb().getAwbNumber() : null
+            ));
+        }
+
+        receiptExportService.evictCache(originalReceiptId);
+        return savedReceipt;
+    }
+
     @Transactional
     public WarehouseReceipt processWarehouseReceipt(WarehouseReceipt receipt, List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs) {
         return processWarehouseReceipt(receipt, pieces, supportingDocs, true);
@@ -320,13 +380,16 @@ public class WarehouseService {
                 }
             }
         } else if (mawbId != null && purgeExistingForMawb) {
+            // Instead of deleting old receipts, mark them as superseded so the
+            // correction chain is preserved and GET /api/receipts can filter them.
             synchronized (lockFor(mawbId)) {
                 List<WarehouseReceipt> existing = receiptRepository.findByMawbId(mawbId);
                 for (WarehouseReceipt existingReceipt : existing) {
-                    evictedReceiptIds.add(existingReceipt.getId());
-                    List<ReceiptPiece> existingPieces = pieceRepository.findByReceiptId(existingReceipt.getId());
-                    pieceRepository.deleteAll(existingPieces);
-                    receiptRepository.delete(existingReceipt);
+                    if (!Boolean.TRUE.equals(existingReceipt.getSuperseded())) {
+                        existingReceipt.setSuperseded(true);
+                        receiptRepository.save(existingReceipt);
+                        evictedReceiptIds.add(existingReceipt.getId());
+                    }
                 }
                 receiptRepository.flush();
                 savedReceipt = receiptRepository.save(receipt);

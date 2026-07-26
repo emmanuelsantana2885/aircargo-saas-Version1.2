@@ -352,6 +352,71 @@ public class WarehouseController {
     }
 
     /**
+     * Endpoint para crear una corrección de un recibo existente.
+     * Genera un nuevo recibo vinculado al original y marca el original como superseded.
+     */
+    @PostMapping("/{receiptId}/correct")
+    public ResponseEntity<?> createCorrection(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
+                                               @AuthenticationPrincipal UserPrincipal principal,
+                                               HttpServletRequest request) {
+        try {
+            if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
+            }
+
+            WarehouseReceipt correctionEntity = toEntity(payload.receipt, payload.mawbId);
+            List<ReceiptPiece> pieces = payload.pieces.stream()
+                    .map(ReceiptPieceData::toEntity)
+                    .collect(Collectors.toList());
+
+            List<Map<String, String>> docsMap = null;
+            if (payload.supportingDocs != null) {
+                docsMap = payload.supportingDocs.stream()
+                    .map(d -> Map.of(
+                        "name", d.name != null ? d.name : "",
+                        "type", d.type != null ? d.type : "",
+                        "url", d.url != null ? d.url : ""
+                    ))
+                    .collect(Collectors.toList());
+            }
+
+            WarehouseReceipt saved = warehouseService.createCorrection(receiptId, correctionEntity, pieces, docsMap);
+
+            if (principal != null) {
+                String mawbNum = saved.getMawb() != null ? saved.getMawb().getAwbNumber() : "";
+                auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                        "CREATE", "RECEIPT_CORRECTION", saved.getId().toString(),
+                        "{\"originalReceipt\":\"" + receiptId + "\",\"mawb\":\"" + safe(mawbNum)
+                            + "\",\"correctionNumber\":" + saved.getCorrectionNumber() + "}",
+                        request.getRemoteAddr());
+            }
+
+            final UUID savedId = saved.getId();
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override public void afterCommit() {
+                        java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
+                    }
+                });
+            } else {
+                java.util.concurrent.CompletableFuture.runAsync(() -> generatePersistedArtifacts(savedId));
+            }
+
+            final int totalPieces = payload.pieces.stream().mapToInt(p -> p.pieces != null ? p.pieces : 1).sum();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "id", savedId,
+                    "correctionNumber", saved.getCorrectionNumber(),
+                    "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
+                    "pieceCount", totalPieces
+            ));
+
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Error creando corrección: " + ex.getMessage()));
+        }
+    }
+
+    /**
      * Endpoint para consultar el desglose de piezas cubicadas asociadas a un recibo.
      */
     @GetMapping("/{receiptId}/pieces")

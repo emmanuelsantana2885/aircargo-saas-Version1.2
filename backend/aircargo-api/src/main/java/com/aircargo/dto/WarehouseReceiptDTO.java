@@ -78,6 +78,10 @@ public class WarehouseReceiptDTO {
     private UUID hawbId;
     private String supportingDocs;
 
+    private UUID correctionOfId;
+    private Integer correctionNumber;
+    private Boolean superseded;
+
     private List<ReceiptPieceDTO> pieces;
 
     private OffsetDateTime createdAt;
@@ -135,6 +139,9 @@ public class WarehouseReceiptDTO {
                 .printName(entity.getPrintName())
                 .hawbId(entity.getHawbId())
                 .supportingDocs(entity.getSupportingDocs())
+                .correctionOfId(entity.getCorrectionOfId())
+                .correctionNumber(entity.getCorrectionNumber())
+                .superseded(entity.getSuperseded())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();   
@@ -204,6 +211,9 @@ public class WarehouseReceiptDTO {
         entity.setPrintName(dto.getPrintName());
         entity.setHawbId(dto.getHawbId());
         entity.setSupportingDocs(dto.getSupportingDocs());
+        entity.setCorrectionOfId(dto.getCorrectionOfId());
+        entity.setCorrectionNumber(dto.getCorrectionNumber());
+        entity.setSuperseded(dto.getSuperseded());
         return entity;
     }
 }

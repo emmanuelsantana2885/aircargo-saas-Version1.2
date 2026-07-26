@@ -206,6 +206,17 @@ public class WarehouseReceipt {
     @Builder.Default
     private List<ReceiptPiece> pieces = new ArrayList<>();
 
+    @Column(name = "correction_of_id")
+    private UUID correctionOfId;
+
+    @Builder.Default
+    @Column(name = "correction_number")
+    private Integer correctionNumber = 1;
+
+    @Builder.Default
+    @Column(name = "superseded")
+    private Boolean superseded = false;
+
     @Transient
     @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
     private List<String> bookingCorrections = new ArrayList<>();

@@ -21,7 +21,9 @@ public class WarehouseReceiptServiceImpl implements WarehouseReceiptService{
 
     @Override
     public List<WarehouseReceiptDTO> getAll(UUID airlineId) {
-        List<WarehouseReceipt> results = airlineId != null ? repository.findByAirlineId(airlineId) : repository.findAll();
+        List<WarehouseReceipt> results = airlineId != null
+                ? repository.findByAirlineIdAndSupersededFalse(airlineId)
+                : repository.findBySupersededFalse();
         return results.stream().map(WarehouseReceiptDTO::fromEntity).collect(Collectors.toList());
     }
 

@@ -52,13 +52,13 @@ class WarehouseReceiptServiceImplTest {
     void getAll_filtersByAirlineId() {
         UUID airlineId = UUID.randomUUID();
         WarehouseReceipt receipt = makeReceipt(UUID.randomUUID(), airlineId);
-        when(repository.findByAirlineId(airlineId)).thenReturn(List.of(receipt));
+        when(repository.findByAirlineIdAndSupersededFalse(airlineId)).thenReturn(List.of(receipt));
 
         List<WarehouseReceiptDTO> result = service.getAll(airlineId);
 
         assertEquals(1, result.size());
         assertEquals(airlineId, result.get(0).getAirlineId());
-        verify(repository).findByAirlineId(airlineId);
+        verify(repository).findByAirlineIdAndSupersededFalse(airlineId);
     }
 
     @Test

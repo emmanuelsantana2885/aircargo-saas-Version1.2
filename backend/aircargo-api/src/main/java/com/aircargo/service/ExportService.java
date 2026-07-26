@@ -66,7 +66,7 @@ public class ExportService {
                                   : mawbRepository.findAll().stream().map(this::mawbToMap).collect(Collectors.toList());
             case "BOOKINGS" -> audit ? auditJson("BOOKING", bookingRepository.findAll().stream().map(this::bookingId).toList())
                                      : bookingRepository.findAll().stream().map(this::bookingToMap).collect(Collectors.toList());
-            case "RECEIPTS" -> audit ? auditJson("RECEIPT", receiptRepository.findAll().stream().map(this::receiptId).toList())
+            case "RECEIPTS" -> audit ? receiptAuditJson(receiptRepository.findAll().stream().map(this::receiptId).toList())
                                      : receiptRepository.findAll().stream().map(this::receiptToMap).collect(Collectors.toList());
             case "FLIGHTS" -> audit ? auditJson("FLIGHT", flightRepository.findAll().stream().map(this::flightId).toList())
                                     : flightRepository.findAll().stream().map(this::flightToMap).collect(Collectors.toList());
@@ -205,17 +205,21 @@ public class ExportService {
 
     private void exportAuditReceipts(PrintWriter pw) {
         Map<UUID, String> roleMap = buildUserRoleMap();
-        pw.println("ID,mawb,shipper,pieces,actual kg,chargeable kg,created at,created by,transaction type,user role,email");
+        pw.println("ID,mawb,shipper,pieces,actual kg,chargeable kg,created at,created by,transaction type,details,user role,email");
         for (WarehouseReceipt r : receiptRepository.findAll()) {
             String id = r.getId().toString();
             String mawbNum = r.getMawb() != null ? r.getMawb().getAwbNumber() : "";
             List<AuditLog> logs = auditLogRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc("RECEIPT", id);
-            for (AuditLog log : logs) {
+            List<AuditLog> correctionLogs = auditLogRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc("RECEIPT_CORRECTION", id);
+            List<AuditLog> allLogs = new ArrayList<>(logs);
+            allLogs.addAll(correctionLogs);
+            allLogs.sort(Comparator.comparing(AuditLog::getCreatedAt).reversed());
+            for (AuditLog log : allLogs) {
                 pw.println(join(id, mawbNum, r.getShipperName(),
                     String.valueOf(r.getPieceCount()), str(r.getActualWeightKg()),
                     str(r.getChargeableWeightKg()),
                     log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
-                    log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
+                    log.getFullName(), log.getAction(), log.getDetails(), userRole(log, roleMap), log.getEmail()));
             }
         }
     }
@@ -356,6 +360,29 @@ public class ExportService {
         for (String id : ids) {
             List<AuditLog> logs = auditLogRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(entityType, id);
             for (AuditLog log : logs) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("entityId", id);
+                m.put("transactionType", log.getAction());
+                m.put("createdAt", log.getCreatedAt() != null ? log.getCreatedAt().toString() : "");
+                m.put("createdBy", log.getFullName());
+                m.put("userRole", userRole(log, roleMap));
+                m.put("email", log.getEmail());
+                result.add(m);
+            }
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> receiptAuditJson(List<String> ids) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String id : ids) {
+            List<AuditLog> logs = auditLogRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc("RECEIPT", id);
+            List<AuditLog> correctionLogs = auditLogRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc("RECEIPT_CORRECTION", id);
+            List<AuditLog> allLogs = new ArrayList<>(logs);
+            allLogs.addAll(correctionLogs);
+            allLogs.sort(Comparator.comparing(AuditLog::getCreatedAt).reversed());
+            for (AuditLog log : allLogs) {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("entityId", id);
                 m.put("transactionType", log.getAction());

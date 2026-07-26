@@ -152,7 +152,7 @@ export const useAppStore = defineStore('app', () => {
     return data
   }
 
-  async function loadReceipts({ page = 0, size = 50 } = {}) {
+  async function loadReceipts({ page = 0, size = 500 } = {}) {
     try {
       loading.value = true
       const res = await receiptsApi.getAll({ page, size })

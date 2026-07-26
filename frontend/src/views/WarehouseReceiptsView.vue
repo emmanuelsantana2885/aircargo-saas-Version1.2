@@ -135,6 +135,14 @@
             <div class="col-span-2 font-mono font-bold text-slate-950 relative z-10 flex items-center gap-1.5">
               <span class="text-[10px] text-slate-950 transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
               {{ m.awbNumber || m.id?.slice(0, 8) || '—' }}
+              <button v-if="receiptById[m.id]" @click.stop="toggleExpand(m)"
+                class="text-amber-600 hover:text-amber-500 transition-colors p-0.5 rounded hover:bg-amber-50"
+                title="Editar recibo existente">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                  <path d="m15 5 4 4"/>
+                </svg>
+              </button>
               <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 1"
                 class="text-[11px] font-black text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded leading-none"
                 title="Múltiples HAWBs">{{ receiptHawbs[m.id].length }} HAWBs</span>
@@ -182,7 +190,8 @@
           </div>
           </div>
 
-          <div v-if="expandedId === m.id && receiptForms[m.id]" class="bg-slate-100 border-b border-slate-400">
+          <div v-if="expandedId === m.id && receiptForms[m.id]"
+            :class="receiptForms[m.id]._existingReceiptId ? 'bg-orange-50 border-b border-orange-300' : 'bg-slate-100 border-b border-slate-400'">
             <div class="p-2 md:p-3 flex flex-col" style="height: calc(100vh - 240px); min-height: 300px;">
               <!-- Step progress bar -->
               <div class="mb-2 shrink-0">
@@ -212,7 +221,13 @@
                     &#9998; Borrador guardado {{ lastDraftSave }}
                   </span>
                   <span v-else-if="receiptForms[m.id]?._existingReceiptId" class="text-[12px] font-mono text-slate-600 italic ml-auto">
-                    &#9998; Modo edici&oacute;n
+                    &#9998; Editando recibo existente — se crear&aacute; una nueva versi&oacute;n
+                    <span v-if="(receiptForms[m.id]?._correctionNumber || 1) > 1" class="ml-1.5 text-[10px] font-bold text-amber-700 not-italic bg-amber-100 px-1.5 py-0.5 rounded">
+                      v{{ receiptForms[m.id]?._correctionNumber }}
+                    </span>
+                    <span v-if="receiptForms[m.id]?._isSuperseded" class="ml-1.5 text-[10px] font-bold text-red-600 not-italic bg-red-50 px-1.5 py-0.5 rounded">
+                      OBSOLETO
+                    </span>
                   </span>
                 </div>
               </div>
@@ -749,13 +764,10 @@
                     title="Vista previa para impresión">
                     &#128424; Vista Previa
                   </button>
-                  <button v-if="receiptForms[m.id]._existingReceiptId" @click="editReceipt(m)"
-                    class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-700 hover:bg-slate-600 transition mr-1.5">
-                    &#9998; Editar Recibo
-                  </button>
                   <button @click="openConfirmModal(m)" :disabled="submitting"
-                    class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-800 hover:bg-slate-700 transition disabled:opacity-50">
-                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#10003; Actualizar Recibo' : '&#10003; Confirmar Recibo') }}</span>
+                    class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white transition disabled:opacity-50"
+                    :class="receiptForms[m.id]._existingReceiptId ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-800 hover:bg-slate-700'">
+                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#9888; Crear Nueva Versi&oacute;n' : '&#10003; Confirmar Recibo') }}</span>
                   </button>
                 </div>
               </div>
@@ -1377,8 +1389,14 @@ function initForm(m) {
       brokerName: '',
       brokerIdNum: '',
       brokerSig: '',
+      receivedByName: '',
+      receivedBySig: '',
+      receiptDate: null,
+      startDatetime: null,
       _existingReceiptId: null,
       _existingHawbReceiptIds: {},
+      _correctionNumber: 1,
+      _isSuperseded: false,
       pieceCount: 0,
       totalWeightKg: 0,
     }
@@ -1390,17 +1408,26 @@ async function loadExistingReceiptData(m) {
   if (!f) return
   const existingReceipts = (store.receipts || []).filter(r => (r.mawb?.id || r.mawbId) === m.id)
   if (existingReceipts.length === 0) return
-  // Usar el recibo general como fuente de verdad (contiene todas las piezas).
-  // En multi-HAWB, los recibos por HAWB tienen subconjuntos de piezas.
-  const generalReceipts = existingReceipts.filter(r => !r.hawbId)
-  const sourceReceipt = generalReceipts.length > 0
-    ? generalReceipts[generalReceipts.length - 1]
-    : existingReceipts[existingReceipts.length - 1]
-  f._existingReceiptId = generalReceipts.length > 0 ? generalReceipts[generalReceipts.length - 1].id : null
-  // Mapa de hawbId → receiptId para los recibos por HAWB
+  existingReceipts.sort((a, b) => {
+    const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return ca - cb
+  })
+  // Prefer non-superseded receipts as the active source
+  const activeReceipts = existingReceipts.filter(r => !r.superseded)
+  const generalActive = activeReceipts.filter(r => !r.hawbId)
+  const sourceReceipt = generalActive.length > 0
+    ? generalActive[generalActive.length - 1]
+    : activeReceipts.length > 0
+      ? activeReceipts[activeReceipts.length - 1]
+      : existingReceipts[existingReceipts.length - 1]
+  f._existingReceiptId = sourceReceipt?.id ?? null
+  f._correctionNumber = sourceReceipt?.correctionNumber ?? 1
+  f._isSuperseded = !!sourceReceipt?.superseded
+  // Mapa de hawbId → receiptId para los recibos por HAWB (prefer non-superseded)
   f._existingHawbReceiptIds = {}
   for (const r of existingReceipts) {
-    if (r.hawbId) {
+    if (r.hawbId && !r.superseded) {
       f._existingHawbReceiptIds[r.hawbId] = r.id
     }
   }
@@ -1427,24 +1454,17 @@ async function loadExistingReceiptData(m) {
   f.brokerName = sourceReceipt.brokerName ?? f.brokerName
   f.brokerIdNum = sourceReceipt.brokerIdNum ?? f.brokerIdNum
   f.brokerSig = sourceReceipt.brokerSigUrl ?? f.brokerSig
+  f.receivedByName = sourceReceipt.receivedByName ?? f.receivedByName
+  f.receivedBySig = sourceReceipt.receivedBySigUrl ?? f.receivedBySig
+  f.receiptDate = sourceReceipt.receiptDate ?? f.receiptDate
+  f.startDatetime = sourceReceipt.startDatetime ?? f.startDatetime
   f.pieceCount = sourceReceipt.pieceCount ?? 0
   f.totalWeightKg = sourceReceipt.actualWeightKg ?? sourceReceipt.chargeableWeightKg ?? 0
   try {
     const piecesRes = await receiptsApi.getPieces(sourceReceipt.id)
     const loadedPieces = piecesRes.data || []
     if (loadedPieces.length > 0) {
-      const dk = f.dimFactorKg || 366
-      const dl = f.dimFactorLbs || 194
       f.pieces = loadedPieces.map((p) => {
-        const l = Number(p.lengthIn) || 0
-        const w = Number(p.widthIn) || 0
-        const h = Number(p.heightIn) || 0
-        const qty = p.pieces || 1
-        const vol = l * w * h * qty
-        const dimKg = vol > 0 ? vol / dk : 0
-        const dimLbs = vol > 0 ? vol / dl : 0
-        const skg = p.scaleWeightLbs ? Number(p.scaleWeightLbs) / 2.20462 : 0
-        const chgKg = Math.max(dimKg, skg)
         return {
           pieces: p.pieces ?? 1,
           hawbId: p.hawbId ?? null,
@@ -1452,9 +1472,12 @@ async function loadExistingReceiptData(m) {
           widthIn: p.widthIn ?? null,
           heightIn: p.heightIn ?? null,
           scaleWeightLbs: p.scaleWeightLbs ?? null,
-          dimWeight: dimLbs, dimWeightLbs: dimLbs,
-          scaleWeightKg: skg, dimWeightKg: dimKg,
-          chargeableKg: chgKg, chargeableLbs: chgKg * 2.20462,
+          dimWeight: Number(p.dimWeightLbs) || 0,
+          dimWeightLbs: Number(p.dimWeightLbs) || 0,
+          scaleWeightKg: Number(p.scaleWeightKg) || 0,
+          dimWeightKg: Number(p.dimWeightKg) || 0,
+          chargeableKg: Number(p.chargeableKg) || 0,
+          chargeableLbs: Number(p.chargeableLbs) || 0,
         }
       })
       f.mawbWeightGreatest = totalScaleLbs(m.id, null)
@@ -1487,7 +1510,7 @@ function calcPiece(mawbId, pi) {
   p.dimWeight = p.dimWeightLbs
   p.scaleWeightKg = p.scaleWeightLbs ? p.scaleWeightLbs / 2.20462 : 0
   p.chargeableKg = Math.max(p.dimWeightKg, p.scaleWeightKg)
-  p.chargeableLbs = p.chargeableKg * 2.20462
+  p.chargeableLbs = Math.max(p.scaleWeightLbs || 0, p.dimWeightLbs || 0)
   // MAWB weight = suma de pesos de bascula de todas las piezas
   const f = receiptForms[mawbId]
   if (f) f.mawbWeightGreatest = totalScaleLbs(mawbId, null)
@@ -1531,7 +1554,10 @@ function totalChargeableKg(mawbId, hawbId) {
 }
 
 function totalChargeableLbs(mawbId, hawbId) {
-  return totalChargeableKg(mawbId, hawbId) * 2.20462
+  const pieces = allPieces(mawbId, hawbId)
+  const totalDimLbs = pieces.reduce((s, p) => s + (p.dimWeightLbs || 0), 0)
+  const totalScaleLbs = pieces.reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
+  return Math.max(totalDimLbs, totalScaleLbs)
 }
 
 function hawbsForDisplay(mawbId) {
@@ -1738,7 +1764,7 @@ async function toggleExpand(m) {
           if (!f.shipperName) f.shipperName = m.shipperName || h0?.shipperName || ''
           if (!f.consigneeName) f.consigneeName = m.consigneeName || (hawbData.length === 1 ? h0?.consigneeName : '') || ''
           // mawbWeightGreatest se auto-calculó desde scaleWeightLbs en loadExistingReceiptData o calcPiece
-          if (!f.awbReportedPieces) f.awbReportedPieces = m.pieces || hawbData.reduce((s, h) => s + (h.pieces || 0), 0) || 0
+          if (f.awbReportedPieces == null) f.awbReportedPieces = m.pieces || hawbData.reduce((s, h) => s + (h.pieces || 0), 0) || 0
           const existingIds = new Set(f.hawbEntries.filter(e => e._dbId).map(e => e._dbId))
           for (const h of hawbData) {
             if (!existingIds.has(h.id)) {
@@ -2009,10 +2035,6 @@ async function confirmBookingCorrection() {
   await executeEmit(m, hawbs, payload)
 }
 
-async function editReceipt(m) {
-  return submitReceipt(m)
-}
-
 async function submitReceipt(m) {
   if (submitting.value) return
   const f = receiptForms[m.id]
@@ -2042,6 +2064,12 @@ async function submitReceipt(m) {
       }
     } catch (nameErr) {
       console.warn('Non-critical: failed to sync MAWB/HAWB names', nameErr)
+    }
+
+    for (const entry of f.hawbEntries) {
+      if (!entry._dbId && entry.hawbNumber && !hawbs.includes(entry)) {
+        hawbs.push(entry)
+      }
     }
 
     for (const h of hawbs) {
@@ -2090,19 +2118,19 @@ async function submitReceipt(m) {
           docsProvided: f.docsProvided || false,
           customsCompleted: f.customsCompleted || false,
           preBuilt: f.preBuilt || false,
-          remarks: (f.remarks || '') + (remarkSuffix ? ' — ' + remarkSuffix : ''),
+          remarks: (f.remarks || '').replace(/ — RECIBO GENERAL(?:\s*— RECIBO GENERAL)*$/, '') + (remarkSuffix ? ' — ' + remarkSuffix : ''),
           dockSignature: f.dockSignature || '',
           printName: f.printName || '',
           deliveredByName: f.deliveredByName || '',
           deliveredByIdNum: f.deliveredByIdNum || '',
           deliveredBySigUrl: f.deliveredBySig || '',
-          receivedByName: f.printName || '',
-          receivedBySigUrl: '',
+          receivedByName: f.receivedByName || f.printName || '',
+          receivedBySigUrl: f.receivedBySig || '',
           brokerName: f.brokerName || '',
           brokerIdNum: f.brokerIdNum || '',
           brokerSigUrl: f.brokerSig || '',
-          startDatetime: new Date().toISOString(),
-          receiptDate: new Date().toISOString(),
+          startDatetime: f.startDatetime || new Date().toISOString(),
+          receiptDate: f.receiptDate || new Date().toISOString(),
         },
         pieces: pieceList.map((p, i) => ({
           pieceNumber: i + 1,
@@ -2168,9 +2196,11 @@ async function executeEmit(m, hawbs, payload) {
   const f = receiptForms[m.id]
   if (!f) return
 
+  const isVersioned = !!f._existingReceiptId
+
   async function sendReceipt(p) {
-    if (f._existingReceiptId) {
-      const res = await receiptsApi.updateEmit(f._existingReceiptId, p)
+    if (isVersioned) {
+      const res = await receiptsApi.createCorrection(f._existingReceiptId, p)
       return res.data
     }
     return store.emitReceipt(p)
@@ -2180,8 +2210,8 @@ async function executeEmit(m, hawbs, payload) {
     const res = await sendReceipt(payload)
     const receiptId = res?.id || null
     if (receiptId) generatedReceiptId.value = receiptId
-  } else if (f._existingReceiptId) {
-    const genRes = await receiptsApi.updateEmit(f._existingReceiptId, payload)
+  } else if (isVersioned) {
+    const genRes = await receiptsApi.createCorrection(f._existingReceiptId, payload)
     const lastId = genRes?.data?.id || null
     if (lastId) generatedReceiptId.value = lastId
   } else {
@@ -2195,6 +2225,7 @@ async function executeEmit(m, hawbs, payload) {
   bumpFormVersion()
   localStep.value = 5
   clearDraft(m.id)
+
   if (store.selectedFlightId) {
     await store.loadMawbs(store.selectedFlightId)
   } else {
@@ -2203,8 +2234,8 @@ async function executeEmit(m, hawbs, payload) {
   const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
   const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
   const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
-  const wasExisting = !!f._existingReceiptId
-  successMsg.value = (wasExisting ? 'Recibo actualizado' : 'Recibo generado') +
+  const label = isVersioned ? 'Nueva versión generada' : 'Recibo generado'
+  successMsg.value = label +
     ` — ${totalPieces(m.id, null)} pzas, ${totalKg.toFixed(1)} KGS / ${totalLbs.toFixed(1)} LBS (facturable: ${chargeKg.toFixed(1)} KGS)`
   if (successTimer) clearTimeout(successTimer)
   successTimer = setTimeout(() => { successMsg.value = '' }, 6000)
@@ -2219,16 +2250,15 @@ async function executeEmit(m, hawbs, payload) {
 const receiptTotals = computed(() => {
   const totals = {}
   for (const r of store.receipts || []) {
+    if (r.superseded) continue
     const mawbId = r.mawb?.id || r.mawbId
     if (!mawbId) continue
     if (!totals[mawbId]) totals[mawbId] = { pieces: 0, weightKg: 0, weightLbs: 0 }
-    // SUM de todos los recibos: cada recibo contiene un conjunto unico de piezas.
-    // Al editar se reemplazan las piezas (no se acumulan), por lo que SUM refleja el total real.
     const pc = r.pieceCount || 0
     totals[mawbId].pieces += pc
-    const wk = Number(r.actualWeightKg || r.chargeableWeightKg || 0)
+    const wk = Number(r.actualWeightKg ?? r.chargeableWeightKg ?? 0)
     totals[mawbId].weightKg += wk
-    const wl = Number(r.actualWeightLbs || r.chargeableWeightLbs || 0)
+    const wl = Number(r.actualWeightLbs ?? r.chargeableWeightLbs ?? 0)
     totals[mawbId].weightLbs += wl
   }
   return totals
@@ -2237,6 +2267,7 @@ const receiptTotals = computed(() => {
 const receiptById = computed(() => {
   const map = {}
   for (const r of store.receipts || []) {
+    if (r.superseded) continue
     const mawbId = r.mawb?.id || r.mawbId
     if (mawbId) map[mawbId] = r.id
   }
@@ -2435,7 +2466,7 @@ onMounted(async () => {
             if (!f.shipperName) f.shipperName = m.shipperName || h0?.shipperName || ''
             if (!f.consigneeName) f.consigneeName = m.consigneeName || (hawbData.length === 1 ? h0?.consigneeName : '') || ''
             // mawbWeightGreatest se auto-calculó desde scaleWeightLbs en loadExistingReceiptData o calcPiece
-            if (!f.awbReportedPieces) f.awbReportedPieces = m.pieces || hawbData.reduce((s, h) => s + (h.pieces || 0), 0) || 0
+            if (f.awbReportedPieces == null) f.awbReportedPieces = m.pieces || hawbData.reduce((s, h) => s + (h.pieces || 0), 0) || 0
             const existingIds = new Set(f.hawbEntries.filter(e => e._dbId).map(e => e._dbId))
             for (const h of hawbData) {
               if (!existingIds.has(h.id)) {
@@ -2454,6 +2485,64 @@ onMounted(async () => {
             f.hawbEntries = f.hawbEntries.filter(e => e._dbId != null || f.hawbEntries.filter(e2 => e2._dbId != null).length === 0)
             f.hawbCount = f.hawbEntries.length
             // Clean up phantom pieces (same logic as toggleExpand)
+            const validHawbIds = new Set(f.hawbEntries.map(e => e._hawbId).filter(Boolean))
+            f.pieces = f.pieces.filter(p => validHawbIds.has(p.hawbId) || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
+            for (const p of f.pieces) {
+              if (!validHawbIds.has(p.hawbId)) {
+                p.hawbId = f.hawbEntries[0]?._hawbId || null
+              }
+            }
+            if (f.hawbEntries.length > 0) {
+              for (const e of f.hawbEntries) {
+                if (!f.pieces.some(p => p.hawbId === e._hawbId)) {
+                  f.pieces.push({ pieces: 1, hawbId: e._hawbId, lengthIn: null, widthIn: null, heightIn: null, scaleWeightLbs: null, dimWeight: 0, dimWeightLbs: 0, scaleWeightKg: 0, dimWeightKg: 0, chargeableKg: 0, chargeableLbs: 0 })
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        toast.error(extractError(e))
+        receiptHawbs[m.id] = []
+      }
+    }
+  } else if (expandedId.value && store.mawbs.length) {
+    const m = store.mawbs.find(x => x.id === expandedId.value)
+    if (m) {
+      initForm(m)
+      try {
+        const [hawbRes, docsRes] = await Promise.all([
+          hawbsApi.getByMawb(m.id),
+          mawbsApi.getSupportingDocs(m.id).catch(() => ({ data: [] })),
+        ])
+        receiptHawbs[m.id] = hawbRes.data
+        const f = receiptForms[m.id]
+        if (f) {
+          f.mawbEvidence = (docsRes.data || []).filter(d => d.type === 'image' || d.type === 'document')
+          await loadExistingReceiptData(m)
+          bumpFormVersion()
+          const hawbData = hawbRes.data
+          if (hawbData.length > 0) {
+            const h0 = hawbData[0]
+            if (!f.shipperName) f.shipperName = m.shipperName || h0?.shipperName || ''
+            if (!f.consigneeName) f.consigneeName = m.consigneeName || (hawbData.length === 1 ? h0?.consigneeName : '') || ''
+            if (f.awbReportedPieces == null) f.awbReportedPieces = m.pieces || hawbData.reduce((s, h) => s + (h.pieces || 0), 0) || 0
+            const existingIds = new Set(f.hawbEntries.filter(e => e._dbId).map(e => e._dbId))
+            for (const h of hawbData) {
+              if (!existingIds.has(h.id)) {
+                f.hawbEntries.push({
+                  hawbNumber: h.hawbNumber || '',
+                  consigneeName: h.consigneeName || '',
+                  pieces: h.pieces || 0,
+                  weightKg: h.weightKg ? Number(h.weightKg) : 0,
+                  destination: h.destination || f.destination || 'MIA',
+                  _dbId: h.id,
+                  _hawbId: h.id,
+                })
+              }
+            }
+            f.hawbEntries = f.hawbEntries.filter(e => e._dbId != null || f.hawbEntries.filter(e2 => e2._dbId != null).length === 0)
+            f.hawbCount = f.hawbEntries.length
             const validHawbIds = new Set(f.hawbEntries.map(e => e._hawbId).filter(Boolean))
             f.pieces = f.pieces.filter(p => validHawbIds.has(p.hawbId) || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
             for (const p of f.pieces) {
