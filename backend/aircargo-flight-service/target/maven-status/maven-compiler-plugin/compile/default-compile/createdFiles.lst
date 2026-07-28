@@ -6,6 +6,6 @@ com/aircargo/flightservice/dto/FlightDTO.class
 com/aircargo/flightservice/FlightServiceApplication.class
 com/aircargo/flightservice/service/FlightServiceImpl.class
 com/aircargo/flightservice/dto/FlightDTO$FlightDTOBuilder.class
-com/aircargo/flightservice/entity/Flight.class
 com/aircargo/flightservice/entity/FlightStatus.class
+com/aircargo/flightservice/entity/Flight.class
 com/aircargo/flightservice/config/SecurityConfig.class

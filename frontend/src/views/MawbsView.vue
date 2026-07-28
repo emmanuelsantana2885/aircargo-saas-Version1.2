@@ -1,16 +1,16 @@
 <template>
-  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
+  <div class="ds-page">
 
     <!-- Tabs -->
     <div class="flex items-center gap-1 border-b border-slate-200 pb-0 shrink-0">
       <button @click="activeTab = 'matriz'"
-        class="px-4 py-2 text-[11px] font-mono font-black uppercase tracking-widest transition-all relative"
+        class="px-4 py-2 text-[13px] font-mono font-black uppercase tracking-widest transition-all relative"
         :class="activeTab === 'matriz' ? 'text-slate-950' : 'text-slate-400 hover:text-slate-600'">
         Matriz
         <div v-if="activeTab === 'matriz'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-950"></div>
       </button>
       <button @click="activeTab = 'estados'"
-        class="px-4 py-2 text-[11px] font-mono font-black uppercase tracking-widest transition-all relative"
+        class="px-4 py-2 text-[13px] font-mono font-black uppercase tracking-widest transition-all relative"
         :class="activeTab === 'estados' ? 'text-slate-950' : 'text-slate-400 hover:text-slate-600'">
         Estados
         <div v-if="activeTab === 'estados'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-950"></div>
@@ -20,8 +20,8 @@
     <header v-if="activeTab === 'matriz'" class="flex flex-wrap justify-between items-end gap-2 border-b border-slate-200 pb-3 shrink-0">
       <div class="flex items-end gap-3">
         <div>
-          <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">CrossReport — MAWBs</h1>
-          <p class="text-[11px] font-mono text-slate-400 mt-0.5 uppercase tracking-widest font-bold">Matriz MAWB x Vuelo / Distribucion de Piezas</p>
+          <h1 class="ds-title">CrossReport — MAWBs</h1>
+          <p class="ds-subtitle">Matriz MAWB x Vuelo / Distribucion de Piezas</p>
         </div>
         <div class="flex items-end gap-2">
           <button @click="showFilter = !showFilter"
@@ -34,27 +34,26 @@
           </button>
           <div v-if="showFilter" class="flex items-center gap-1">
       <input v-model="filterText" @keyup.enter="applyFilter" placeholder="* = contenga, = exacto, > < numerico"
-        class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-[11px] font-mono text-slate-950 outline-none focus:border-slate-500 transition-colors" />
-            <span class="text-[12px] font-mono text-slate-950 min-w-[30px]">{{ filterTypeLabel }}</span>
+        class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-[13px] font-mono text-slate-950 outline-none focus:border-slate-500 transition-colors" />
+            <span class="text-[14px] font-mono text-slate-950 min-w-[30px]">{{ filterTypeLabel }}</span>
           </div>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-[10px] font-mono text-slate-950 whitespace-nowrap">Filas: {{ filteredRows.length }} / {{ matrixRows.length }} | Cols: {{ flightColumns.length }}</span>
-        <button @click="exportCSV"
-          class="flex items-center gap-1 px-3 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-[10px] text-slate-950 hover:bg-slate-100 transition active:scale-95">
-          <span class="text-[11px] font-semibold leading-none">↓</span> Export CSV
+        <span class="text-[12px] font-mono text-slate-950 whitespace-nowrap">Filas: {{ filteredRows.length }} / {{ matrixRows.length }} | Cols: {{ flightColumns.length }}</span>
+        <button @click="exportCSV" class="ds-btn-secondary">
+          <span class="text-[14px] font-semibold leading-none">↓</span> Export CSV
         </button>
         <div class="flex items-center gap-2 border-l border-slate-200 pl-2">
           <div class="relative">
             <button @click="showPeriodMenu = !showPeriodMenu"
-              class="p-1.5 rounded hover:bg-slate-100 transition-colors text-[12px] font-mono flex items-center gap-1" title="Periodo de timeline">
+              class="p-1.5 rounded hover:bg-slate-100 transition-colors text-[14px] font-mono flex items-center gap-1" title="Periodo de timeline">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
               <span class="font-bold">{{ periodLabel }}</span>
             </button>
             <div v-if="showPeriodMenu" class="absolute top-full left-0 mt-1 bg-white border border-slate-400 rounded-lg shadow-xl z-50 py-1 min-w-[150px]">
               <button v-for="p in periodOptions" :key="p.value" @click="setTimelinePeriod(p.value)"
-                class="w-full text-left px-3 py-2 text-[12px] font-mono hover:bg-slate-100 transition-colors"
+                class="w-full text-left px-3 py-2 text-[14px] font-mono hover:bg-slate-100 transition-colors"
                 :class="timelinePeriod === p.value ? 'bg-slate-200 font-bold text-slate-950' : 'text-slate-950'">
                 {{ p.label }}
               </button>
@@ -74,7 +73,7 @@
                   class="flex-1 flex flex-col items-center relative z-10 cursor-pointer group"
                   @click="toggleRangeSegment(seg.value)"
                   :title="seg.label + ' (' + seg.count + ' cols)'">
-                  <span class="text-[11px] font-mono mb-0.5 leading-none transition-colors font-bold"
+                  <span class="text-[13px] font-mono mb-0.5 leading-none transition-colors font-bold"
                     :class="isInRange(seg.value) ? 'text-slate-950' : 'text-slate-400 group-hover:text-slate-600'">
                     {{ seg.short }}
                   </span>
@@ -107,20 +106,20 @@
                 </div>
               </div>
             </div>
-            <span v-else class="text-[11px] text-slate-300 font-mono px-2 whitespace-nowrap">Sin fechas</span>
+            <span v-else class="text-[13px] text-slate-300 font-mono px-2 whitespace-nowrap">Sin fechas</span>
           </div>
           <button v-if="rangeStartSeg" @click="clearTimeline"
-            class="text-slate-400 hover:text-slate-950 text-[10px] px-1 font-bold">✕</button>
+            class="text-slate-400 hover:text-slate-950 text-[12px] px-1 font-bold">✕</button>
         </div>
         <select v-model="localFlightId" @change="onFlightChange"
-          class="bg-slate-100 border border-slate-300 rounded px-2 py-1 font-black text-slate-950 focus:outline-none uppercase tracking-widest text-[10px] cursor-pointer min-w-[140px]">
+          class="bg-slate-100 border border-slate-300 rounded px-2 py-1 font-black text-slate-950 focus:outline-none uppercase tracking-widest text-[12px] cursor-pointer min-w-[140px]">
           <option value="">Todos los vuelos</option>
           <option v-for="flight in store.flights" :key="flight.id" :value="flight.id">
             {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }})
           </option>
         </select>
         <button @click="toggleHidePast"
-          class="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono font-bold transition border"
+          class="flex items-center gap-1 px-2 py-1 rounded text-[12px] font-mono font-bold transition border"
           :class="hidePastDates ? 'bg-slate-100 border-slate-400 text-slate-800' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-100'"
           title="Ocultar vuelos pasados">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -133,22 +132,22 @@
     <header v-if="activeTab === 'estados'" class="flex flex-wrap justify-between items-end gap-2 border-b border-slate-200 pb-3 shrink-0">
       <div class="flex items-end gap-3">
         <div>
-          <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Estados — MAWBs</h1>
-          <p class="text-[11px] font-mono text-slate-400 mt-0.5 uppercase tracking-widest font-bold">Pipeline de estados / Filtro por estado</p>
+          <h1 class="text-[15px] font-black tracking-tight text-slate-950 uppercase font-mono">Estados — MAWBs</h1>
+          <p class="text-[13px] font-mono text-slate-400 mt-0.5 uppercase tracking-widest font-bold">Pipeline de estados / Filtro por estado</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-1">
           <button v-for="s in statusOptions" :key="s.value"
             @click="toggleStatusFilter(s.value)"
-            class="px-2.5 py-1 rounded text-[10px] font-mono font-bold transition-all border"
+            class="px-2.5 py-1 rounded text-[12px] font-mono font-bold transition-all border"
             :class="estadosStatusFilter.includes(s.value)
               ? 'bg-slate-950 text-white border-slate-950'
               : 'bg-white text-slate-500 border-slate-300 hover:border-slate-500'">
             {{ s.label }} ({{ s.count }})
           </button>
         </div>
-        <span class="text-[10px] font-mono text-slate-400">MAWBs: {{ estadosFilteredRows.length }}</span>
+        <span class="text-[12px] font-mono text-slate-400">MAWBs: {{ estadosFilteredRows.length }}</span>
       </div>
     </header>
 
@@ -156,25 +155,25 @@
     <div v-if="activeTab === 'matriz'" class="flex items-center gap-3 my-2 shrink-0 px-1">
       <div v-for="(s, si) in dataStatus" :key="si" class="flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full" :class="s.dotClass" :style="s.dotStyle"></span>
-        <span class="text-[10px] font-mono font-bold text-slate-950">{{ s.label }}</span>
-        <span class="text-[10px] font-mono text-slate-400">|</span>
-        <span class="text-[10px] font-mono font-black text-slate-950 tabular-nums">{{ s.value }}</span>
+        <span class="text-[12px] font-mono font-bold text-slate-950">{{ s.label }}</span>
+        <span class="text-[12px] font-mono text-slate-400">|</span>
+        <span class="text-[12px] font-mono font-black text-slate-950 tabular-nums">{{ s.value }}</span>
       </div>
     </div>
 
     <div v-if="activeTab === 'matriz'" class="flex-1 min-h-0 flex gap-2 mb-1.5">
-    <section ref="tableSectionRef" class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden bg-white flex flex-col">
+    <section ref="tableSectionRef" class="ds-table-section">
       <div v-if="loadingMatrix" class="flex-1 flex items-center justify-center">
-        <span class="text-[12px] font-mono text-slate-950">Construyendo matriz...</span>
+        <span class="text-[14px] font-mono text-slate-950">Construyendo matriz...</span>
       </div>
       <div v-else-if="!filteredRows.length" class="flex-1 flex items-center justify-center">
-        <p class="text-[12px] font-mono text-slate-950 uppercase tracking-widest">Sin resultados</p>
+        <p class="text-[14px] font-mono text-slate-950 uppercase tracking-widest">Sin resultados</p>
       </div>
       <template v-else>
         <div ref="scrollContainer" class="overflow-auto scrollbar-none flex-1" @scroll="onScroll">
-          <table class="w-full border-collapse text-[11px] font-mono">
+          <table class="w-full border-collapse text-[13px] font-mono">
             <thead class="sticky top-0 z-20">
-              <tr class="bg-slate-700 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
+              <tr class="bg-slate-700 text-white text-[13px] font-bold uppercase tracking-wider shadow-sm">
                 <th :style="[{ left: stickyOffsets[0] + 'px', zIndex: 30 }, colStyle(0)]"
                   class="sticky bg-slate-700 text-left px-2 py-2.5 font-black uppercase tracking-wider border-r border-slate-500 whitespace-nowrap relative">MAWB
                   <div class="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group z-40" @pointerdown="startColResize(0, $event)">
@@ -217,9 +216,9 @@
                   :class="[highlightFlightId === f.id ? 'bg-slate-500 text-slate-950' : 'hover:bg-slate-800/70']"
                   @mouseenter="hoverFlightCol = f.id" @mouseleave="hoverFlightCol = null"
                   @click="scrollToFlight(f.id)">
-                  <div class="text-[11px] leading-tight">{{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }}</div>
-                  <div class="text-[11px] font-bold opacity-90 tracking-wide">{{ formatDate(f.flightDate) }}</div>
-                  <div v-if="flightTotals[f.id]" class="text-[11px] font-normal opacity-60 mt-0.5">{{ flightTotals[f.id] }} pcs</div>
+                  <div class="text-[13px] leading-tight">{{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }}</div>
+                  <div class="text-[13px] font-bold opacity-90 tracking-wide">{{ formatDate(f.flightDate) }}</div>
+                  <div v-if="flightTotals[f.id]" class="text-[13px] font-normal opacity-60 mt-0.5">{{ flightTotals[f.id] }} pcs</div>
                   <div class="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group z-40" @pointerdown.stop="startColResize(7 + fi, $event)">
                     <div class="w-0.5 h-full mx-auto bg-transparent group-hover:bg-white/40 transition-colors"></div>
                   </div>
@@ -236,8 +235,8 @@
                   :title="statusTitle(row)"
                   @click="openInfoPanel(row)">
                   <div class="flex flex-col leading-tight">
-<span class="underline decoration-dotted underline-offset-2 truncate text-[11px]">{{ row.awbNumber || '—' }}</span>
-                     <span class="text-[11px] font-normal opacity-70 mt-0.5">
+<span class="underline decoration-dotted underline-offset-2 truncate text-[13px]">{{ row.awbNumber || '—' }}</span>
+                     <span class="text-[13px] font-normal opacity-70 mt-0.5">
                       <template v-if="row.status === 'BOOKED'">Reservado</template>
                       <template v-else-if="row.status === 'RECEIVED'">Recibido</template>
                       <template v-else-if="row.status === 'MANIFESTED'">Montado</template>
@@ -250,22 +249,22 @@
                   class="sticky bg-white px-2 py-2.5 text-slate-800 border-r border-slate-300 whitespace-nowrap"
                   :title="(row.shipperName || '?') + ' / ' + (row.consigneeName || '?')">
                   <div class="flex flex-col leading-tight">
-<span class="truncate text-[11px]">{{ row.shipperName || '—' }}</span>
-                     <span class="truncate text-[11px] text-slate-950">/ {{ row.consigneeName || '—' }}</span>
+<span class="truncate text-[13px]">{{ row.shipperName || '—' }}</span>
+                     <span class="truncate text-[13px] text-slate-950">/ {{ row.consigneeName || '—' }}</span>
                   </div>
                 </td>
                 <td :style="[{ left: stickyOffsets[2] + 'px', zIndex: 10 }, colStyle(2)]"
                   class="sticky bg-white px-2 py-2.5 text-right border-r border-slate-300 whitespace-nowrap"
                    :class="row.pieceDiff !== 0 ? 'text-slate-600 bg-slate-50' : 'text-slate-950'">
                   {{ row.reservedPieces || '—' }}
-<span v-if="row.pieceDiff > 0" class="text-[11px] text-slate-500 ml-0.5" title="Recibido excede reservado">&#9650;</span>
-                    <span v-else-if="row.pieceDiff < 0" class="text-[11px] text-slate-500 ml-0.5" title="Recibido menor que reservado">&#9660;</span>
+<span v-if="row.pieceDiff > 0" class="text-[13px] text-slate-500 ml-0.5" title="Recibido excede reservado">&#9650;</span>
+                    <span v-else-if="row.pieceDiff < 0" class="text-[13px] text-slate-500 ml-0.5" title="Recibido menor que reservado">&#9660;</span>
                 </td>
                 <td :style="[{ left: stickyOffsets[3] + 'px', zIndex: 10 }, colStyle(3)]"
                   class="sticky bg-white px-2 py-2.5 text-right border-r border-slate-300 whitespace-nowrap"
                    :class="row.pieceDiff !== 0 ? 'text-slate-600 bg-slate-50' : 'text-slate-950'">
                   {{ row.receivedPieces || '—' }}
-                   <span v-if="row.receivedPieces > 0 && row.pieceDiff !== 0" class="text-[11px] text-slate-400 ml-0.5">&#9888;</span>
+                   <span v-if="row.receivedPieces > 0 && row.pieceDiff !== 0" class="text-[13px] text-slate-400 ml-0.5">&#9888;</span>
                 </td>
                 <td :style="[{ left: stickyOffsets[4] + 'px', zIndex: 10 }, colStyle(4)]"
                   class="sticky bg-white px-2 py-2.5 text-right text-slate-950 border-r border-slate-300">{{ row.totalWeightKg ? Number(row.totalWeightKg).toLocaleString() : '—' }}</td>
@@ -273,17 +272,17 @@
                   class="sticky bg-white px-2 py-2.5 text-right border-r border-slate-300"
                    :class="row.hasDispatchedExcess ? 'text-slate-600' : 'text-slate-950'">
                   {{ row.pcsDispatched || '—' }}
-                   <span v-if="row.hasDispatchedExcess" class="text-[11px] text-slate-500 ml-0.5" title="Despachado excede recibido">&#9888;</span>
+                   <span v-if="row.hasDispatchedExcess" class="text-[13px] text-slate-500 ml-0.5" title="Despachado excede recibido">&#9888;</span>
                 </td>
                 <td v-for="(f, fi) in flightColumns" :key="f.id"
                   :style="colStyle(6 + fi)"
                   class="px-2 py-2.5 text-center border-x border-slate-200 transition-all duration-200"
                   :class="cellClasses(row, f)"
                   :title="uldTooltip(row, f)">
-                  <span v-if="getPieces(row, f)" class="relative text-[11px]">
+                  <span v-if="getPieces(row, f)" class="relative text-[13px]">
                     <span class="flex flex-col items-center leading-tight">
                       <span>{{ getPieces(row, f) }}</span>
-                      <span class="text-[11px] font-normal opacity-60">{{ row.uldCountByFlight[f.id] || 0 }} ULDs</span>
+                      <span class="text-[13px] font-normal opacity-60">{{ row.uldCountByFlight[f.id] || 0 }} ULDs</span>
                     </span>
                     <svg width="16" height="16" viewBox="0 0 14 14" class="inline-block shrink-0 ml-0.5">
                       <circle cx="7" cy="7" r="5.5" fill="none" stroke="#e2e8f0" stroke-width="1.5" />
@@ -299,7 +298,7 @@
             </tbody>
           </table>
         </div>
-        <div class="bg-slate-100 border-t border-slate-300 px-4 py-1.5 text-[12px] text-slate-950 font-mono flex justify-between items-center shrink-0">
+        <div class="bg-slate-100 border-t border-slate-300 px-4 py-1.5 text-[14px] text-slate-950 font-mono flex justify-between items-center shrink-0">
           <span>Piezas: {{ totalReserved }} res. / {{ totalReceived }} rec. / {{ totalDispatched }} desp. / {{ totalTracked }} track</span>
           <span class="flex items-center gap-3">
             <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-slate-950"></span> con piezas</span>
@@ -317,10 +316,10 @@
     <transition name="slide">
       <aside v-if="infoPanel.show" class="hidden md:flex w-72 shrink-0 border border-slate-300 rounded bg-white flex-col overflow-hidden">
         <div class="flex items-center justify-between px-3 py-2 border-b border-slate-400 bg-slate-100 shrink-0">
-          <span class="text-[10px] font-mono font-black uppercase tracking-widest text-slate-950">Info MAWB</span>
-          <button @click="closeInfoPanel" class="text-slate-500 hover:text-slate-950 transition text-xs">✕</button>
+          <span class="text-[12px] font-mono font-black uppercase tracking-widest text-slate-950">Info MAWB</span>
+          <button @click="closeInfoPanel" class="text-slate-500 hover:text-slate-950 transition text-sm">✕</button>
         </div>
-        <div class="overflow-y-auto flex-1 p-3 space-y-2.5 text-[10px] font-mono text-slate-950">
+        <div class="overflow-y-auto flex-1 p-3 space-y-2.5 text-[12px] font-mono text-slate-950">
           <template v-if="infoPanel.row">
             <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
               <span class="text-slate-500 uppercase tracking-wider">MAWB</span>
@@ -361,32 +360,32 @@
             <div class="border-t border-slate-200 pt-2 space-y-1">
               <div v-if="receiptForMawb(infoPanel.row)" class="grid grid-cols-2 gap-1">
                 <button @click="downloadReceiptXlsx(infoPanel.row)"
-                  class="text-[10px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
+                  class="text-[12px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
                   title="Descargar recibo Excel">
                   &#11015; Recibo XLSX
                 </button>
                 <button @click="downloadReceiptPdf(infoPanel.row)"
-                  class="text-[10px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
+                  class="text-[12px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
                   title="Descargar recibo PDF">
                   &#128213; Recibo PDF
                 </button>
                 <button @click="downloadEvidenceHtml(infoPanel.row)"
-                  class="text-[10px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
+                  class="text-[12px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
                   title="Descargar evidencias HTML">
                   &#128196; Evidencias
                 </button>
                 <button @click="downloadEvidencePdf(infoPanel.row)"
-                  class="text-[10px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
+                  class="text-[12px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition"
                   title="Descargar evidencias PDF">
                   &#128213; Evid. PDF
                 </button>
               </div>
               <button @click="goToReceipt(infoPanel.row)"
-                class="w-full text-[10px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition">
+                class="w-full text-[12px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition">
                 &#128196; Ver en Recibos
               </button>
               <button @click="copyToClipboard(infoPanel.row.awbNumber)"
-                class="w-full text-[10px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition">
+                class="w-full text-[12px] px-2 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition">
                 &#128203; Copiar MAWB
               </button>
             </div>
@@ -400,7 +399,7 @@
     <teleport to="body">
       <transition name="fade">
         <div v-if="showMiniMap" class="fixed bottom-6 right-6 z-50 bg-white border border-slate-300 rounded p-3 w-56 h-44 overflow-hidden">
-          <div class="text-[8px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1">Minimapa</div>
+          <div class="text-[10px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1">Minimapa</div>
           <div class="grid" :style="miniMapGridStyle">
             <div v-for="(cell, mi) in miniMapCells" :key="mi"
               class="rounded-[1px]"
@@ -413,7 +412,7 @@
     </teleport>
 
     <button v-if="activeTab === 'matriz'" @click="showMiniMap = !showMiniMap"
-      class="fixed bottom-4 left-4 z-50 w-8 h-8 rounded-full bg-slate-800 text-white text-[10px] font-mono shadow-lg hover:bg-slate-950 transition flex items-center justify-center"
+      class="fixed bottom-4 left-4 z-50 w-8 h-8 rounded-full bg-slate-800 text-white text-[12px] font-mono shadow-lg hover:bg-slate-950 transition flex items-center justify-center"
       title="Minimapa de matriz">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
     </button>
@@ -421,11 +420,11 @@
     <!-- Estados View -->
     <template v-if="activeTab === 'estados'">
       <div class="flex-1 min-h-0 flex gap-2 mb-1.5 mt-2">
-        <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden bg-white flex flex-col">
+        <section class="ds-table-section">
           <div class="overflow-auto flex-1">
-            <table class="w-full border-collapse text-[11px] font-mono">
+            <table class="w-full border-collapse text-[13px] font-mono">
               <thead class="sticky top-0 z-20">
-                <tr class="bg-slate-700 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
+                <tr class="bg-slate-700 text-white text-[13px] font-bold uppercase tracking-wider shadow-sm">
                   <th class="text-left px-3 py-2.5 font-black uppercase tracking-wider border-r border-slate-500 whitespace-nowrap">MAWB</th>
                   <th class="text-left px-3 py-2.5 font-black uppercase tracking-wider border-r border-slate-500 whitespace-nowrap">Shipper / Consignee</th>
                   <th class="text-right px-3 py-2.5 font-black uppercase tracking-wider border-r border-slate-500 whitespace-nowrap">Pcs Reserved</th>
@@ -441,28 +440,28 @@
                   <td class="px-3 py-2.5 border-r border-slate-300 whitespace-nowrap cursor-pointer"
                     :class="mawbStatusClass(row)"
                     @click="openInfoPanel(row)">
-                    <span class="underline decoration-dotted underline-offset-2 text-[11px]">{{ row.awbNumber || '—' }}</span>
+                    <span class="underline decoration-dotted underline-offset-2 text-[13px]">{{ row.awbNumber || '—' }}</span>
                   </td>
                   <td class="px-3 py-2.5 text-slate-800 border-r border-slate-300 whitespace-nowrap">
                     <div class="flex flex-col leading-tight">
-                      <span class="text-[11px]">{{ row.shipperName || '—' }}</span>
-                      <span class="text-[11px] text-slate-500">/ {{ row.consigneeName || '—' }}</span>
+                      <span class="text-[13px]">{{ row.shipperName || '—' }}</span>
+                      <span class="text-[13px] text-slate-500">/ {{ row.consigneeName || '—' }}</span>
                     </div>
                   </td>
                   <td class="px-3 py-2.5 text-right border-r border-slate-300 text-slate-950 tabular-nums">{{ row.reservedPieces || '—' }}</td>
                   <td class="px-3 py-2.5 text-right border-r border-slate-300 tabular-nums"
                     :class="row.pieceDiff !== 0 ? 'text-slate-600 bg-slate-50' : 'text-slate-950'">
                     {{ row.receivedPieces || '—' }}
-                    <span v-if="row.receivedPieces > 0 && row.pieceDiff !== 0" class="text-[11px] text-slate-400 ml-0.5">&#9888;</span>
+                    <span v-if="row.receivedPieces > 0 && row.pieceDiff !== 0" class="text-[13px] text-slate-400 ml-0.5">&#9888;</span>
                   </td>
                   <td class="px-3 py-2.5 text-right text-slate-950 border-r border-slate-300 tabular-nums">{{ row.totalWeightKg ? Number(row.totalWeightKg).toLocaleString() : '—' }}</td>
                   <td class="px-3 py-2.5 text-right border-r border-slate-300 tabular-nums"
                     :class="row.hasDispatchedExcess ? 'text-slate-600' : 'text-slate-950'">
                     {{ row.pcsDispatched || '—' }}
-                    <span v-if="row.hasDispatchedExcess" class="text-[11px] text-slate-500 ml-0.5">&#9888;</span>
+                    <span v-if="row.hasDispatchedExcess" class="text-[13px] text-slate-500 ml-0.5">&#9888;</span>
                   </td>
                   <td class="px-3 py-2.5 text-center whitespace-nowrap">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold"
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-bold"
                       :class="estadosBadgeClass(row.status)">
                       <span class="w-1.5 h-1.5 rounded-full" :class="mawbStatusDotClass(row.status)"></span>
                       {{ estadosLabel(row.status) }}
@@ -472,7 +471,7 @@
               </tbody>
             </table>
           </div>
-          <div class="bg-slate-100 border-t border-slate-300 px-4 py-1.5 text-[12px] text-slate-950 font-mono flex justify-between items-center shrink-0">
+          <div class="bg-slate-100 border-t border-slate-300 px-4 py-1.5 text-[14px] text-slate-950 font-mono flex justify-between items-center shrink-0">
             <span>MAWBs: {{ estadosFilteredRows.length }} | Total piezas: {{ estadosTotalPieces }}</span>
             <span class="flex items-center gap-3">
               <span v-for="(s, si) in statusOptions" :key="si" class="flex items-center gap-1">
@@ -1383,8 +1382,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 .lp-scroll-x::-webkit-scrollbar { height: 8px; display: block; }
 .lp-scroll-x::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 4px; }
 .lp-scroll-x::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }

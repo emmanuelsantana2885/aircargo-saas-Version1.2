@@ -268,44 +268,32 @@ public class WarehouseController {
     }
 
     /**
-     * Crear una corrección de un recibo existente (Adjustment Transaction).
-     * Requiere correctionReason obligatorio. Genera un nuevo recibo y superseda el anterior.
+     * Actualizar un recibo existente in-place (edición directa).
+     * Sobrescribe campos, piezas y evidencia sobre la misma entity.
      */
-    @PostMapping("/{receiptId}/correct")
-    public ResponseEntity<?> createCorrection(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
-                                               @AuthenticationPrincipal UserPrincipal principal,
-                                               HttpServletRequest request) {
+    @PutMapping("/{receiptId}")
+    public ResponseEntity<?> updateReceipt(@PathVariable UUID receiptId, @RequestBody ReceiptPayload payload,
+                                            @AuthenticationPrincipal UserPrincipal principal,
+                                            HttpServletRequest request) {
         try {
             if (payload.receipt == null || payload.pieces == null || payload.pieces.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_DATA_INCOMPLETE));
             }
 
-            String correctionReason = payload.correctionReason != null ? payload.correctionReason.trim() : "";
-            if (correctionReason.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", ErrorMessages.RECEIPT_CORRECTION_REASON_MISSING));
-            }
-
-            String correctedByName = principal != null ? principal.fullName() : "System";
-
-            WarehouseReceipt correctionEntity = toEntity(payload.receipt, payload.mawbId);
+            WarehouseReceipt updateEntity = toEntity(payload.receipt, payload.mawbId);
             List<ReceiptPiece> pieces = payload.pieces.stream()
                     .map(ReceiptPieceData::toEntity)
                     .collect(Collectors.toList());
             List<Map<String, String>> docsMap = toDocsMap(payload.supportingDocs);
 
-            WarehouseReceipt saved = warehouseService.createCorrection(receiptId, correctionEntity, pieces, docsMap,
-                    correctionReason, correctedByName);
+            WarehouseReceipt saved = warehouseService.updateReceipt(receiptId, updateEntity, pieces, docsMap);
 
             if (principal != null) {
                 String mawbNum = saved.getMawb() != null ? saved.getMawb().getAwbNumber() : "";
                 int totalPieces = pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
                 auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                        "CREATE", "RECEIPT_CORRECTION", saved.getId().toString(),
-                        "{\"originalReceipt\":\"" + receiptId + "\",\"mawb\":\"" + safe(mawbNum)
-                            + "\",\"correctionNumber\":" + saved.getCorrectionNumber()
-                            + ",\"correctionReason\":\"" + safe(correctionReason)
-                            + "\",\"correctedBy\":\"" + safe(correctedByName)
-                            + "\",\"pieces\":" + totalPieces + "}",
+                        "UPDATE", "RECEIPT", saved.getId().toString(),
+                        "{\"mawb\":\"" + safe(mawbNum) + "\",\"pieces\":" + totalPieces + "}",
                         request.getRemoteAddr());
             }
 
@@ -315,15 +303,12 @@ public class WarehouseController {
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "id", saved.getId(),
-                    "correctionNumber", saved.getCorrectionNumber(),
-                    "correctionReason", correctionReason,
-                    "correctedByName", correctedByName,
                     "mawbId", payload.mawbId != null ? payload.mawbId.toString() : "",
                     "pieceCount", totalPieces
             ));
 
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_CORRECTION_ERROR, ex.getMessage())));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", String.format(ErrorMessages.RECEIPT_PROCESS_ERROR, ex.getMessage())));
         }
     }
 
@@ -460,7 +445,7 @@ public class WarehouseController {
     @GetMapping("/{receiptId}/pdf")
     public ResponseEntity<?> getReceiptPdf(@PathVariable UUID receiptId) {
         try {
-            byte[] pdf = receiptFullPdfService.generateReceiptPdf(receiptId);
+            byte[] pdf = receiptFullPdfService.generateReceiptPdfFresh(receiptId);
             WarehouseReceipt receipt = receiptRepository.findById(receiptId).orElse(null);
             String mawbNum = receipt != null && receipt.getMawb() != null
                     ? receipt.getMawb().getAwbNumber() : receiptId.toString().substring(0, 8);
@@ -495,7 +480,7 @@ public class WarehouseController {
 
     private void generatePersistedArtifacts(UUID receiptId) {
         try {
-            receiptFullPdfService.generateReceiptPdf(receiptId);
+            receiptFullPdfService.generateReceiptPdfFresh(receiptId);
         } catch (Exception e) {
             log.warn("No se pudo generar PDF para recibo {}: {}", receiptId, e.getMessage());
         }

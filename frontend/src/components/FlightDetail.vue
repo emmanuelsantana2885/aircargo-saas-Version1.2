@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-3 md:space-y-4">
     <!-- KPI Header -->
-    <div class="flex items-center gap-4 p-3 bg-white rounded border border-slate-200 text-[11px] font-mono text-slate-500">
+    <div class="flex items-center gap-4 p-3 bg-white rounded border border-slate-200 text-[13px] font-mono text-slate-500">
       <span>ULDs: <strong class="text-slate-900">{{ flightUlds.length }}</strong></span>
       <span>Pos: <strong class="text-slate-900">{{ flightPositions }}</strong></span>
       <span>Gross: <strong class="text-slate-900">{{ grossLbs }} lbs</strong></span>
@@ -12,7 +12,7 @@
     <!-- Tab Bar -->
     <div class="flex gap-0 border-b border-slate-200">
       <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-        class="px-4 py-2 text-[11px] font-mono font-bold uppercase tracking-wider transition border-b-2 -mb-px"
+        class="px-4 py-2 text-[13px] font-mono font-bold uppercase tracking-wider transition border-b-2 -mb-px"
         :class="activeTab === tab.id
           ? 'text-slate-900 border-slate-900'
           : 'text-slate-400 border-transparent hover:text-slate-600'">
@@ -25,29 +25,29 @@
       <!-- Commodity Breakdown Horizontal Bar Chart -->
       <section class="p-3 bg-white rounded border border-slate-200">
         <div class="flex items-center justify-between mb-2">
-          <h4 class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Desglose por Commodity (lbs)</h4>
-          <span class="text-[10px] font-mono text-slate-400">Total: {{ totalCommodityWeight }} lbs</span>
+          <h4 class="text-[12px] font-mono font-bold uppercase tracking-wider text-slate-500">Desglose por Commodity (lbs)</h4>
+          <span class="text-[12px] font-mono text-slate-400">Total: {{ totalCommodityWeight }} lbs</span>
         </div>
         <div class="space-y-2" v-if="commodityBreakdown.length">
           <div v-for="(c, idx) in commodityBreakdown" :key="idx" class="group">
             <div class="flex items-center gap-2 mb-1">
               <span class="w-2 h-2 rounded-full" :style="{ background: c.color }"></span>
-              <span class="text-[10px] font-mono text-slate-600 w-16">{{ c.shortLabel }}</span>
-              <span class="text-[10px] font-mono text-slate-900 font-medium tabular-nums">{{ c.weight.toFixed(0) }} lbs</span>
-              <span class="text-[9px] text-slate-400">({{ c.pieces }} pcs)</span>
+              <span class="text-[12px] font-mono text-slate-600 w-16">{{ c.shortLabel }}</span>
+              <span class="text-[12px] font-mono text-slate-900 font-medium tabular-nums">{{ c.weight.toFixed(0) }} lbs</span>
+              <span class="text-[11px] text-slate-400">({{ c.pieces }} pcs)</span>
             </div>
             <div class="h-3 bg-slate-100 rounded-full overflow-hidden ml-6">
               <div class="h-full rounded-full transition-all duration-500" :style="{ width: c.pct + '%', background: c.color }"></div>
             </div>
           </div>
         </div>
-        <div v-else class="text-center py-4 text-[11px] text-slate-400 font-mono">Sin datos de commodity</div>
+        <div v-else class="text-center py-4 text-[13px] text-slate-400 font-mono">Sin datos de commodity</div>
       </section>
 
       <!-- ULD Detail Table -->
       <section class="p-3 bg-white rounded border border-slate-200 overflow-x-auto">
-        <h4 class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-2">ULDs en este vuelo</h4>
-        <table class="w-full text-[10px] font-mono border-collapse" style="min-width: 700px;">
+        <h4 class="text-[12px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-2">ULDs en este vuelo</h4>
+        <table class="w-full text-[12px] font-mono border-collapse" style="min-width: 700px;">
           <thead>
             <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
               <th class="px-2 py-1.5 text-left">Pos</th>
@@ -72,7 +72,7 @@
               <td class="px-2 py-1.5 text-slate-600">
                 <div v-if="uldMawbs(u.id).length" class="flex flex-wrap gap-1">
                   <span v-for="m in uldMawbs(u.id)" :key="m.id"
-                    class="px-1.5 py-0.5 text-[9px] font-mono rounded bg-slate-100 border border-slate-200 hover:bg-slate-200 transition"
+                    class="px-1.5 py-0.5 text-[11px] font-mono rounded bg-slate-100 border border-slate-200 hover:bg-slate-200 transition"
                     :style="commodityChipStyle(m.commodityType)"
                     :title="`${m.awbNumber} • ${m.pieces} pcs • ${m.commodityType || 'DRY_CARGO'}`">
                     {{ m.awbNumber }}
@@ -82,7 +82,7 @@
               </td>
               <td class="px-2 py-1.5 text-center text-slate-500 font-mono">{{ u.sealNumber || '—' }}</td>
               <td class="px-2 py-1.5 text-center">
-                <span class="px-1.5 py-0.5 rounded text-[9px] font-medium" :style="uldStatusStyle(u.status)">
+                <span class="px-1.5 py-0.5 rounded text-[11px] font-medium" :style="uldStatusStyle(u.status)">
                   {{ uldStatusLabel(u.status) }}
                 </span>
               </td>
@@ -90,7 +90,7 @@
           </tbody>
           <tbody v-if="flightUlds.length === 0">
             <tr>
-              <td colspan="9" class="text-center py-4 text-slate-400 font-mono text-[11px]">No hay ULDs asignados a este vuelo</td>
+              <td colspan="9" class="text-center py-4 text-slate-400 font-mono text-[13px]">No hay ULDs asignados a este vuelo</td>
             </tr>
           </tbody>
         </table>
@@ -98,8 +98,8 @@
 
       <!-- Utilization -->
       <section class="p-3 bg-white rounded border border-slate-200">
-          <h4 class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-2">Utilización</h4>
-          <div class="grid grid-cols-1 gap-2 text-[10px]">
+          <h4 class="text-[12px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-2">Utilización</h4>
+          <div class="grid grid-cols-1 gap-2 text-[12px]">
             <div class="bg-slate-50 p-2 rounded border border-slate-200">
               <div class="text-slate-400">Posiciones Main Deck</div>
               <div class="font-mono font-bold text-slate-900">{{ mdPositionCount }} / {{ flight.totalPositions || '—' }}</div>
@@ -248,11 +248,6 @@ function uldStatusStyle(status) {
 function uldStatusLabel(status) {
   const map = { OPEN: 'OPN', BUILT: 'BUILT', SEALED: 'SEAL', LOADED: 'LDD', LEFT_BEHIND: 'LFT' }
   return map[status] || status?.slice(0, 3) || '—'
-}
-
-function commodityShort(type) {
-  const info = COMMODITY_MAP[type] || COMMODITY_MAP.DRY_CARGO
-  return info.short
 }
 
 function commodityChipStyle(type) {

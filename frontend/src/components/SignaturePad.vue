@@ -24,7 +24,7 @@
     <div class="flex justify-between items-center mt-1.5">
       <button
         @click="clear"
-        class="text-[9px] font-mono text-slate-400 hover:text-slate-500 uppercase tracking-wider transition flex items-center gap-1">
+        class="text-[11px] font-mono text-slate-400 hover:text-slate-500 uppercase tracking-wider transition flex items-center gap-1">
         <IconTrash :size="11" :stroke-width="2" /> Limpiar
       </button>
     </div>

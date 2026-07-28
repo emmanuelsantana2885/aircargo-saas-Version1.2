@@ -5,16 +5,16 @@
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <div class="w-2.5 h-2.5 rounded-full animate-pulse" :class="scanning ? 'bg-emerald-500' : 'bg-slate-300'"></div>
-        <span class="text-[11px] font-black text-slate-900 uppercase tracking-wider">
+        <span class="text-[13px] font-black text-slate-900 uppercase tracking-wider">
           Modo Scan — ULD: {{ uldNumber }}
         </span>
-        <span v-if="lastResult" class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+        <span v-if="lastResult" class="text-[12px] font-bold px-2 py-0.5 rounded-full"
               :class="lastResult.success ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
           {{ lastResult.message || lastResult.error }}
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="$emit('exit-scan')" class="text-[10px] font-bold text-slate-500 hover:text-red-600 uppercase px-2 py-1 rounded hover:bg-red-50">
+        <button @click="$emit('exit-scan')" class="text-[12px] font-bold text-slate-500 hover:text-red-600 uppercase px-2 py-1 rounded hover:bg-red-50">
           ✕ Salir
         </button>
       </div>
@@ -23,7 +23,7 @@
     <!-- Info for unsaved ULD -->
     <div v-if="!uldId" class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
       <span class="text-blue-600 text-sm">ℹ</span>
-      <span class="text-[10px] font-bold text-blue-700 uppercase tracking-wide">
+      <span class="text-[12px] font-bold text-blue-700 uppercase tracking-wide">
         Escanee el código del ULD para asignar el número. Las piezas de MAWB se habilitan después de guardar.
       </span>
     </div>
@@ -36,9 +36,9 @@
         @keydown.enter.prevent="processScan"
         type="text"
         placeholder="Escanee código de barras o escriba MAWB/ULD..."
-        class="w-full bg-white border-2 border-slate-300 rounded-lg px-4 py-3 text-[13px] font-mono font-bold text-slate-900
+        class="w-full bg-white border-2 border-slate-300 rounded-lg px-4 py-3 text-[15px] font-mono font-bold text-slate-900
                focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
-               placeholder:text-slate-300 placeholder:font-sans placeholder:font-normal placeholder:text-[12px]"
+               placeholder:text-slate-300 placeholder:font-sans placeholder:font-normal placeholder:text-[14px]"
         :disabled="processing"
       />
       <div v-if="processing" class="absolute right-3 top-1/2 -translate-y-1/2">
@@ -49,7 +49,7 @@
     <!-- Scan History -->
     <div v-if="history.length" class="max-h-32 overflow-y-auto space-y-1 mb-2">
       <div v-for="(entry, i) in history" :key="i"
-           class="flex items-center gap-2 text-[10px] py-1 px-2 rounded"
+           class="flex items-center gap-2 text-[12px] py-1 px-2 rounded"
            :class="entry.warning ? 'bg-amber-50 text-amber-700' : entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
         <span>{{ entry.success ? (entry.warning ? '⚠' : '✓') : '✗' }}</span>
         <span class="font-bold">{{ entry.awbNumber }}</span>
@@ -63,12 +63,12 @@
     <!-- Actions -->
     <div class="flex items-center gap-2 mt-2">
       <button @click="undoLast" :disabled="!canUndo"
-              class="text-[10px] font-bold px-3 py-1.5 rounded border transition-colors"
+              class="text-[12px] font-bold px-3 py-1.5 rounded border transition-colors"
               :class="canUndo ? 'border-slate-300 text-slate-600 hover:bg-slate-100' : 'border-slate-200 text-slate-300 cursor-not-allowed'">
         ↩ Deshacer Último
       </button>
       <button @click="openCamera"
-              class="text-[10px] font-bold px-3 py-1.5 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors ml-auto">
+              class="text-[12px] font-bold px-3 py-1.5 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors ml-auto">
         📷 Cámara
       </button>
     </div>
@@ -77,11 +77,11 @@
     <div v-if="showCamera" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="closeCamera">
       <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <span class="text-[12px] font-black text-slate-900 uppercase">Escanear con Cámara</span>
+          <span class="text-[14px] font-black text-slate-900 uppercase">Escanear con Cámara</span>
           <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold">✕</button>
         </div>
         <div id="qr-reader" class="w-full rounded-lg overflow-hidden border border-slate-200" style="min-height: 280px;"></div>
-        <p class="text-[10px] text-slate-400 mt-3 text-center">Apunte la cámara al código de barras de la pieza</p>
+        <p class="text-[12px] text-slate-400 mt-3 text-center">Apunte la cámara al código de barras de la pieza</p>
       </div>
     </div>
   </div>

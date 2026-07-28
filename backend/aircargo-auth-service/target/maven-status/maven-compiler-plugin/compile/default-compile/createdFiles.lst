@@ -4,8 +4,8 @@ com/aircargo/authservice/dto/RolePermissionDTO.class
 com/aircargo/authservice/dto/ConnectedUserDTO$ConnectedUserDTOBuilder.class
 com/aircargo/authservice/service/ActiveSessionTracker.class
 com/aircargo/authservice/dto/AppUserDTO.class
-com/aircargo/authservice/dto/AppUserDTO$AppUserDTOBuilder.class
 com/aircargo/authservice/dto/ConnectedUserDTO.class
+com/aircargo/authservice/dto/AppUserDTO$AppUserDTOBuilder.class
 com/aircargo/authservice/dto/AuditLogDTO.class
 com/aircargo/authservice/dto/ViewPermissionDTO.class
 com/aircargo/authservice/repository/SiteRepository.class
@@ -31,8 +31,8 @@ com/aircargo/authservice/repository/ViewPermissionRepository.class
 com/aircargo/authservice/dto/RolePermissionDTO$ViewAccessDTO.class
 com/aircargo/authservice/controller/AuthController.class
 com/aircargo/authservice/entity/Site.class
-com/aircargo/authservice/entity/UserRole.class
 com/aircargo/authservice/entity/RolePermission$RolePermissionBuilder.class
+com/aircargo/authservice/entity/UserRole.class
 com/aircargo/authservice/dto/RolePermissionBulkUpdateRequest$RolePermissionBulkUpdateRequestBuilder.class
 com/aircargo/authservice/service/SiteService.class
 com/aircargo/authservice/dto/RolePermissionDTO$RolePermissionDTOBuilder.class
@@ -41,8 +41,8 @@ com/aircargo/authservice/service/MfaService.class
 com/aircargo/authservice/dto/LoginResponse.class
 com/aircargo/authservice/entity/Site$SiteBuilder.class
 com/aircargo/authservice/service/AppUserServiceImpl.class
-com/aircargo/authservice/entity/AppUser$AppUserBuilder.class
 com/aircargo/authservice/entity/ViewPermission.class
+com/aircargo/authservice/entity/AppUser$AppUserBuilder.class
 com/aircargo/authservice/repository/RolePermissionRepository.class
 com/aircargo/authservice/controller/SiteController.class
 com/aircargo/authservice/entity/AuditLog$AuditLogBuilder.class

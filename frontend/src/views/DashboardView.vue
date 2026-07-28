@@ -1,58 +1,55 @@
 <template>
-  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
-    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 pb-3 shrink-0 gap-2">
+  <div class="ds-page">
+    <header class="ds-section-header">
       <div>
-        <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Payload Dashboard</h1>
-        <p class="text-[11px] font-mono text-slate-500 mt-0.5 uppercase tracking-widest font-bold">SDQ Hub // Payload Despachado por Vuelo</p>
+        <h1 class="ds-title">Payload Dashboard</h1>
+        <p class="ds-subtitle">SDQ Hub // Payload Despachado por Vuelo</p>
       </div>
-      <div class="flex items-center gap-3 text-[10px] font-mono font-bold flex-wrap">
-        <span class="flex items-center gap-1 text-slate-500">
+      <div class="flex items-center gap-3 text-[12px] font-mono font-bold flex-wrap">
+        <span class="ds-stat">
           <span class="h-2 w-2 rounded-full" style="background: var(--accent)"></span> LIVE
         </span>
-        <span class="text-slate-300 hidden sm:inline">|</span>
-        <span class="text-slate-950">{{ filteredFlights.length }} vuelos</span>
-        <span class="text-slate-300 hidden sm:inline">|</span>
-        <button @click="descargarReporte"
-          class="flex items-center gap-1 px-3 py-1.5 rounded border border-slate-950 font-mono uppercase tracking-wider font-bold text-[11px] bg-slate-950 text-white hover:bg-slate-800 transition active:scale-95 shadow-sm">
-         <span class="text-[12px] font-semibold leading-none">↓</span> Descargar Reporte
+        <span class="ds-divider"></span>
+        <span class="ds-stat">{{ filteredFlights.length }} vuelos</span>
+        <span class="ds-divider"></span>
+        <button @click="descargarReporte" class="ds-btn-primary">
+         <span class="text-[14px] font-semibold leading-none">↓</span> Descargar Reporte
         </button>
       </div>
     </header>
 
     <section class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 my-3 shrink-0">
       <div class="flex items-center gap-2">
-        <label class="text-[10px] font-mono font-black uppercase tracking-widest text-slate-950">Desde</label>
-        <input v-model="dateFrom" type="date"
-          class="text-[12px] font-mono px-3 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950" />
+        <label class="ds-label">Desde</label>
+        <input v-model="dateFrom" type="date" class="ds-input w-auto" />
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-[10px] font-mono font-black uppercase tracking-widest text-slate-950">Hasta</label>
-        <input v-model="dateTo" type="date"
-          class="text-[12px] font-mono px-3 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950" />
+        <label class="ds-label">Hasta</label>
+        <input v-model="dateTo" type="date" class="ds-input w-auto" />
       </div>
-      <div class="text-[10px] font-mono text-slate-500 ml-auto flex items-center gap-4">
-        <span>Total Neto: <strong class="text-slate-950">{{ totalNetPayload }} lbs</strong></span>
-        <span>Total ULDs: <strong class="text-slate-950">{{ totalUldsCount }}</strong></span>
-        <span>Total MAWBs: <strong class="text-slate-950">{{ totalMawbsCount }}</strong></span>
+      <div class="text-[12px] font-mono text-slate-500 ml-auto flex items-center gap-4">
+        <span class="ds-stat">Total Neto: <strong class="text-slate-950">{{ totalNetPayload }} lbs</strong></span>
+        <span class="ds-stat">Total ULDs: <strong class="text-slate-950">{{ totalUldsCount }}</strong></span>
+        <span class="ds-stat">Total MAWBs: <strong class="text-slate-950">{{ totalMawbsCount }}</strong></span>
       </div>
     </section>
 
-    <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
+    <section class="ds-table-section mb-1.5">
       <div ref="tableWrapper" class="overflow-auto flex-1 min-h-0 scrollbar-none">
         <div class="table-scroll-wrapper h-full">
-        <table class="w-full border-collapse text-[11px] font-mono" :style="{ minWidth: tableMinWidth + 'px' }">
+        <table class="w-full border-collapse text-[13px] font-mono" :style="{ minWidth: tableMinWidth + 'px' }">
           <thead class="sticky top-0 z-20">
-            <tr class="bg-slate-700 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-500 shadow-sm">
-              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8 sticky left-0 z-10 bg-slate-700">#</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8 sticky left-8 z-10 bg-slate-700">
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider border-b border-slate-200 shadow-sm font-mono [&>th]:px-2 [&>th]:py-2.5 [&>th]:whitespace-nowrap">
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8 sticky left-0 z-10 bg-slate-800">#</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap w-8 sticky left-8 z-10 bg-slate-800">
                 <button @click="toggleAllExpanded" class="flex items-center justify-center gap-1 hover:opacity-70 transition"
                   :title="allExpanded ? 'Colapsar todos' : 'Expandir todos'">
-                  <span class="text-[12px]">{{ allExpanded ? '▲' : '▼' }}</span>
+                  <span class="text-[14px]">{{ allExpanded ? '▲' : '▼' }}</span>
                 </button>
               </th>
-              <th class="text-left px-2 py-2.5 whitespace-nowrap sticky left-16 z-10 bg-slate-700">Vuelo</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap sticky left-[140px] z-10 bg-slate-700">Ruta</th>
-              <th class="text-center px-2 py-2.5 whitespace-nowrap sticky left-[220px] z-10 bg-slate-700">Fecha</th>
+              <th class="text-left px-2 py-2.5 whitespace-nowrap sticky left-16 z-10 bg-slate-800">Vuelo</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap sticky left-[140px] z-10 bg-slate-800">Ruta</th>
+              <th class="text-center px-2 py-2.5 whitespace-nowrap sticky left-[220px] z-10 bg-slate-800">Fecha</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap">Estado</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap w-16">ULDs</th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap w-14">Pos</th>
@@ -63,7 +60,7 @@
               <th class="text-right px-2 py-2.5 whitespace-nowrap w-24 text-emerald-600">Payload</th>
               <!-- Commodity columns - dynamic based on filtered flights -->
               <th v-for="c in visibleCommodities" :key="c.type"
-                class="text-right px-2 py-2.5 whitespace-nowrap w-20 text-[10px]"
+                class="text-right px-2 py-2.5 whitespace-nowrap w-20 text-[12px]"
                 :style="{ background: c.color + '20', borderLeft: '1px solid ' + c.color + '40' }"
                 :title="c.label">
                 <div class="flex items-center justify-end gap-1">
@@ -75,13 +72,13 @@
           </thead>
           <tbody>
             <tr v-if="loading" class="h-32">
-              <td :colspan="14 + visibleCommodities.length" class="text-center text-[12px] font-mono text-slate-400 ">Cargando datos...</td>
+              <td :colspan="14 + visibleCommodities.length" class="text-center text-[14px] font-mono text-slate-400 ">Cargando datos...</td>
             </tr>
             <tr v-else-if="filteredFlights.length === 0" class="h-32">
-              <td :colspan="14 + visibleCommodities.length" class="text-center text-[12px] font-mono text-slate-400 uppercase tracking-widest">No hay vuelos en este rango</td>
+              <td :colspan="14 + visibleCommodities.length" class="text-center text-[14px] font-mono text-slate-400 uppercase tracking-widest">No hay vuelos en este rango</td>
             </tr>
             <template v-for="(f, fi) in filteredFlights" :key="f.id">
-              <tr class="border-b border-slate-100 transition-colors hover:bg-slate-50"
+              <tr class="border-b border-slate-100 transition-colors duration-150 hover:bg-slate-50/80"
                 :class="{ 'bg-slate-50/50': isExpanded(f.id) }">
                 <td class="text-center px-2 py-2 text-slate-400 sticky left-0 z-10 bg-white">{{ fi + 1 }}</td>
                 <td class="text-center px-2 py-2 sticky left-8 z-10 bg-white">
@@ -89,7 +86,7 @@
                     class="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-200 transition text-slate-500 hover:text-slate-900"
                     :aria-expanded="isExpanded(f.id)"
                     :title="isExpanded(f.id) ? 'Colapsar detalle' : 'Expandir detalle'">
-                    <span class="text-[10px] transition-transform duration-200" :style="{ transform: isExpanded(f.id) ? 'rotate(180deg)' : '' }">▼</span>
+                    <span class="text-[12px] transition-transform duration-200" :style="{ transform: isExpanded(f.id) ? 'rotate(180deg)' : '' }">▼</span>
                   </button>
                 </td>
                 <td class="px-2 py-2 font-mono text-slate-950 sticky left-16 z-10 bg-white">UPS-{{ f.flightNumber }}</td>
@@ -98,7 +95,7 @@
                 <td class="text-center px-2 py-2">
                   <span class="inline-flex items-center gap-1">
                     <span :class="getStatusDot(f.status)" class="inline-block w-2 h-2 rounded-full"></span>
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" :style="statusStyle(f.status)">{{ statusLabel(f.status) }}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[12px] font-medium" :style="statusStyle(f.status)">{{ statusLabel(f.status) }}</span>
                   </span>
                 </td>
                 <td class="text-center px-2 py-2 font-mono text-slate-900">{{ flightUlds(f.id).length }}</td>
@@ -128,7 +125,7 @@
             </template>
 
             <!-- Totals row -->
-            <tr class="bg-slate-50 border-t-2 border-slate-300 font-bold">
+            <tr class="bg-slate-50 border-t-2 border-slate-300 font-bold hover:bg-slate-100 transition-colors">
               <td class="text-center px-2 py-2 text-slate-400">Σ</td>
               <td class="text-center px-2 py-2"></td>
               <td class="px-2 py-2 text-slate-500 sticky left-16 z-10 bg-slate-50">TOTAL</td>
@@ -464,9 +461,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }

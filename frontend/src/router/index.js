@@ -11,6 +11,7 @@ const viewPermissions = {
   '/users':       'USERS',
   '/settings':    'SETTINGS',
   '/exports':     'EXPORTS',
+  '/api-catalog': 'API_CATALOG',
 }
 
 function hasPermission(role, path) {
@@ -24,7 +25,7 @@ function hasPermission(role, path) {
     case 'OPERATIONS': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(view)
     case 'TRAFFIC': return ['DASHBOARD', 'BOOKINGS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(view)
     case 'LOAD_PLANNER': return ['DASHBOARD', 'FLIGHTS', 'LOAD_PLANNING', 'ULDS'].includes(view)
-    case 'BI_USER': return ['DASHBOARD', 'BI'].includes(view)
+    case 'BI_USER': return ['DASHBOARD', 'BI', 'API_CATALOG'].includes(view)
     default: return false
   }
 }
@@ -111,6 +112,12 @@ const router = createRouter({
       name: 'exports',
       component: () => import('../views/ExportsView.vue'),
       meta: { view: 'EXPORTS' },
+    },
+    {
+      path: '/api-catalog',
+      name: 'api-catalog',
+      component: () => import('../views/ApiCatalogView.vue'),
+      meta: { view: 'API_CATALOG' },
     },
     {
       path: '/home',

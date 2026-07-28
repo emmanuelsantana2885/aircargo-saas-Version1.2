@@ -1,17 +1,17 @@
 <template>
-  <div class="p-3 md:p-4 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-mono antialiased overflow-hidden select-none">
+  <div class="ds-page">
 
-    <header class="flex justify-between items-center border border-slate-300 bg-white p-3 rounded-t-lg shadow-sm shrink-0">
+    <header class="ds-section-header flex-row px-3 py-3">
       <div class="flex items-center gap-6">
         <div class="flex flex-col gap-0.5">
-           <span class="text-[10px] font-black text-slate-950 uppercase tracking-widest">Fecha</span>
+           <span class="ds-label">Fecha</span>
           <input v-model="selectedDate" type="date" @change="onDateChange"
-            class="bg-slate-100 border border-slate-300 rounded px-3 py-1.5 font-black text-slate-950 focus:outline-none text-[12px] cursor-pointer w-[140px]" />
+            class="ds-input w-[140px] cursor-pointer" />
         </div>
         <div class="h-8 w-[1px] bg-slate-200"></div>
         <div class="flex flex-col gap-0.5">
-           <span class="text-[10px] font-black text-slate-950 uppercase tracking-widest">Flight Number</span>
-          <select v-model="selectedFlightId" @change="syncFlightMetadata" class="bg-slate-100 border border-slate-300 rounded px-3 py-1.5 font-black text-slate-950 focus:outline-none uppercase tracking-widest text-[12px] cursor-pointer min-w-[180px]">
+           <span class="ds-label">Flight Number</span>
+          <select v-model="selectedFlightId" @change="syncFlightMetadata" class="ds-input cursor-pointer min-w-[180px]">
             <option value="" disabled>Seleccionar vuelo</option>
             <option v-for="flight in flightDatabase" :key="flight.id" :value="flight.id">
               {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }})
@@ -20,31 +20,31 @@
         </div>
         <div class="h-8 w-[1px] bg-slate-200"></div>
         <div class="flex flex-col justify-center">
-           <span class="text-[10px] font-black text-slate-950 uppercase tracking-widest">Aircraft-Tail</span>
-          <span class="text-[12px] font-black text-slate-950 uppercase tracking-wider">{{ activeFlightMeta.aircraftReg || '-' }}</span>
+           <span class="ds-label">Aircraft-Tail</span>
+          <span class="text-[14px] font-black text-slate-950 uppercase tracking-wider">{{ activeFlightMeta.aircraftReg || '-' }}</span>
         </div>
         <div class="h-8 w-[1px] bg-slate-200"></div>
         <div class="flex flex-col justify-center">
-           <span class="text-[10px] font-black text-slate-950 uppercase tracking-widest">Ruta</span>
-          <span class="text-[12px] font-black text-slate-950 uppercase tracking-widest">{{ (activeFlightMeta.origin || '') + '→' + (activeFlightMeta.destination || '-') }}</span>
+           <span class="ds-label">Ruta</span>
+          <span class="text-[14px] font-black text-slate-950 uppercase tracking-widest">{{ (activeFlightMeta.origin || '') + '→' + (activeFlightMeta.destination || '-') }}</span>
         </div>
       </div>
       <div class="flex items-center gap-1.5">
         <button v-if="activeFlightMeta.id && activeFlightMeta.status !== 'DEPARTED' && activeFlightMeta.status !== 'ARRIVED' && activeFlightMeta.status !== 'CANCELLED'"
           @click="dispatchFlight" title="Despachar vuelo"
-          class="bg-slate-800 hover:bg-slate-700 text-white p-1.5 rounded transition-all shadow-sm">
+          class="ds-btn-primary px-2 py-1.5">
           <IconPlaneDeparture :size="16" :stroke-width="2.5" />
         </button>
         <button @click="triggerImport" title="Importar manifiesto XLSX"
-          class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-950 p-1.5 rounded transition-all">
+          class="ds-btn-secondary px-2 py-1.5">
           <IconFileUpload :size="16" :stroke-width="2" />
         </button>
         <button @click="exportPalletSheets" title="Generar Pallet Sheets PDF"
-          class="bg-slate-600 hover:bg-slate-500 text-white p-1.5 rounded transition-all shadow-sm">
+          class="ds-btn-primary px-2 py-1.5 bg-slate-600 hover:bg-slate-500 border-slate-600 hover:border-slate-500">
           <IconFileDescription :size="16" :stroke-width="2" />
         </button>
         <button @click="exportToXLSX" title="Exportar Load Plan a XLSX"
-          class="bg-slate-950 hover:bg-slate-900 text-white p-1.5 rounded transition-all shadow-sm">
+          class="ds-btn-primary px-2 py-1.5">
           <IconFileExport :size="16" :stroke-width="2" />
         </button>
       </div>
@@ -52,15 +52,15 @@
 
     <!-- ULD Position Summary -->
     <section v-if="activeManifest.length > 0"
-      class="flex items-center gap-3 py-1.5 px-3 bg-white border border-slate-400 rounded-lg mb-1 shrink-0 overflow-x-auto lp-scroll-x text-[11px] font-mono">
-      <span class="font-black uppercase tracking-wider text-slate-950 text-[10px] shrink-0">POSITIONS</span>
+      class="flex items-center gap-3 py-1.5 px-3 bg-white border border-slate-400 rounded-lg mb-1 shrink-0 overflow-x-auto lp-scroll-x text-[13px] font-mono">
+      <span class="ds-label mb-0 shrink-0">POSITIONS</span>
       <div v-for="p in positionSummary" :key="p.pos"
         class="flex items-center gap-1.5 px-2 py-0.5 rounded whitespace-nowrap"
         :class="[p.isBelly ? 'bg-slate-50 border border-slate-300' : 'bg-slate-100 border border-slate-300']">
         <span class="font-black text-slate-950">{{ p.pos }}</span>
         <span class="text-slate-950">{{ p.count }} ULD</span>
-        <span class="text-slate-950 text-[11px]">({{ p.pcs }} pcs)</span>
-        <span v-if="p.isBelly" class="text-[11px] font-bold text-slate-500 bg-slate-100 px-1 rounded">BELLY</span>
+        <span class="text-slate-950 text-[13px]">({{ p.pcs }} pcs)</span>
+        <span v-if="p.isBelly" class="text-[13px] font-bold text-slate-500 bg-slate-100 px-1 rounded">BELLY</span>
       </div>
       <span class="text-slate-300 mx-1">|</span>
       <span class="text-slate-950 font-bold whitespace-nowrap">A/C: {{ aircraftType }}</span>
@@ -74,15 +74,15 @@
       <div v-for="(uldGroup, uIdx) in activeManifest" :key="uIdx"
         draggable="true"
         @dragstart="onDragStart(uldGroup.uldId, $event)"
-        class="flex-shrink-0 bg-white border rounded-lg px-3 py-2 flex items-center gap-3 text-[11px]"
+        class="flex-shrink-0 bg-white border rounded-lg px-3 py-2 flex items-center gap-3 text-[13px]"
         :class="getCardBorderStyle(uldGroup.status)">
         <span class="font-black text-slate-950 uppercase tracking-tight">{{ uldGroup.uld }}</span>
         <span class="h-2 w-2 rounded-full" :class="getStatusDotColor(uldGroup.status)"></span>
-        <span class="text-slate-950 font-bold uppercase text-[11px]">{{ uldGroup.status }}</span>
+        <span class="text-slate-950 font-bold uppercase text-[13px]">{{ uldGroup.status }}</span>
         <span class="text-slate-950 font-bold">{{ uldGroup.items.length }} MAWB</span>
         <span class="text-slate-950">{{ (uldGroup.weight || 0).toLocaleString() }} lb</span>
         <select :value="uldGroup.flightId" @change="onTransferRequest(uldGroup.uldId, uldGroup.uld, uldGroup.flightId, $event.target.value)"
-          class="ml-1 bg-slate-100 border border-slate-400 rounded px-2 py-1 text-[11px] font-bold text-slate-950 focus:outline-none cursor-pointer">
+          class="ml-1 bg-slate-100 border border-slate-400 rounded px-2 py-1 text-[13px] font-bold text-slate-950 focus:outline-none cursor-pointer">
           <option v-for="f in uldsStore.flights" :key="f.id" :value="f.id">
             {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }}
           </option>
@@ -92,11 +92,11 @@
         <div v-for="uld in floatingUlds" :key="uld.id"
           draggable="true"
           @dragstart="onDragStart(uld.id, $event)"
-          class="flex-shrink-0 bg-white border border-slate-300 border-dashed rounded-lg px-3 py-2 flex items-center gap-2 text-[11px] cursor-grab active:cursor-grabbing select-none">
+          class="flex-shrink-0 bg-white border border-slate-300 border-dashed rounded-lg px-3 py-2 flex items-center gap-2 text-[13px] cursor-grab active:cursor-grabbing select-none">
           <span class="font-black text-slate-700 uppercase tracking-tight">{{ uld.uldNumber || 'SIN-ULD' }}</span>
-          <span class="text-slate-500 text-[11px] font-bold">SIN VUELO</span>
+          <span class="text-slate-500 text-[13px] font-bold">SIN VUELO</span>
           <select :value="uld.flightId" @change="onTransferRequest(uld.id, uld.uldNumber, null, $event.target.value)"
-            class="bg-white border border-slate-300 rounded px-2 py-1 text-[11px] font-bold text-slate-950 focus:outline-none cursor-pointer">
+            class="bg-white border border-slate-300 rounded px-2 py-1 text-[13px] font-bold text-slate-950 focus:outline-none cursor-pointer">
             <option value="" disabled>Asignar vuelo</option>
             <option v-for="f in uldsStore.flights" :key="f.id" :value="f.id">
               {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }}
@@ -114,7 +114,7 @@
       class="flex-1 min-h-0 border border-slate-300 rounded-lg overflow-hidden shadow-pencil-marine bg-white flex flex-col mb-1 transition-shadow duration-150"
       :class="dragOver ? 'ring-2 ring-slate-400 ring-offset-2' : ''">
       <div class="overflow-x-auto flex flex-col flex-1 min-h-0 lp-scroll-x">
-      <div class="bg-slate-700 text-white text-[11px] font-bold uppercase tracking-wider lp-grid py-3.5 px-5 items-center shrink-0 border-b border-slate-500 whitespace-nowrap shadow-sm">
+      <div class="bg-slate-700 text-white text-[13px] font-bold uppercase tracking-wider lp-grid py-3.5 px-5 items-center shrink-0 border-b border-slate-500 whitespace-nowrap shadow-sm">
         <span class="flex items-center gap-1">
           <svg class="w-2.5 h-2.5 text-slate-950" viewBox="0 0 8 8" fill="none"><circle cx="2" cy="2" r="1" fill="currentColor" /><circle cx="6" cy="2" r="1" fill="currentColor" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="6" cy="6" r="1" fill="currentColor" /></svg>
           ULD
@@ -132,13 +132,13 @@
       </div>
 
       <div v-if="activeManifest.length === 0"
-        class="flex-1 flex flex-col items-center justify-center text-slate-950 text-[12px] gap-2"
+        class="flex-1 flex flex-col items-center justify-center text-slate-950 text-[14px] gap-2"
         :class="dragOver ? 'bg-slate-50' : ''">
         <span>Select a flight to view the load plan</span>
-        <span v-if="floatingUlds.length > 0" class="text-[11px] text-slate-300">— o arrastra un ULD flotante aquí —</span>
+        <span v-if="floatingUlds.length > 0" class="text-[13px] text-slate-300">— o arrastra un ULD flotante aquí —</span>
       </div>
 
-      <div v-else class="divide-y divide-slate-200 text-[11px] overflow-y-auto flex-1 min-h-0 scrollbar-none"
+      <div v-else class="divide-y divide-slate-200 text-[13px] overflow-y-auto flex-1 min-h-0 scrollbar-none"
         @dragover.prevent="onRowDragOver"
         @drop.prevent="onRowDrop">
         <div v-for="(uldGroup, uIdx) in activeManifest" :key="uldGroup.uldId"
@@ -160,7 +160,7 @@
             <span class="text-center">
               <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
                 @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
-                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[11px] font-mono" />
+                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
             </span>
             <span class="text-center text-slate-950 italic">—</span>
             <span class="text-center text-slate-950 italic">empty</span>
@@ -184,7 +184,7 @@
             <span v-if="iIdx === 0" class="text-center">
               <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
                 @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
-                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[11px] font-mono" />
+                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
             </span>
             <span v-else class="text-slate-200 text-center">—</span>
             <span class="text-center font-mono truncate">{{ item.description }}</span>
@@ -196,7 +196,7 @@
       </div>
     </section>
 
-    <footer class="p-3 border border-slate-300 bg-white rounded-b-lg shrink-0 flex flex-col gap-1 text-[11px]">
+    <footer class="p-3 border border-slate-300 bg-white rounded-b-lg shrink-0 flex flex-col gap-1 text-[13px]">
       <!-- Undo toast -->
       <div class="flex justify-between items-center">
         <div class="flex gap-4">
@@ -217,77 +217,77 @@
 
     <!-- Flight picker for ULDs without reassignment history -->
     <div v-if="pendingFlightPick"
-      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-slate-300 shadow-lg rounded-lg px-4 py-2.5 text-[11px]">
+      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-slate-300 shadow-lg rounded-lg px-4 py-2.5 text-[13px]">
       <span class="text-slate-900">
         ULD <strong>{{ pendingFlightPick.uldNumber }}</strong>
       </span>
       <template v-if="!showFlightPicker">
         <button @click="showFlightPicker = true"
-          class="bg-slate-950 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded text-[12px] uppercase tracking-wider transition-all whitespace-nowrap">
+          class="bg-slate-950 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded text-[14px] uppercase tracking-wider transition-all whitespace-nowrap">
           Asignar a otro vuelo
         </button>
         <button @click="detachToFloating"
-          class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-950 font-bold px-3 py-1 rounded text-[11px] uppercase tracking-wider transition-all whitespace-nowrap">
+          class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-950 font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all whitespace-nowrap">
           Dejar flotante
         </button>
         <button @click="cancelFlightPick"
-          class="text-slate-950 hover:text-slate-950 font-bold text-[10px] leading-none ml-1">&times;</button>
+          class="text-slate-950 hover:text-slate-950 font-bold text-[12px] leading-none ml-1">&times;</button>
       </template>
       <template v-else>
         <select v-model="flightPickValue"
-          class="bg-slate-100 border border-slate-400 rounded px-3 py-1.5 text-[12px] font-bold text-slate-950 focus:outline-none cursor-pointer">
+          class="bg-slate-100 border border-slate-400 rounded px-3 py-1.5 text-[14px] font-bold text-slate-950 focus:outline-none cursor-pointer">
           <option value="" selected disabled>Vuelo destino</option>
           <option v-for="f in uldsStore.flights" :key="f.id" :value="f.id">
             {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }} ({{ f.origin }}→{{ f.destination }})
           </option>
         </select>
         <button @click="confirmFlightPick(flightPickValue)"
-          class="bg-slate-950 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded text-[11px] uppercase tracking-wider transition-all">
+          class="bg-slate-950 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all">
           Reasignar
         </button>
         <button @click="showFlightPicker = false"
-          class="text-slate-950 hover:text-slate-950 font-bold text-[10px] leading-none ml-1">&times;</button>
+          class="text-slate-950 hover:text-slate-950 font-bold text-[12px] leading-none ml-1">&times;</button>
       </template>
     </div>
     <div v-if="showUndoToast && undoAction"
-      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-slate-300 shadow-lg rounded-lg px-4 py-2.5 text-[11px]">
+      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-slate-300 shadow-lg rounded-lg px-4 py-2.5 text-[13px]">
       <span class="text-slate-900">
         ULD <strong>{{ undoAction.uldNumber }}</strong> reasignado
       </span>
       <button @click="undoLastReassign"
-        class="bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold px-3 py-1 rounded text-[11px] uppercase tracking-wider transition-all">
+        class="bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all">
         Deshacer
       </button>
       <button @click="showUndoToast = false"
-        class="text-slate-400 hover:text-slate-600 font-bold text-[10px] leading-none ml-1">&times;</button>
+        class="text-slate-400 hover:text-slate-600 font-bold text-[12px] leading-none ml-1">&times;</button>
     </div>
 
     <!-- Transfer reason dialog -->
     <div v-if="pendingTransfer"
-      class="fixed inset-0 bg-slate-950/20 z-50 flex items-center justify-center p-4"
+      class="ds-modal-backdrop"
       @click.self="cancelTransfer">
-      <div class="bg-white rounded-lg border border-slate-300 shadow-xl w-full max-w-md p-5">
-        <h3 class="text-[11px] font-black uppercase tracking-wider text-slate-950 mb-3">
+      <div class="ds-modal-panel max-w-md p-5">
+        <h3 class="ds-modal-title mb-3">
           Transferir ULD
         </h3>
-        <div class="text-[12px] text-slate-950 mb-3">
+        <div class="text-[14px] text-slate-950 mb-3">
           ULD <strong>{{ pendingTransfer.uldNumber }}</strong>
           <span v-if="fromFlightLabel" class="mx-1">→ {{ fromFlightLabel }}</span>
           <span class="mx-1">→</span>
           <strong>{{ toFlightLabel }}</strong>
         </div>
-        <label class="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-950 block mb-1">
+        <label class="ds-label">
           Motivo de la transferencia *
         </label>
         <textarea v-model="transferReason" rows="3" placeholder="Ej: Rebalanceo de carga, cambio de ruta..."
-          class="w-full text-base font-mono px-3 py-2 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition resize-none mb-4"></textarea>
+          class="ds-input resize-none mb-4"></textarea>
         <div class="flex justify-end gap-2">
           <button @click="cancelTransfer"
-            class="px-3.5 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-slate-100 transition">
+            class="ds-btn-secondary">
             Cancelar
           </button>
           <button @click="confirmTransfer" :disabled="!transferReason.trim()"
-            class="flex items-center gap-1.5 px-4 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-950 hover:bg-slate-900 transition disabled:opacity-50">
+            class="ds-btn-primary">
             Confirmar Transferencia
           </button>
         </div>
@@ -1041,8 +1041,6 @@ watch(() => uldsStore.activeUlds, (newUlds) => {
 </script>
 
 <style scoped>
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 .shadow-pencil-marine { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .lp-grid { display: grid; grid-template-columns: 10fr 5fr 4fr 6fr 4fr 4fr 12fr 4fr 14fr 14fr 4fr; gap: 4px; min-width: 960px; }
 .lp-grid > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

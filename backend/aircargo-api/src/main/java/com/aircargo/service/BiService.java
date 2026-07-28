@@ -359,4 +359,255 @@ public class BiService {
             return row;
         }).collect(Collectors.toList());
     }
+
+    public Map<String, Object> getSummary(LocalDate dateFrom, LocalDate dateTo) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+
+        List<com.aircargo.entity.Flight> flights = flightRepository.findAll();
+        if (dateFrom != null) flights = flights.stream()
+                .filter(f -> f.getFlightDate() != null && !f.getFlightDate().isBefore(dateFrom))
+                .collect(Collectors.toList());
+        if (dateTo != null) flights = flights.stream()
+                .filter(f -> f.getFlightDate() != null && !f.getFlightDate().isAfter(dateTo))
+                .collect(Collectors.toList());
+
+        List<com.aircargo.entity.Booking> bookings = bookingRepository.findAll();
+        if (dateFrom != null || dateTo != null) {
+            bookings = bookings.stream()
+                    .filter(b -> {
+                        LocalDate bDate = b.getFlight() != null ? b.getFlight().getFlightDate() : null;
+                        if (bDate == null) return false;
+                        if (dateFrom != null && bDate.isBefore(dateFrom)) return false;
+                        if (dateTo != null && bDate.isAfter(dateTo)) return false;
+                        return true;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        List<com.aircargo.entity.Mawb> mawbs = mawbRepository.findAll();
+        if (dateFrom != null) mawbs = mawbs.stream()
+                .filter(m -> m.getCreatedAt() != null && !m.getCreatedAt().toLocalDate().isBefore(dateFrom))
+                .collect(Collectors.toList());
+        if (dateTo != null) mawbs = mawbs.stream()
+                .filter(m -> m.getCreatedAt() != null && !m.getCreatedAt().toLocalDate().isAfter(dateTo))
+                .collect(Collectors.toList());
+
+        List<com.aircargo.entity.WarehouseReceipt> receipts = receiptRepository.findBySupersededFalse();
+        if (dateFrom != null) receipts = receipts.stream()
+                .filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().toLocalDate().isBefore(dateFrom))
+                .collect(Collectors.toList());
+        if (dateTo != null) receipts = receipts.stream()
+                .filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().toLocalDate().isAfter(dateTo))
+                .collect(Collectors.toList());
+
+        List<com.aircargo.entity.Uld> ulds = uldRepository.findAll();
+
+        summary.put("totalFlights", flights.size());
+        summary.put("totalBookings", bookings.size());
+        summary.put("totalMawbs", mawbs.size());
+        summary.put("totalReceipts", receipts.size());
+        summary.put("totalUlds", ulds.size());
+        summary.put("totalPieces", mawbs.stream()
+                .mapToInt(m -> m.getPieces() != null ? m.getPieces() : 0)
+                .sum());
+        summary.put("totalWeightKg", mawbs.stream()
+                .map(m -> m.getReportedWeightKg() != null ? m.getReportedWeightKg() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        long bookingsWithFulfillment = bookings.stream()
+                .filter(b -> b.getFulfillmentPct() != null).count();
+        if (bookingsWithFulfillment > 0) {
+            BigDecimal totalFulfillment = bookings.stream()
+                    .filter(b -> b.getFulfillmentPct() != null)
+                    .map(com.aircargo.entity.Booking::getFulfillmentPct)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            summary.put("avgFulfillmentPct", totalFulfillment
+                    .divide(BigDecimal.valueOf(bookingsWithFulfillment), 4, RoundingMode.HALF_UP));
+        } else {
+            summary.put("avgFulfillmentPct", BigDecimal.ZERO);
+        }
+
+        return summary;
+    }
+
+    public List<Map<String, Object>> getByLocation() {
+        List<com.aircargo.entity.Flight> flights = flightRepository.findAll();
+        List<com.aircargo.entity.Booking> allBookings = bookingRepository.findAll();
+        List<com.aircargo.entity.Mawb> allMawbs = mawbRepository.findAll();
+        List<com.aircargo.entity.Uld> allUlds = uldRepository.findAll();
+
+        Set<UUID> flightIds = flights.stream()
+                .map(com.aircargo.entity.Flight::getId)
+                .collect(Collectors.toSet());
+
+        Map<String, List<com.aircargo.entity.Flight>> flightsByOrigin = flights.stream()
+                .filter(f -> f.getOrigin() != null)
+                .collect(Collectors.groupingBy(com.aircargo.entity.Flight::getOrigin));
+
+        Map<UUID, Long> bookingsPerFlight = allBookings.stream()
+                .filter(b -> b.getFlight() != null)
+                .collect(Collectors.groupingBy(b -> b.getFlight().getId(), Collectors.counting()));
+
+        Map<UUID, Integer> piecesPerFlight = allMawbs.stream()
+                .filter(m -> m.getFlight() != null)
+                .collect(Collectors.groupingBy(
+                        m -> m.getFlight().getId(),
+                        Collectors.summingInt(m -> m.getPieces() != null ? m.getPieces() : 0)));
+
+        Map<UUID, BigDecimal> weightPerFlight = allMawbs.stream()
+                .filter(m -> m.getFlight() != null)
+                .collect(Collectors.groupingBy(
+                        m -> m.getFlight().getId(),
+                        Collectors.reducing(BigDecimal.ZERO,
+                                m -> m.getReportedWeightKg() != null ? m.getReportedWeightKg() : BigDecimal.ZERO,
+                                BigDecimal::add)));
+
+        Map<UUID, Long> uldsPerFlight = allUlds.stream()
+                .filter(u -> u.getFlight() != null)
+                .collect(Collectors.groupingBy(u -> u.getFlight().getId(), Collectors.counting()));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        flightsByOrigin.forEach((origin, originFlights) -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("origin", origin);
+            row.put("flightsCount", originFlights.size());
+            row.put("totalBookings", originFlights.stream()
+                    .mapToLong(f -> bookingsPerFlight.getOrDefault(f.getId(), 0L))
+                    .sum());
+            row.put("totalPieces", originFlights.stream()
+                    .mapToInt(f -> piecesPerFlight.getOrDefault(f.getId(), 0))
+                    .sum());
+            row.put("totalWeightKg", originFlights.stream()
+                    .map(f -> weightPerFlight.getOrDefault(f.getId(), BigDecimal.ZERO))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            row.put("totalUlds", originFlights.stream()
+                    .mapToLong(f -> uldsPerFlight.getOrDefault(f.getId(), 0L))
+                    .sum());
+            result.add(row);
+        });
+
+        return result;
+    }
+
+    public List<Map<String, Object>> getTimeline(LocalDate dateFrom, LocalDate dateTo) {
+        List<com.aircargo.entity.Flight> flights = flightRepository.findAll();
+        List<com.aircargo.entity.Mawb> mawbs = mawbRepository.findAll();
+        List<com.aircargo.entity.WarehouseReceipt> receipts = receiptRepository.findBySupersededFalse();
+
+        Set<LocalDate> allDates = new TreeSet<>();
+        flights.stream().map(com.aircargo.entity.Flight::getFlightDate).filter(Objects::nonNull).forEach(allDates::add);
+        mawbs.stream().filter(m -> m.getCreatedAt() != null)
+                .map(m -> m.getCreatedAt().toLocalDate()).forEach(allDates::add);
+        receipts.stream().filter(r -> r.getCreatedAt() != null)
+                .map(r -> r.getCreatedAt().toLocalDate()).forEach(allDates::add);
+
+        if (dateFrom != null) allDates = allDates.stream().filter(d -> !d.isBefore(dateFrom))
+                .collect(Collectors.toCollection(TreeSet::new));
+        if (dateTo != null) allDates = allDates.stream().filter(d -> !d.isAfter(dateTo))
+                .collect(Collectors.toCollection(TreeSet::new));
+
+        List<LocalDate> dates = new ArrayList<>(allDates);
+
+        return dates.stream().map(date -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("date", date.toString());
+            row.put("flightsCount", flights.stream()
+                    .filter(f -> date.equals(f.getFlightDate())).count());
+            row.put("mawbsCount", mawbs.stream()
+                    .filter(m -> m.getCreatedAt() != null && date.equals(m.getCreatedAt().toLocalDate()))
+                    .count());
+            row.put("receiptsCount", receipts.stream()
+                    .filter(r -> r.getCreatedAt() != null && date.equals(r.getCreatedAt().toLocalDate()))
+                    .count());
+            row.put("totalPieces", mawbs.stream()
+                    .filter(m -> m.getCreatedAt() != null && date.equals(m.getCreatedAt().toLocalDate()))
+                    .mapToInt(m -> m.getPieces() != null ? m.getPieces() : 0)
+                    .sum());
+            row.put("totalWeightKg", mawbs.stream()
+                    .filter(m -> m.getCreatedAt() != null && date.equals(m.getCreatedAt().toLocalDate()))
+                    .map(m -> m.getReportedWeightKg() != null ? m.getReportedWeightKg() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            return row;
+        }).collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getTopMawbs(int limit) {
+        List<com.aircargo.entity.Mawb> mawbs = mawbRepository.findAll();
+        return mawbs.stream()
+                .sorted(Comparator.comparing(
+                        (com.aircargo.entity.Mawb m) -> m.getReportedWeightKg() != null ? m.getReportedWeightKg() : BigDecimal.ZERO)
+                        .reversed())
+                .limit(limit)
+                .map(m -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("mawbId", m.getId());
+                    row.put("awbNumber", m.getAwbNumber());
+                    row.put("shipperName", m.getShipperName());
+                    row.put("destination", m.getDestination());
+                    row.put("pieces", m.getPieces());
+                    row.put("reportedWeightKg", m.getReportedWeightKg());
+                    row.put("status", m.getStatus() != null ? m.getStatus().name() : null);
+                    row.put("flightNumber", m.getFlight() != null ? m.getFlight().getFlightNumber() : null);
+                    return row;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getFlightPerformance(LocalDate dateFrom, LocalDate dateTo) {
+        List<com.aircargo.entity.Flight> flights = flightRepository.findAll();
+        if (dateFrom != null) flights = flights.stream()
+                .filter(f -> f.getFlightDate() != null && !f.getFlightDate().isBefore(dateFrom))
+                .collect(Collectors.toList());
+        if (dateTo != null) flights = flights.stream()
+                .filter(f -> f.getFlightDate() != null && !f.getFlightDate().isAfter(dateTo))
+                .collect(Collectors.toList());
+
+        flights.sort(Comparator.comparing(
+                (com.aircargo.entity.Flight f) -> f.getFlightDate() != null ? f.getFlightDate() : LocalDate.MIN).reversed());
+
+        return flights.stream().map(f -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("flightNumber", f.getFlightNumber());
+            row.put("flightDate", f.getFlightDate() != null ? f.getFlightDate().toString() : null);
+            row.put("origin", f.getOrigin());
+            row.put("destination", f.getDestination());
+            row.put("aircraftType", f.getAircraftType() != null ? f.getAircraftType().name() : null);
+            row.put("status", f.getStatus() != null ? f.getStatus().name() : null);
+
+            List<com.aircargo.entity.Booking> bookings = bookingRepository.findByFlightId(f.getId());
+            row.put("bookingsCount", bookings.size());
+            row.put("bookedPieces", bookings.stream()
+                    .mapToInt(b -> b.getSkids() != null ? b.getSkids() : 0)
+                    .sum());
+
+            List<com.aircargo.entity.Booking> receivedBookings = bookings.stream()
+                    .filter(b -> b.getReceivedKg() != null && b.getReceivedKg().compareTo(BigDecimal.ZERO) > 0)
+                    .collect(Collectors.toList());
+            row.put("receivedPieces", receivedBookings.size());
+
+            List<com.aircargo.entity.Uld> ulds = uldRepository.findByFlightId(f.getId());
+            row.put("uldsCount", ulds.size());
+
+            List<com.aircargo.entity.UldAwb> uldAwbs = uldAwbRepository.findByUldIdIn(
+                    ulds.stream().map(com.aircargo.entity.Uld::getId).collect(Collectors.toList()));
+            int dispatchedPieces = uldAwbs.stream()
+                    .mapToInt(a -> a.getPieces() != null ? a.getPieces() : 0)
+                    .sum();
+            row.put("dispatchedPieces", dispatchedPieces);
+
+            if (f.getMaxPayloadKg() != null && f.getMaxPayloadKg().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal totalNetKg = ulds.stream()
+                        .map(u -> u.getNetWeightKg() != null ? u.getNetWeightKg() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal utilization = totalNetKg
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(f.getMaxPayloadKg(), 2, RoundingMode.HALF_UP);
+                row.put("utilizationPct", utilization);
+            } else {
+                row.put("utilizationPct", BigDecimal.ZERO);
+            }
+
+            return row;
+        }).collect(Collectors.toList());
+    }
 }

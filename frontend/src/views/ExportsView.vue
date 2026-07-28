@@ -1,23 +1,22 @@
 <template>
-  <div class="p-3 md:p-6 max-w-[1600px] mx-auto flex flex-col h-screen">
+  <div class="ds-page max-w-[1600px] mx-auto">
 
     <!-- ═══ HEADER ═══ -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 shrink-0 gap-2">
+    <div class="ds-section-header mb-4 shrink-0">
       <div class="flex items-center gap-3">
-        <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Reviews -- Audit</h1>
+        <h1 class="ds-title">Reviews -- Audit</h1>
         <div v-if="rows.length" class="h-4 w-[1px] bg-slate-300"></div>
-        <span v-if="rows.length" class="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+        <span v-if="rows.length" class="ds-stat">
           {{ rows.length }} registro(s)
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="showImport = !showImport"
-          class="flex items-center gap-1.5 text-[10px] px-3 py-2 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold transition active:scale-95 shadow-sm text-slate-950 hover:bg-slate-100">
+        <button @click="showImport = !showImport" class="ds-btn-secondary">
           <IconUpload :size="14" />
           Importar
         </button>
         <button @click="handleExport" :disabled="!rows.length"
-          class="flex items-center gap-1.5 text-[10px] px-3 py-2 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold transition active:scale-95 shadow-sm text-slate-950 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          class="ds-btn-secondary disabled:opacity-40 disabled:cursor-not-allowed">
           <IconDownload :size="14" />
           CSV
         </button>
@@ -27,9 +26,8 @@
     <!-- ═══ FILTER BAR ═══ -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 shrink-0 p-3 rounded-lg border border-slate-200 bg-slate-50">
       <div>
-        <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1 font-mono">Tipo</label>
-        <select v-model="exportType"
-          class="px-3 py-1.5 rounded border border-slate-300 text-[11px] font-bold font-mono uppercase tracking-wider outline-none bg-white text-slate-900 cursor-pointer hover:border-slate-400 transition min-w-[130px]">
+        <label class="ds-label block mb-1">Tipo</label>
+        <select v-model="exportType" class="ds-input !w-auto min-w-[130px]">
           <option v-for="t in types" :key="t.value" :value="t.value">{{ t.label }}</option>
         </select>
       </div>
@@ -37,28 +35,25 @@
       <div class="h-6 w-[1px] bg-slate-300 self-end mb-0.5"></div>
 
       <div>
-        <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1 font-mono">Desde</label>
-        <input type="date" v-model="dateFrom"
-          class="px-3 py-1.5 rounded border border-slate-300 text-[11px] font-mono outline-none bg-white text-slate-900 cursor-pointer hover:border-slate-400 transition w-[150px]">
+        <label class="ds-label block mb-1">Desde</label>
+        <input type="date" v-model="dateFrom" class="ds-input !w-[150px]">
       </div>
       <div>
-        <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1 font-mono">Hasta</label>
-        <input type="date" v-model="dateTo"
-          class="px-3 py-1.5 rounded border border-slate-300 text-[11px] font-mono outline-none bg-white text-slate-900 cursor-pointer hover:border-slate-400 transition w-[150px]">
+        <label class="ds-label block mb-1">Hasta</label>
+        <input type="date" v-model="dateTo" class="ds-input !w-[150px]">
       </div>
 
       <div class="self-end mb-0.5">
         <button @click="loadData" :disabled="loading"
-          class="flex items-center gap-1.5 px-4 py-1.5 rounded text-[11px] font-bold font-mono uppercase tracking-wider transition active:scale-95 shadow-sm"
-          :class="loading ? 'bg-slate-400 text-white cursor-wait' : 'bg-slate-900 text-white hover:bg-slate-800'">
+          class="ds-btn-primary"
+          :class="loading ? '!bg-slate-400 !border-slate-400 cursor-wait' : ''">
           <IconSearch :size="14" />
           {{ loading ? 'Consultando...' : 'Consultar' }}
         </button>
       </div>
 
       <div class="self-end mb-0.5">
-        <button @click="clearFilters"
-          class="flex items-center gap-1 px-3 py-1.5 rounded border border-slate-300 text-[10px] font-bold font-mono uppercase tracking-wider text-slate-600 hover:bg-slate-100 transition">
+        <button @click="clearFilters" class="ds-btn-secondary">
           Limpiar
         </button>
       </div>
@@ -67,34 +62,34 @@
     <!-- ═══ IMPORT PANEL (collapsible) ═══ -->
     <transition name="slide">
       <div v-if="showImport" class="mb-4 shrink-0 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white">
+        <div class="ds-section-header px-4 py-2.5 bg-white">
           <div class="flex items-center gap-2">
             <IconUpload :size="14" class="text-slate-500" />
-            <span class="text-[11px] font-bold font-mono uppercase tracking-wider text-slate-700">Importar Load Planning</span>
+            <span class="text-[13px] font-bold font-mono uppercase tracking-wider text-slate-700">Importar Load Planning</span>
           </div>
           <button @click="showImport = false" class="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
         </div>
         <div class="p-4 flex items-center gap-4">
           <div class="border-2 border-dashed rounded-lg px-6 py-4 text-center transition-colors flex-1"
-            :style="dragOver
-              ? { borderColor: 'var(--accent)', background: '#eff6ff' }
-              : { borderColor: '#cbd5e1', background: 'white' }"
+            :class="dragOver
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-slate-300 bg-white'"
             @dragover.prevent="dragOver = true"
             @dragleave="dragOver = false"
             @drop.prevent="handleDrop">
             <IconUpload :size="24" class="mx-auto mb-1.5 text-slate-400" />
-            <p class="text-[11px] font-mono text-slate-500 mb-2">
+            <p class="text-[13px] font-mono text-slate-500 mb-2">
               {{ selectedFile ? selectedFile.name : 'Arrastra el archivo .xlsx aquí' }}
             </p>
             <input ref="fileInput" type="file" accept=".xlsx,.xls" @change="handleFileSelect" class="hidden">
             <button @click="$refs.fileInput.click()"
-              class="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-900 underline underline-offset-2 hover:text-slate-600 transition">
+              class="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-900 underline underline-offset-2 hover:text-slate-600 transition">
               Seleccionar archivo
             </button>
           </div>
           <button @click="handleImport" :disabled="!selectedFile || importing"
-            class="px-5 py-2.5 rounded text-[11px] font-bold font-mono uppercase tracking-wider transition active:scale-95 shrink-0"
-            :class="!selectedFile || importing ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm'">
+            class="ds-btn-primary shrink-0"
+            :class="!selectedFile || importing ? '!bg-slate-300 !border-slate-300 cursor-not-allowed' : ''">
             <span class="flex items-center gap-1.5">
               <IconUpload :size="14" />
               {{ importing ? 'Importando...' : 'Importar' }}
@@ -103,16 +98,16 @@
         </div>
 
         <!-- Import result -->
-        <div v-if="result" class="mx-4 mb-4 rounded-lg p-3 text-[11px] font-mono space-y-2"
-          :style="result.failedSheets === 0
-            ? { background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0' }
-            : { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }">
+        <div v-if="result" class="mx-4 mb-4 rounded-lg p-3 text-[13px] font-mono space-y-2"
+          :class="result.failedSheets === 0
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : 'bg-amber-50 text-amber-800 border border-amber-200'">
           <div class="font-bold flex items-center gap-2">
             <IconCheck v-if="result.failedSheets === 0" :size="14" />
             <IconAlertCircle v-else :size="14" />
             {{ result.successSheets }} de {{ result.totalSheets }} hojas importadas
           </div>
-          <div class="grid grid-cols-5 gap-3 text-[10px]">
+          <div class="grid grid-cols-5 gap-3 text-[12px]">
             <div><span class="font-bold">ULDs:</span> {{ result.totalUldsCreated }} / {{ result.totalUldsUpdated }}</div>
             <div><span class="font-bold">MAWBs:</span> {{ result.totalMawbsCreated }}</div>
             <div><span class="font-bold">Bookings:</span> {{ result.totalBookingsCreated }}</div>
@@ -120,8 +115,8 @@
           </div>
           <div v-for="sr in result.sheetResults" :key="sr.sheetName" class="pt-2 border-t border-current/20">
             <div class="font-semibold flex items-center gap-1.5">
-              <IconCircleCheck v-if="sr.success" :size="12" style="color: #059669" />
-              <IconCircleX v-else :size="12" style="color: #dc2626" />
+              <IconCircleCheck v-if="sr.success" :size="12" class="text-green-600" />
+              <IconCircleX v-else :size="12" class="text-red-600" />
               {{ sr.sheetName }} — {{ sr.flightNumber || 'N/A' }}
             </div>
             <div v-if="sr.error" class="mt-1" style="color: #dc2626">{{ sr.error }}</div>
@@ -130,20 +125,20 @@
             </div>
           </div>
         </div>
-        <div v-if="importError" class="mx-4 mb-4 rounded-lg p-3 text-[11px] font-mono" style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5">
+        <div v-if="importError" class="mx-4 mb-4 rounded-lg p-3 text-[13px] font-mono bg-red-50 text-red-800 border border-red-200">
           {{ importError }}
         </div>
       </div>
     </transition>
 
     <!-- ═══ TABLE ═══ -->
-    <div class="flex-1 min-h-0 rounded-lg overflow-hidden border border-slate-300 bg-white flex flex-col shadow-sm">
+    <div class="ds-table-section">
       <!-- Table header bar -->
-      <div class="bg-slate-800 border-b border-slate-600 px-4 py-2 flex items-center justify-between shrink-0">
-        <span class="text-[11px] font-bold text-white uppercase tracking-wider font-mono">
+      <div class="ds-table-header px-4 py-2 flex items-center justify-between shrink-0">
+        <span class="text-[13px] font-bold text-white uppercase tracking-wider font-mono">
           {{ typeLabel }} — Auditoría
         </span>
-        <span class="text-[10px] font-mono text-slate-300">
+        <span class="text-[12px] font-mono text-slate-300">
           {{ rows.length > 0 ? rows.length + ' registro(s)' : '' }}
         </span>
       </div>
@@ -152,7 +147,7 @@
       <div v-if="loading" class="flex-1 flex items-center justify-center">
         <div class="flex items-center gap-2">
           <div class="w-4 h-4 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
-          <span class="text-[11px] font-mono text-slate-500 uppercase tracking-wider">Cargando datos...</span>
+          <span class="text-[13px] font-mono text-slate-500 uppercase tracking-wider">Cargando datos...</span>
         </div>
       </div>
 
@@ -160,7 +155,7 @@
       <div v-else-if="tableError" class="flex-1 flex items-center justify-center">
         <div class="text-center">
           <IconAlertCircle :size="32" class="mx-auto mb-2 text-red-400" />
-          <span class="text-[11px] font-mono text-red-500">{{ tableError }}</span>
+          <span class="text-[13px] font-mono text-red-500">{{ tableError }}</span>
         </div>
       </div>
 
@@ -168,7 +163,7 @@
       <div v-else-if="!rows.length" class="flex-1 flex items-center justify-center">
         <div class="text-center">
           <IconSearch :size="32" class="mx-auto mb-2 text-slate-300" />
-          <p class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+          <p class="text-[13px] font-mono text-slate-400 uppercase tracking-wider">
             Selecciona tipo y presiona Consultar
           </p>
         </div>
@@ -176,8 +171,8 @@
 
       <!-- Data -->
       <div v-else class="flex-1 min-h-0 overflow-auto">
-        <div class="table-scroll-wrapper">
-        <table class="text-[11px] font-mono" style="table-layout: fixed; min-width: 900px">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <table class="text-[13px] font-mono" style="table-layout: fixed; min-width: 900px">
           <colgroup>
             <col v-for="(col, ci) in cols" :key="col" :style="colStyle(ci)" />
           </colgroup>

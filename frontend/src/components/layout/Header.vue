@@ -11,11 +11,11 @@
         <IconMenu :size="20" :stroke-width="2" style="color: white" />
       </button>
       <IconChevronRight :size="12" style="color: rgba(255,255,255,0.4)" :stroke-width="2" class="hidden sm:block" />
-      <span class="text-[11px] md:text-xs font-bold uppercase text-white tracking-wide" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3)">{{ title }}</span>
+      <span class="text-[13px] md:text-xs font-bold uppercase text-white tracking-wide" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3)">{{ title }}</span>
     </div>
 
     <div class="flex items-center gap-2 md:gap-4 relative z-10">
-      <span class="text-[10px] md:text-xs text-slate-300">{{ date }}</span>
+      <span class="text-[12px] md:text-xs text-slate-300">{{ date }}</span>
     </div>
   </header>
 </template>

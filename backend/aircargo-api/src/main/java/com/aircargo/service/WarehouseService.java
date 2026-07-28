@@ -70,7 +70,7 @@ public class WarehouseService {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  PUBLIC API — Create / Correct / Validate
+    //  PUBLIC API — Create / Update / Validate
     // ═══════════════════════════════════════════════════════════════════
 
     /**
@@ -93,6 +93,15 @@ public class WarehouseService {
         List<WarehouseReceipt> created = new ArrayList<>();
 
         synchronized (mawbId != null ? lockFor(mawbId) : new Object()) {
+            if (mawbId != null) {
+                List<WarehouseReceipt> existing = receiptRepository.findByMawbIdAndSupersededFalse(mawbId);
+                if (!existing.isEmpty()) {
+                    for (WarehouseReceipt r : existing) {
+                        r.setSuperseded(true);
+                    }
+                    receiptRepository.saveAll(existing);
+                }
+            }
             for (Map.Entry<String, List<ReceiptPiece>> entry : grouped.entrySet()) {
                 WarehouseReceipt receipt = new WarehouseReceipt();
                 copyReceiptFields(receipt, base);
@@ -119,50 +128,35 @@ public class WarehouseService {
     }
 
     /**
-     * Crea una corrección de un recibo existente (Adjustment Transaction).
-     * Supersede el receipt original, crea uno nuevo con correctionNumber + 1,
-     * y registra el motivo de la corrección y quién la autorizó.
+     * Actualiza un recibo existente in-place (edición directa).
+     * Sobrescribe campos, elimina piezas viejas, guarda nuevas, recalcula totales y regenera artifacts.
      */
     @Transactional
-    public WarehouseReceipt createCorrection(UUID originalReceiptId, WarehouseReceipt correctionData,
-                                              List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs,
-                                              String correctionReason, String correctedByName) {
-        WarehouseReceipt original = receiptRepository.findById(originalReceiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo original no encontrado: " + originalReceiptId));
+    public WarehouseReceipt updateReceipt(UUID receiptId, WarehouseReceipt updates,
+                                           List<ReceiptPiece> pieces, List<Map<String, String>> supportingDocs) {
+        WarehouseReceipt existing = receiptRepository.findById(receiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
 
-        int nextNumber = (original.getCorrectionNumber() != null ? original.getCorrectionNumber() : 1) + 1;
+        copyReceiptFields(existing, updates);
+        resolveAirlineIfMissing(existing);
 
-        WarehouseReceipt correction = new WarehouseReceipt();
-        copyReceiptFields(correction, correctionData);
-        resolveAirlineIfMissing(correction);
-        correction.setCorrectionOfId(original.getId());
-        correction.setCorrectionNumber(nextNumber);
-        correction.setSuperseded(false);
-        correction.setCorrectionReason(correctionReason);
-        correction.setCorrectedByName(correctedByName);
-
-        if (supportingDocs != null && !supportingDocs.isEmpty()) {
-            setSupportingDocs(correction, supportingDocs);
+        if (supportingDocs != null) {
+            setSupportingDocs(existing, supportingDocs);
         }
 
-        UUID mawbId = correction.getMawb() != null ? correction.getMawb().getId() : null;
+        UUID mawbId = existing.getMawb() != null ? existing.getMawb().getId() : null;
 
         synchronized (mawbId != null ? lockFor(mawbId) : new Object()) {
-            correction = receiptRepository.save(correction);
-            if (mawbId != null) {
-                receiptRepository.supersedeOthers(mawbId, correction.getId());
-            } else {
-                original.setSuperseded(true);
-                receiptRepository.save(original);
-            }
+            existing = receiptRepository.save(existing);
+            pieceRepository.deleteByReceiptId(receiptId);
         }
 
-        WarehouseReceipt savedReceipt = savePiecesAndRecalculate(correction, pieces);
+        WarehouseReceipt saved = savePiecesAndRecalculate(existing, pieces);
         if (mawbId != null) {
-            postSaveCascade(savedReceipt, mawbId);
+            postSaveCascade(saved, mawbId);
         }
-        receiptExportService.evictCache(originalReceiptId);
-        return savedReceipt;
+        receiptExportService.evictCache(receiptId);
+        return saved;
     }
 
     /**

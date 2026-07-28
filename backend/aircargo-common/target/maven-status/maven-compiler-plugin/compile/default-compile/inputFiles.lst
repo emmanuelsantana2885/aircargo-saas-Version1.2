@@ -1,8 +1,8 @@
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/entity/Airline.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/event/ReceiptCreatedEvent.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/util/TextUtil.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/entity/CommodityType.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/auth/JwtUtil.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/entity/AircraftType.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/auth/UserPrincipal.java
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-common/src/main/java/com/aircargo/common/auth/JwtAuthFilter.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/auth/UserPrincipal.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/util/TextUtil.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/event/ReceiptCreatedEvent.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/entity/AircraftType.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/auth/JwtUtil.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/auth/JwtAuthFilter.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/entity/Airline.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/entity/CommodityType.java

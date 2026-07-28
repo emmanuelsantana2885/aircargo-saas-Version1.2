@@ -1,31 +1,31 @@
 <template>
-  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-sans antialiased overflow-hidden select-none">
-    <header class="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-2 border-b border-slate-400 pb-3 shrink-0">
+  <div class="ds-page">
+    <header class="ds-section-header">
       <div class="flex items-center gap-4">
         <div>
-          <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">ULD Management Hub</h1>
-          <p class="text-[12px] font-mono text-slate-950 mt-0.5 uppercase tracking-widest font-bold">SDQ Operations // Ground Handling & Pallet Sheets</p>
+          <h1 class="ds-title">ULD Management Hub</h1>
+          <p class="ds-subtitle">SDQ Operations // Ground Handling & Pallet Sheets</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
         <span v-if="pendingReceiptCount > 0"
-          class="text-[12px] font-mono font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded">
+          class="text-[14px] font-mono font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded">
           &#9888; {{ pendingReceiptCount }} MAWB(s) sin recibo
         </span>
         <button @click="createNewBlankUld"
-          class="bg-slate-950 text-white font-mono text-xs font-black uppercase tracking-wider px-5 py-2 rounded border border-slate-900 hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm active:scale-95">
-          <span class="text-[10px] font-sans">&#65291;</span> Crear ULD
+          class="ds-btn-primary">
+          <span class="text-[12px] font-sans">&#65291;</span> Crear ULD
         </button>
       </div>
     </header>
 
-    <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
+    <section class="ds-table-section mb-1.5">
       <div v-if="appStore.loading && !localUlds.length" class="flex-1 flex items-center justify-center">
-        <span class="text-[12px] font-mono text-slate-400 animate-pulse">Cargando ULDs...</span>
+        <span class="text-[14px] font-mono text-slate-400 animate-pulse">Cargando ULDs...</span>
       </div>
 
       <div v-else-if="filteredUlDs.length === 0" class="flex-1 flex items-center justify-center">
-        <p class="text-[12px] font-mono text-slate-400 uppercase tracking-widest">No hay ULDs disponibles — crea uno nuevo</p>
+        <p class="text-[14px] font-mono text-slate-400 uppercase tracking-widest">No hay ULDs disponibles — crea uno nuevo</p>
       </div>
 
       <template v-else>
@@ -40,30 +40,30 @@
               uld._isFirstDated ? 'border-t-2 border-t-slate-950 mt-1' : '']"
             :style="uldStatusBorderStyle(uld.status)">
 
-            <span class="text-[11px] font-black text-slate-950 font-mono truncate min-w-[100px] leading-tight flex items-center gap-1.5">
+            <span class="text-[13px] font-black text-slate-950 font-mono truncate min-w-[100px] leading-tight flex items-center gap-1.5">
               {{ uld.uldNumber || 'NUEVO-ULD' }}
               <span v-if="uldAgeInDays(uld.createdAt) !== null"
-                class="text-[8px] font-bold px-1 py-px rounded leading-none"
+                class="text-[10px] font-bold px-1 py-px rounded leading-none"
                 :class="uldAgeBadgeClass(uldAgeInDays(uld.createdAt))">
                 {{ uldAgeInDays(uld.createdAt) }}d
               </span>
             </span>
-            <span class="text-[8px] font-black px-1 py-px rounded uppercase whitespace-nowrap leading-none shrink-0"
+            <span class="text-[10px] font-black px-1 py-px rounded uppercase whitespace-nowrap leading-none shrink-0"
               :class="statusBadgeClass(uld.status)">{{ uld.status }}</span>
 
-            <span class="text-[11px] font-mono text-slate-400 font-semibold truncate leading-tight shrink-0 min-w-[80px]">
+            <span class="text-[13px] font-mono text-slate-400 font-semibold truncate leading-tight shrink-0 min-w-[80px]">
               {{ flightLabel(uld) }}
             </span>
 
-            <span class="text-[11px] font-mono text-slate-500 truncate leading-tight shrink-0 min-w-[60px]">
+            <span class="text-[13px] font-mono text-slate-500 truncate leading-tight shrink-0 min-w-[60px]">
               {{ uld.route ? uld.route.replace(' -> ', '&#8594;') : '---' }}
             </span>
 
-            <span class="text-[11px] font-mono font-bold text-slate-950 leading-tight shrink-0 min-w-[70px]">
+            <span class="text-[13px] font-mono font-bold text-slate-950 leading-tight shrink-0 min-w-[70px]">
               {{ Number(uld.grossWeightLbs || 0).toLocaleString() }} lb
             </span>
 
-            <span class="text-[11px] font-mono text-slate-500 leading-tight shrink-0 min-w-[60px]">
+            <span class="text-[13px] font-mono text-slate-500 leading-tight shrink-0 min-w-[60px]">
               {{ (uld.mawbs || []).length }} MAWB{{ (uld.mawbs || []).length !== 1 ? 's' : '' }}
             </span>
 
@@ -73,7 +73,7 @@
                   :class="uld.volumePct >= 90 ? 'bg-slate-600' : 'bg-slate-950'"
                   :style="{ width: uld.volumePct + '%' }"></div>
               </div>
-              <span class="text-[11px] font-mono font-bold text-slate-400 leading-none">{{ uld.volumePct }}%</span>
+              <span class="text-[13px] font-mono font-bold text-slate-400 leading-none">{{ uld.volumePct }}%</span>
             </div>
           </div>
         </div>
@@ -85,33 +85,33 @@
               <div class="bg-white border border-slate-300 rounded shadow-sm max-w-5xl mx-auto p-3 md:p-6 font-mono text-sm relative">
                   <div class="flex justify-between items-center border-b border-slate-300 pb-3 mb-5">
                     <div class="flex items-center gap-2">
-                      <span class="text-[11px] font-black text-slate-950 uppercase tracking-wider">ULD PALLET SHEET & MANIFEST</span>
+                      <span class="text-[13px] font-black text-slate-950 uppercase tracking-wider">ULD PALLET SHEET & MANIFEST</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-bold text-slate-400 uppercase">Volumen:</span>
-                    <input v-model.number="uld.volumePct" type="number" min="0" max="100" class="w-14 text-center bg-slate-100 border border-slate-300 rounded font-bold text-slate-950 focus:outline-none text-[12px]" />
-                    <span class="text-[12px] font-bold text-slate-950">%</span>
+                    <span class="text-[13px] font-bold text-slate-400 uppercase">Volumen:</span>
+                    <input v-model.number="uld.volumePct" type="number" min="0" max="100" class="w-14 text-center bg-slate-100 border border-slate-300 rounded font-bold text-slate-950 focus:outline-none text-[14px]" />
+                    <span class="text-[14px] font-bold text-slate-950">%</span>
                   </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Código ULD *</label>
-                    <input v-model="uld.uldNumber" type="text" placeholder="PMC-XXXXX" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] font-bold text-slate-950 focus:outline-none focus:border-slate-400 uppercase" />
+                    <label class="ds-label block mb-1">Código ULD *</label>
+                    <input v-model="uld.uldNumber" type="text" placeholder="PMC-XXXXX" class="ds-input uppercase" />
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Config / Tipo</label>
-                    <select v-model="uld.uldType" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] font-bold text-slate-950 focus:outline-none focus:border-slate-400">
+                    <label class="ds-label block mb-1">Config / Tipo</label>
+                    <select v-model="uld.uldType" class="ds-input">
                       <option v-for="t in uldTypes" :key="t" :value="t">{{ t }}</option>
                     </select>
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Posición</label>
-                    <input v-model="uld.position" type="text" placeholder="1L" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 focus:outline-none focus:border-slate-400 uppercase" />
+                    <label class="ds-label block mb-1">Posición</label>
+                    <input v-model="uld.position" type="text" placeholder="1L" class="ds-input uppercase" />
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Sello Seguridad</label>
-                    <input v-model="uld.sealNumber" type="text" placeholder="SC-XXXXXXXX" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 focus:outline-none focus:border-slate-400 font-bold" />
+                    <label class="ds-label block mb-1">Sello Seguridad</label>
+                    <input v-model="uld.sealNumber" type="text" placeholder="SC-XXXXXXXX" class="ds-input font-bold" />
                   </div>
                 </div>
 
@@ -130,7 +130,7 @@
                 <div class="border border-slate-200 rounded overflow-hidden mb-6">
                   <div class="overflow-x-auto">
                   <div class="table-scroll-wrapper">
-                  <div class="bg-slate-700 text-white text-[11px] font-bold uppercase grid grid-cols-12 py-3 px-5 tracking-wide items-center gap-2 shadow-sm" style="min-width: 700px">
+                  <div class="ds-table-header grid grid-cols-12 py-3 px-5 items-center gap-2" style="min-width: 700px">
                     <div class="col-span-3">MAWB</div>
                     <div class="col-span-2">DESCRIPCIÓN</div>
                     <div class="col-span-1 text-right">PCS ASIG</div>
@@ -141,20 +141,20 @@
                     <div class="col-span-1"></div>
                   </div>
                   <div class="divide-y divide-slate-100 max-h-[240px] overflow-y-auto scrollbar-none">
-                    <div v-for="(mawb, mIdx) in uld.mawbs" :key="mawb._rowId" class="grid grid-cols-12 items-center py-2 px-5 bg-white gap-2 text-sm">
+                    <div v-for="(mawb, mIdx) in uld.mawbs" :key="mawb._rowId" class="ds-table-row grid grid-cols-12 gap-2 text-sm">
                       <div class="col-span-3 relative">
                         <input v-model="mawb.awbNumber" @input="onMawbInput(uld, mIdx)" @focus="onMawbInput(uld, mIdx)" @blur="onMawbBlur(uld, mIdx)"
                           placeholder="Escribe MAWB..."
-                          class="w-full border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 bg-transparent font-bold tracking-tight text-slate-950 text-[11px]" />
+                          class="w-full border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 bg-transparent font-bold tracking-tight text-slate-950 text-[13px]" />
                         <div v-if="mawb._showSuggestions && mawb._suggestions.length"
                           class="absolute top-full left-0 right-0 z-50 bg-white border border-slate-300 rounded shadow-lg max-h-[160px] overflow-y-auto">
                           <div v-for="s in mawb._suggestions" :key="s.id"
                             @mousedown.prevent="selectMawbSuggestion(uld, mIdx, s)"
-                            class="px-2 py-1.5 text-[11px] font-mono cursor-pointer hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                            class="px-2 py-1.5 text-[13px] font-mono cursor-pointer hover:bg-slate-50 border-b border-slate-100 last:border-0"
                             :class="s.availablePieces > 0 ? 'text-slate-950' : 'text-slate-300'">
                             <span class="font-bold">{{ s.awbNumber }}</span>
                             <span class="text-slate-400 ml-1">— {{ s.shipperName || s.consigneeName || '' }}</span>
-                            <span class="text-slate-400 text-xs ml-1">[{{ s.commodityType }}]</span>
+                            <span class="text-slate-400 text-sm ml-1">[{{ s.commodityType }}]</span>
                             <span v-if="s.availablePieces > 0" class="text-slate-600 ml-1">disp: {{ s.availablePieces }} pz</span>
                             <span v-else class="text-slate-400 ml-1">sin piezas</span>
                           </div>
@@ -162,27 +162,27 @@
                       </div>
                       <div class="col-span-2">
                         <input v-model="mawb.commodityType" type="text" :placeholder="mawb.commodityHint || 'Dry Cargo'"
-                          class="w-full border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 bg-transparent font-medium text-slate-950 text-[11px]" />
+                          class="w-full border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 bg-transparent font-medium text-slate-950 text-[13px]" />
                       </div>
                       <div class="col-span-1 flex items-center gap-1">
                         <input v-model.number="mawb.pieces" type="number" min="0"
-                          class="w-full border-b border-slate-200 focus:border-slate-950 py-1 text-right bg-transparent font-bold text-[11px]" />
+                          class="w-full border-b border-slate-200 focus:border-slate-950 py-1 text-right bg-transparent font-bold text-[13px]" />
                       </div>
-                      <div class="col-span-1 text-right font-mono text-[11px] flex items-center justify-end gap-1"
+                      <div class="col-span-1 text-right font-mono text-[13px] flex items-center justify-end gap-1"
                         :class="mawb.receivedPieces != null ? 'text-slate-600' : 'text-slate-400'">
                         <template v-if="mawb.receivedPieces != null">{{ mawb.receivedPieces }}</template>
                         <span v-else>&mdash;</span>
                       </div>
                       <div class="col-span-1 text-center flex items-center justify-center gap-1">
                         <input v-model.number="mawb.piecesPct" type="number" min="0" max="100"
-                          class="w-10 border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 text-center bg-transparent font-bold text-slate-600 text-[11px]" />
-                        <span class="text-[11px] text-slate-400">%</span>
+                          class="w-10 border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 text-center bg-transparent font-bold text-slate-600 text-[13px]" />
+                        <span class="text-[13px] text-slate-400">%</span>
                       </div>
                       <div class="col-span-1 text-right">
                         <input v-model="mawb.destination" type="text" maxlength="3"
-                          class="w-full border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 text-right bg-transparent uppercase font-bold text-slate-950 text-[11px]" />
+                          class="w-full border-b border-slate-200 focus:outline-none focus:border-slate-950 py-1 text-right bg-transparent uppercase font-bold text-slate-950 text-[13px]" />
                       </div>
-                      <div class="col-span-2 flex justify-center items-center gap-1 text-[11px] font-mono">
+                      <div class="col-span-2 flex justify-center items-center gap-1 text-[13px] font-mono">
                         <span v-if="mawb.hasReceipt"
                           class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-slate-600 bg-slate-100 border border-slate-200">
                           ✓ Recibido
@@ -194,15 +194,15 @@
                         </span>
                       </div>
                       <div class="col-span-1 text-center">
-                        <button @click="removeMawbRow(uld, mIdx)" class="text-slate-400 hover:text-slate-600 text-xs">&#10005;</button>
+                        <button @click="removeMawbRow(uld, mIdx)" class="text-slate-400 hover:text-slate-600 text-sm">&#10005;</button>
                       </div>
                     </div>
                   </div>
                   </div>
                   </div>
-                  <div class="p-2 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500 flex-wrap gap-1">
+                  <div class="p-2 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[13px] text-slate-500 flex-wrap gap-1">
                     <button @click="addMawbRow(uld)"
-                      class="py-1.5 px-3 border border-dashed border-slate-300 rounded text-center hover:text-slate-950 transition-colors font-bold text-[11px] uppercase">
+                      class="py-1.5 px-3 border border-dashed border-slate-300 rounded text-center hover:text-slate-950 transition-colors font-bold text-[13px] uppercase">
                       + MAWB
                     </button>
                     <div class="flex items-center gap-2">
@@ -213,24 +213,24 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Tara <span class="text-slate-950">(lbs)</span></label>
+                    <label class="ds-label block mb-1">Tara <span class="text-slate-950">(lbs)</span></label>
                     <div class="relative">
                       <input v-model.number="uld.tareLbs" type="number" step="0.1"
-                        class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 focus:outline-none focus:border-slate-400" />
+                        class="ds-input" />
                     </div>
-                    <div v-if="suggestedTareLbs" class="mt-1 text-[9px] text-slate-400 font-mono">
+                    <div v-if="suggestedTareLbs" class="mt-1 text-[11px] text-slate-400 font-mono">
                       Sugerida: {{ suggestedTareLbs }} lb
                       <button @click="uld.tareLbs = suggestedTareLbs"
                         class="text-slate-500 hover:text-slate-700 underline ml-1">usar</button>
                     </div>
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peso Bruto (lbs)</label>
-                    <input v-model.number="uld.grossWeightLbs" type="number" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 focus:outline-none focus:border-slate-400" />
+                    <label class="ds-label block mb-1">Peso Bruto (lbs)</label>
+                    <input v-model.number="uld.grossWeightLbs" type="number" class="ds-input" />
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Estado</label>
-                      <select v-model="uld.status" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 focus:outline-none focus:border-slate-400 font-bold">
+                    <label class="ds-label block mb-1">Estado</label>
+                      <select v-model="uld.status" class="ds-input font-bold">
                         <option value="OPEN">OPEN (Abierto)</option>
                         <option value="BUILT">BUILT (Armado)</option>
                         <option value="SEALED">SEALED (Precintado)</option>
@@ -239,23 +239,23 @@
                       </select>
                   </div>
                   <div class="bg-slate-50 flex flex-col justify-center rounded px-3 py-2 border border-slate-200">
-                    <span class="text-xs font-black text-slate-600 uppercase tracking-wider">Peso Neto</span>
+                    <span class="text-sm font-black text-slate-600 uppercase tracking-wider">Peso Neto</span>
                     <span class="text-sm font-black text-slate-800">{{ ((uld.grossWeightLbs || 0) - (uld.tareLbs || 0)).toLocaleString() }} lbs</span>
                   </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-200 pt-5">
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Ubicación / Puerta</label>
-                    <input v-model="uld.door" type="text" placeholder="Puerta 4 / Patio" class="w-full border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 bg-slate-50 focus:outline-none uppercase" />
+                    <label class="ds-label block mb-1">Ubicación / Puerta</label>
+                    <input v-model="uld.door" type="text" placeholder="Puerta 4 / Patio" class="ds-input uppercase" />
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Manifestado Por</label>
-                    <input v-model="uld.filledBy" type="text" placeholder="Operadores de rampa" class="w-full border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 bg-slate-50 focus:outline-none font-bold" />
+                    <label class="ds-label block mb-1">Manifestado Por</label>
+                    <input v-model="uld.filledBy" type="text" placeholder="Operadores de rampa" class="ds-input font-bold" />
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Notas</label>
-                    <input v-model="uld.notes" type="text" placeholder="Notas adicionales" class="w-full border border-slate-200 rounded px-3 py-2 text-[12px] text-slate-950 bg-slate-50 focus:outline-none" />
+                    <label class="ds-label block mb-1">Notas</label>
+                    <input v-model="uld.notes" type="text" placeholder="Notas adicionales" class="ds-input" />
                   </div>
                 </div>
 
@@ -263,9 +263,9 @@
                 <div class="border-t border-slate-200 pt-5 flex flex-wrap justify-end gap-2 bg-slate-50/50 -mx-2 md:-mx-6 -mb-6 p-3 md:p-6 rounded-b">
                   <div class="flex items-center gap-4 mr-auto">
                     <div class="flex flex-col">
-                      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vuelo</span>
+                      <span class="text-[12px] font-black text-slate-400 uppercase tracking-widest">Vuelo</span>
                       <select v-model="uld.saveFlightId"
-                        class="bg-white border border-slate-300 rounded px-2 py-1.5 font-bold text-slate-950 focus:outline-none uppercase text-[10px] min-w-[160px]">
+                        class="ds-input uppercase text-[12px] min-w-[160px]">
                         <option value="" disabled>Seleccionar vuelo</option>
                         <option v-for="f in appStore.flights" :key="f.id" :value="f.id">
                           {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }} ({{ f.origin }}&#8594;{{ f.destination }}) {{ f.flightDate }}
@@ -273,27 +273,27 @@
                       </select>
                     </div>
                     <div class="flex flex-col">
-                      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Creado</span>
-                      <span class="text-[12px] font-bold text-slate-950">{{ uld.createdAt ? formatDate(uld.createdAt) : '—' }}</span>
+                      <span class="text-[12px] font-black text-slate-400 uppercase tracking-widest">Creado</span>
+                      <span class="text-[14px] font-bold text-slate-950">{{ uld.createdAt ? formatDate(uld.createdAt) : '—' }}</span>
                     </div>
                   </div>
                   <div class="flex items-center gap-2">
                     <button @click="toggleScanMode(uld)"
-                      class="font-mono font-black uppercase text-[10px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
+                      class="font-mono font-black uppercase text-[12px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
                       :class="scanMode ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
                       {{ scanMode ? '🔍 Scanando...' : '📷 Modo Scan' }}
                     </button>
                     <button @click="deleteUld(uld)"
-                      class="text-slate-400 hover:text-slate-700 font-mono font-black uppercase text-[10px] tracking-widest px-3 py-2 rounded border border-slate-200 hover:border-slate-400 transition-all"
+                      class="ds-btn-secondary text-slate-400 hover:text-slate-700"
                       :title="uld.backendId ? 'Eliminar ULD' : 'Descartar ULD'">
                       &#10005;
                     </button>
                     <button v-if="uld.backendId" @click="dismountUld(uld)"
-                      class="bg-slate-600 hover:bg-slate-700 text-white font-mono font-black uppercase text-[10px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2">
+                      class="ds-btn-secondary">
                       Desmontar ULD
                     </button>
                     <button @click="saveUld(uld)"
-                      class="bg-slate-800 hover:bg-slate-700 text-white font-mono font-black uppercase text-[12px] tracking-widest px-6 py-2.5 rounded shadow-md transition-all flex items-center gap-2">
+                      class="ds-btn-primary">
                       {{ uld.backendId ? 'Actualizar ULD' : '&#128640; Enviar a Load Planning' }}
                     </button>
                   </div>
@@ -303,7 +303,7 @@
           </div>
 
           <div v-if="!expandedUldId" class="flex items-center justify-center h-full">
-            <p class="text-[11px] font-mono text-slate-300 uppercase tracking-widest">Selecciona un ULD para editar</p>
+            <p class="text-[13px] font-mono text-slate-300 uppercase tracking-widest">Selecciona un ULD para editar</p>
           </div>
         </div>
       </template>
@@ -869,8 +869,6 @@ watch(() => appStore.ulds, () => rebuildLocalList(), { deep: true })
 </script>
 
 <style scoped>
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .row-selected { background: #f8fafc; }

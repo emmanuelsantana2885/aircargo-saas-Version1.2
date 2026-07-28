@@ -4,7 +4,7 @@
       <div class="flex items-center gap-1">
         <template v-for="(step, idx) in steps" :key="step.key">
           <div class="flex items-center gap-1.5 cursor-pointer" @click="currentStep = idx + 1">
-            <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-mono font-black border-2 transition-all"
+            <div class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-mono font-black border-2 transition-all"
               :class="currentStep === idx + 1
                 ? 'bg-slate-950 text-white border-slate-950 scale-110'
                 : currentStep > idx + 1
@@ -13,7 +13,7 @@
               <IconCheck v-if="currentStep > idx + 1" :size="11" :stroke-width="3" />
               <span v-else>{{ idx + 1 }}</span>
             </div>
-            <span class="text-[9px] font-mono uppercase tracking-wide font-bold hidden lg:inline"
+            <span class="text-[11px] font-mono uppercase tracking-wide font-bold hidden lg:inline"
               :class="currentStep === idx + 1 ? 'text-slate-950' : 'text-slate-400'">
               {{ step.label }}
             </span>
@@ -30,14 +30,14 @@
     <div v-if="currentStep === 1" class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="space-y-3">
         <div v-for="field in step1Fields" :key="field.key">
-          <label class="text-[9px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">{{ field.label }}</label>
+          <label class="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">{{ field.label }}</label>
           <input :value="form[field.key]"
             @input="form[field.key] = field.numeric ? ($event.target.valueAsNumber || null) : $event.target.value"
             :type="field.numeric ? 'number' : 'text'"
             :maxlength="field.maxlength"
             :placeholder="field.placeholder"
             class="w-full text-xs font-mono px-3 py-2 rounded border border-slate-200 bg-white outline-none focus:border-slate-950 transition shadow-pencil-marine" />
-          <div v-if="field.key === 'awbReportedPieces'" class="mt-1.5 flex items-center gap-1.5 text-[9px] font-mono flex-wrap">
+          <div v-if="field.key === 'awbReportedPieces'" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-mono flex-wrap">
             <span class="text-slate-400 uppercase tracking-wide">Total medido (Paso 2):</span>
             <span class="font-black" :class="piecesMismatch ? 'text-slate-500' : 'text-slate-700'">{{ totalQty }}</span>
             <span v-if="piecesMismatch" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 uppercase font-bold">
@@ -59,7 +59,7 @@
             {{ cb.label }}
           </label>
         </div>
-        <p class="text-[9px] font-mono text-slate-400 mt-3 pt-3 border-t border-slate-100">* Campos bloqueados solo para Administradores</p>
+        <p class="text-[11px] font-mono text-slate-400 mt-3 pt-3 border-t border-slate-100">* Campos bloqueados solo para Administradores</p>
       </div>
     </div>
 
@@ -67,7 +67,7 @@
     <div v-if="currentStep === 2">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="text-xs font-mono uppercase tracking-widest font-bold text-slate-400">Detalle de Piezas por Grupo Dimensional</h3>
-        <div class="flex items-center gap-2 text-[9px] font-mono">
+        <div class="flex items-center gap-2 text-[11px] font-mono">
           <span class="text-slate-400 uppercase tracking-wide">Reportado:</span>
           <span class="font-black text-slate-700">{{ form.awbReportedPieces ?? '—' }}</span>
           <span class="text-slate-300">/</span>
@@ -78,7 +78,7 @@
           </span>
         </div>
       </div>
-      <p class="text-[9px] font-mono text-slate-400 mb-3 italic">Cada fila = un grupo de piezas con las mismas dimensiones. Ej: 57 piezas de 17×18×5 in.</p>
+      <p class="text-[11px] font-mono text-slate-400 mb-3 italic">Cada fila = un grupo de piezas con las mismas dimensiones. Ej: 57 piezas de 17×18×5 in.</p>
 
       <!-- Grid table using CSS grid for perfect alignment -->
       <div class="border border-slate-200 rounded overflow-hidden shadow-pencil-marine bg-white">
@@ -183,7 +183,7 @@
         <button v-for="ev in evidenceButtons" :key="ev.label"
           class="pencil-sketch flex flex-col items-center gap-2 py-6 rounded border border-slate-200 bg-white shadow-pencil-marine hover:border-slate-400 transition">
           <component :is="ev.icon" :size="20" :stroke-width="1.6" class="text-slate-500 relative z-10" />
-          <span class="text-[9px] font-mono uppercase tracking-wide font-bold text-slate-500 relative z-10">{{ ev.label }}</span>
+          <span class="text-[11px] font-mono uppercase tracking-wide font-bold text-slate-500 relative z-10">{{ ev.label }}</span>
         </button>
       </div>
     </div>
@@ -193,7 +193,7 @@
       <h3 class="text-xs font-mono uppercase tracking-widest font-bold text-slate-400 mb-3">Firmas</h3>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div v-for="sig in signatureFields" :key="sig.key">
-          <label class="text-[9px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">{{ sig.label }}</label>
+          <label class="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">{{ sig.label }}</label>
           <input v-model="form[sig.key]" placeholder="Nombre completo"
             class="w-full text-xs font-mono px-3 py-2 rounded border border-slate-200 bg-white outline-none focus:border-slate-950 transition shadow-pencil-marine" />
         </div>

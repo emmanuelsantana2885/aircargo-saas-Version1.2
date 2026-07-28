@@ -1,23 +1,17 @@
 <template>
-  <div class="p-3 md:p-6 max-w-6xl mx-auto">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-2">
-      <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">System Settings</h1>
+  <div class="ds-page max-w-6xl mx-auto">
+    <div class="ds-section-header mb-4">
+      <h1 class="ds-title">System Settings</h1>
     </div>
 
     <!-- Tabs -->
     <div class="flex gap-1 mb-4">
       <button @click="activeTab = 'users'"
-        class="px-4 py-1.5 rounded text-xs font-semibold transition-all"
-        :style="activeTab === 'users'
-          ? { background: 'var(--accent)', color: 'white' }
-          : { background: 'var(--bg)', color: 'var(--muted)' }">
+        :class="activeTab === 'users' ? 'ds-btn-primary' : 'ds-btn-secondary'">
         Usuarios
       </button>
       <button v-if="auth.role === 'SUPER_USER'" @click="activeTab = 'sites'"
-        class="px-4 py-1.5 rounded text-xs font-semibold transition-all"
-        :style="activeTab === 'sites'
-          ? { background: 'var(--accent)', color: 'white' }
-          : { background: 'var(--bg)', color: 'var(--muted)' }">
+        :class="activeTab === 'sites' ? 'ds-btn-primary' : 'ds-btn-secondary'">
         Sitios
       </button>
 
@@ -29,111 +23,92 @@
         <div class="flex items-center gap-3">
           <div class="relative flex-1 max-w-xs">
             <input v-model="searchQuery" placeholder="Buscar por email o nombre..."
-              class="w-full px-3 py-1.5 rounded text-xs outline-none"
-              style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              class="ds-input">
           </div>
-          <span class="text-xs" style="color: var(--muted)">{{ filteredUsers.length }} usuarios</span>
+          <span class="ds-stat">{{ filteredUsers.length }} usuarios</span>
         </div>
-        <button @click="openCreate"
-          class="px-3 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
-          style="background: var(--accent); color: white">
+        <button @click="openCreate" class="ds-btn-primary">
           + Nuevo usuario
         </button>
       </div>
 
       <!-- Users table -->
-      <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <div class="table-scroll-wrapper">
-        <table class="w-full text-xs" style="min-width: 800px">
+      <div class="ds-table-section">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <table class="w-full text-sm" style="min-width: 800px">
           <thead>
-            <tr style="background: var(--accent); color: white">
-              <th class="text-left px-4 py-2.5 font-semibold">Email</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Nombre</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Rol</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Sitios</th>
-              <th class="text-center px-4 py-2.5 font-semibold" style="width: 80px">Activo</th>
-              <th class="text-center px-4 py-2.5 font-semibold" style="width: 100px">Contraseña</th>
-              <th class="text-center px-4 py-2.5 font-semibold" style="width: 80px">MFA</th>
-              <th class="text-right px-4 py-2.5 font-semibold" style="width: 240px">Acciones</th>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+              <th>Email</th>
+              <th>Nombre</th>
+              <th>Rol</th>
+              <th>Sitios</th>
+              <th class="text-center" style="width: 80px">Activo</th>
+              <th class="text-center" style="width: 100px">Contraseña</th>
+              <th class="text-center" style="width: 80px">MFA</th>
+              <th class="text-right" style="width: 240px">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="user in filteredUsers" :key="user.id"
-              class="border-t transition-colors hover:bg-slate-50"
-              style="border-color: var(--border)">
-              <td class="px-4 py-2.5" style="color: var(--text)">{{ user.email }}</td>
-              <td class="px-4 py-2.5" style="color: var(--text)">{{ user.fullName }}</td>
-              <td class="px-4 py-2.5">
-                <span class="text-[10px] font-medium px-2 py-0.5 rounded"
-                  style="background: var(--bg); color: var(--text)">
+              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
+              <td class="text-slate-900">{{ user.email }}</td>
+              <td class="text-slate-900">{{ user.fullName }}</td>
+              <td>
+                <span class="ds-label bg-slate-100 px-2 py-0.5 rounded">
                   {{ roleLabel(user.role) }}
                 </span>
               </td>
-              <td class="px-4 py-2.5">
+              <td>
                 <span v-for="site in userSiteNames(user.siteIds)" :key="site"
-                  class="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mr-1 mb-0.5"
-                  style="background: var(--bg); color: var(--text)">
+                  class="ds-label bg-slate-100 px-1.5 py-0.5 rounded mr-1 mb-0.5">
                   {{ site }}
                 </span>
-                <span v-if="!user.siteIds?.length" class="text-[10px]" style="color: var(--muted)">—</span>
+                <span v-if="!user.siteIds?.length" class="text-[12px] text-slate-400">—</span>
               </td>
-              <td class="px-4 py-2.5 text-center">
-                <span class="text-[10px] font-medium px-2 py-0.5 rounded"
-                  :style="user.isActive
-                    ? { background: '#e5e5e5', color: '#111111' }
-                    : { background: '#f5f5f5', color: '#999999' }">
+              <td class="text-center">
+                <span class="text-[12px] font-medium px-2 py-0.5 rounded"
+                  :class="user.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
                   {{ user.isActive ? 'Sí' : 'No' }}
                 </span>
               </td>
-              <td class="px-4 py-2.5 text-center">
-                <span class="text-[10px] font-medium"
-                  :style="{ color: user.mustChangePassword ? '#dc2626' : (user.passwordHash ? 'var(--text)' : 'var(--muted)') }">
+              <td class="text-center">
+                <span class="text-[12px] font-medium"
+                  :class="user.mustChangePassword ? 'text-red-600' : (user.passwordHash ? 'text-slate-900' : 'text-slate-400')">
                   {{ user.mustChangePassword ? 'Pendiente' : (user.passwordHash ? 'Establecida' : 'Sin contraseña') }}
                 </span>
               </td>
-              <td class="px-4 py-2.5 text-center">
-                <span class="text-[10px] font-medium px-2 py-0.5 rounded"
-                  :style="user.mfaEnabled
+              <td class="text-center">
+                <span class="text-[12px] font-medium px-2 py-0.5 rounded"
+                  :class="user.mfaEnabled
                     ? (user.mfaLocked
-                      ? { background: '#fef2f2', color: '#991b1b' }
-                      : { background: '#f0fdf4', color: '#166534' })
-                    : { background: '#f5f5f5', color: '#999999' }">
+                      ? 'bg-red-50 text-red-800'
+                      : 'bg-green-50 text-green-800')
+                    : 'bg-slate-100 text-slate-400'">
                   {{ user.mfaLocked ? 'Bloqueado' : (user.mfaEnabled ? 'Activo' : 'Inactivo') }}
                 </span>
               </td>
-              <td class="px-4 py-2.5 text-right">
+              <td class="text-right">
                 <div class="flex gap-1 justify-end flex-wrap">
-                  <button @click="startEdit(user)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: var(--bg); color: var(--text)">Editar</button>
-                  <button @click="resetPass(user)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: var(--bg); color: var(--text)">Reset pass</button>
+                  <button @click="startEdit(user)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Editar</button>
+                  <button @click="resetPass(user)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Reset pass</button>
                   <button @click="genTempPassword(user)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: #eff6ff; color: #1e40af">Gen Temp</button>
+                    class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-blue-50 text-blue-700">Gen Temp</button>
                   <template v-if="user.mfaEnabled">
                     <button v-if="!user.mfaLocked" @click="lockMfaUser(user)"
-                      class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                      style="background: #fef2f2; color: #991b1b">Lock</button>
+                      class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-red-50 text-red-800">Lock</button>
                     <button v-if="user.mfaLocked" @click="unlockMfaUser(user)"
-                      class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                      style="background: #f0fdf4; color: #166534">Unlock</button>
+                      class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-green-50 text-green-800">Unlock</button>
                     <button @click="disableMfaUser(user)"
-                      class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                      style="background: #fef2f2; color: #991b1b">Disable MFA</button>
+                      class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-red-50 text-red-800">Disable MFA</button>
                   </template>
                   <button v-if="!user.mfaEnabled" @click="openMfaSetup(user)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: #f0fdf4; color: #166534">Enable MFA</button>
-                  <button @click="removeUser(user)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: var(--bg); color: var(--muted)">Eliminar</button>
+                    class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-green-50 text-green-800">Enable MFA</button>
+                  <button @click="removeUser(user)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Eliminar</button>
                 </div>
               </td>
             </tr>
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="8" class="px-4 py-8 text-center text-xs italic" style="color: var(--muted)">
+              <td colspan="8" class="px-4 py-8 text-center text-sm italic text-slate-400">
                 No hay usuarios
               </td>
             </tr>
@@ -143,36 +118,31 @@
       </div>
 
       <!-- Edit modal -->
-      <div v-if="editingUser" class="fixed inset-0 z-50 flex items-center justify-center p-3"
-        style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-4 md:p-6 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-4" style="color: var(--text)">Editar usuario</h2>
-          <div class="space-y-3">
+      <div v-if="editingUser" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md max-h-[90vh] overflow-y-auto">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Editar usuario</h2>
+          </div>
+          <div class="p-6 space-y-3">
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Email</label>
-              <input v-model="editForm.email" type="email"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Email</label>
+              <input v-model="editForm.email" type="email" class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Nombre</label>
-              <input v-model="editForm.fullName"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Nombre</label>
+              <input v-model="editForm.fullName" class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Rol</label>
-              <select v-model="editForm.role"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Rol</label>
+              <select v-model="editForm.role" class="ds-input">
                 <option v-for="r in roles" :key="r" :value="r">{{ roleLabel(r) }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Sitios</label>
+              <label class="ds-label block mb-0.5">Sitios</label>
               <div class="space-y-1 max-h-32 overflow-y-auto">
                 <label v-for="site in allSites" :key="site.id"
-                  class="flex items-center gap-2 text-xs cursor-pointer" style="color: var(--text)">
+                  class="flex items-center gap-2 text-sm cursor-pointer text-slate-900">
                   <input type="checkbox" :value="site.id" v-model="editForm.siteIds"
                     class="rounded border-slate-300">
                   {{ site.name }} ({{ site.code }})
@@ -180,57 +150,46 @@
               </div>
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Activo</label>
-              <select v-model="editForm.isActive"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Activo</label>
+              <select v-model="editForm.isActive" class="ds-input">
                 <option :value="true">Sí</option>
                 <option :value="false">No</option>
               </select>
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveEdit"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--accent); color: white">Guardar</button>
-              <button @click="cancelEdit"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Cancelar</button>
+              <button @click="saveEdit" class="ds-btn-primary flex-1 justify-center">Guardar</button>
+              <button @click="cancelEdit" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Create modal -->
-      <div v-if="showCreate" class="fixed inset-0 z-50 flex items-center justify-center"
-        style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-4" style="color: var(--text)">Nuevo usuario</h2>
-          <div class="space-y-3">
+      <div v-if="showCreate" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Nuevo usuario</h2>
+          </div>
+          <div class="p-6 space-y-3">
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Email</label>
-              <input v-model="createForm.email" type="email" required
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Email</label>
+              <input v-model="createForm.email" type="email" required class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Nombre</label>
-              <input v-model="createForm.fullName" required
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Nombre</label>
+              <input v-model="createForm.fullName" required class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Rol</label>
-              <select v-model="createForm.role"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Rol</label>
+              <select v-model="createForm.role" class="ds-input">
                 <option v-for="r in roles" :key="r" :value="r">{{ roleLabel(r) }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Sitios</label>
+              <label class="ds-label block mb-0.5">Sitios</label>
               <div class="space-y-1 max-h-32 overflow-y-auto">
                 <label v-for="site in allSites" :key="site.id"
-                  class="flex items-center gap-2 text-xs cursor-pointer" style="color: var(--text)">
+                  class="flex items-center gap-2 text-sm cursor-pointer text-slate-900">
                   <input type="checkbox" :value="site.id" v-model="createForm.siteIds"
                     class="rounded border-slate-300">
                   {{ site.name }} ({{ site.code }})
@@ -238,88 +197,79 @@
               </div>
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveCreate"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--accent); color: white">Crear</button>
-              <button @click="showCreate = false"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Cancelar</button>
+              <button @click="saveCreate" class="ds-btn-primary flex-1 justify-center">Crear</button>
+              <button @click="showCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- MFA Setup modal -->
-      <div v-if="showMfaSetup" class="fixed inset-0 z-50 flex items-center justify-center p-3"
-        style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-sm p-4 md:p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-2" style="color: var(--text)">Configurar MFA</h2>
-          <p class="text-[11px] mb-4" style="color: var(--muted)">
-            Escanea el código QR con Google Authenticator o Microsoft Authenticator.
-          </p>
-          <div class="text-center mb-4">
-            <div class="inline-block p-3 rounded-lg" style="background: white; border: 1px solid var(--border)">
-              <img v-if="mfaOtpAuthUrl" :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mfaOtpAuthUrl)}`"
-                alt="QR Code" class="w-[180px] h-[180px]" />
+      <div v-if="showMfaSetup" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-sm">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Configurar MFA</h2>
+          </div>
+          <div class="p-6">
+            <p class="text-[13px] mb-4 text-slate-500">
+              Escanea el código QR con Google Authenticator o Microsoft Authenticator.
+            </p>
+            <div class="text-center mb-4">
+              <div class="inline-block p-3 rounded-lg border border-slate-200 bg-white">
+                <img v-if="mfaOtpAuthUrl" :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mfaOtpAuthUrl)}`"
+                  alt="QR Code" class="w-[180px] h-[180px]" />
+              </div>
             </div>
-          </div>
-          <div class="mb-4">
-            <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Clave secreta (copia manual)</label>
-            <code class="block w-full text-[10px] px-2 py-1 rounded break-all"
-              style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
-              {{ mfaSecret }}
-            </code>
-          </div>
-          <div class="mb-4">
-            <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Código de verificación</label>
-            <input v-model="mfaVerifyCode" type="text" inputmode="numeric" maxlength="6"
-              placeholder="000000"
-              class="w-full px-3 py-2 rounded text-sm text-center font-mono tracking-wider outline-none"
-              style="background: var(--bg); color: var(--text); border: 1px solid var(--border)"
-              @keyup.enter="confirmMfaEnable" />
-          </div>
-          <div class="flex gap-2">
-            <button @click="confirmMfaEnable"
-              :disabled="mfaVerifyCode.length !== 6"
-              class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110 disabled:opacity-40"
-              style="background: var(--accent); color: white">Habilitar</button>
-            <button @click="cancelMfaSetup"
-              class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-              style="background: var(--bg); color: var(--text)">Cancelar</button>
+            <div class="mb-4">
+              <label class="ds-label block mb-0.5">Clave secreta (copia manual)</label>
+              <code class="ds-input block text-[12px] break-all font-mono">{{ mfaSecret }}</code>
+            </div>
+            <div class="mb-4">
+              <label class="ds-label block mb-0.5">Código de verificación</label>
+              <input v-model="mfaVerifyCode" type="text" inputmode="numeric" maxlength="6"
+                placeholder="000000"
+                class="ds-input text-center font-mono tracking-wider"
+                @keyup.enter="confirmMfaEnable" />
+            </div>
+            <div class="flex gap-2">
+              <button @click="confirmMfaEnable"
+                :disabled="mfaVerifyCode.length !== 6"
+                class="ds-btn-primary flex-1 justify-center disabled:opacity-40">Habilitar</button>
+              <button @click="cancelMfaSetup" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Temp Password modal -->
-      <div v-if="showTempPassword" class="fixed inset-0 z-50 flex items-center justify-center p-3"
-        style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-sm p-4 md:p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-2" style="color: var(--text)">Contraseña Temporal Generada</h2>
-          <p class="text-[11px] mb-4" style="color: var(--muted)">
-            Comparte esta contraseña con el usuario. Solo se muestra una vez.
-          </p>
-          <div class="mb-4 p-3 rounded-lg" style="background: #f0fdf4; border: 1px solid #bbf7d0">
-            <label class="block text-[10px] font-medium mb-1" style="color: #166534">Contraseña temporal</label>
-            <div class="flex items-center gap-2">
-              <code class="flex-1 text-sm font-mono break-all px-2 py-1 rounded"
-                style="background: white; color: #166534; border: 1px solid #bbf7d0">
-                {{ generatedPassword }}
-              </code>
-              <button @click="copyPassword"
-                class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                style="background: #dcfce7; color: #166534">
-                Copiar
-              </button>
-            </div>
+      <div v-if="showTempPassword" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-sm">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Contraseña Temporal Generada</h2>
           </div>
-          <p class="text-[10px] mb-4" style="color: var(--muted)">
-            El usuario deberá cambiar esta contraseña en su primer inicio de sesión.
-          </p>
-          <button @click="showTempPassword = false"
-            class="w-full py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-            style="background: var(--accent); color: white">
-            Cerrar
-          </button>
+          <div class="p-6">
+            <p class="text-[13px] mb-4 text-slate-500">
+              Comparte esta contraseña con el usuario. Solo se muestra una vez.
+            </p>
+            <div class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200">
+              <label class="block text-[12px] font-medium mb-1 text-green-800">Contraseña temporal</label>
+              <div class="flex items-center gap-2">
+                <code class="flex-1 text-sm font-mono break-all px-2 py-1 rounded bg-white text-green-800 border border-green-200">
+                  {{ generatedPassword }}
+                </code>
+                <button @click="copyPassword"
+                  class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-green-100 text-green-800">
+                  Copiar
+                </button>
+              </div>
+            </div>
+            <p class="text-[12px] mb-4 text-slate-400">
+              El usuario deberá cambiar esta contraseña en su primer inicio de sesión.
+            </p>
+            <button @click="showTempPassword = false" class="ds-btn-primary w-full justify-center">
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     </template>
@@ -327,55 +277,46 @@
     <!-- ============ SITES TAB (SuperUser only) ============ -->
     <template v-if="activeTab === 'sites'">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-xs" style="color: var(--muted)">{{ allSites.length }} sitios</span>
-        <button @click="openSiteCreate"
-          class="px-3 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
-          style="background: var(--accent); color: white">
+        <span class="ds-stat">{{ allSites.length }} sitios</span>
+        <button @click="openSiteCreate" class="ds-btn-primary">
           + Nuevo sitio
         </button>
       </div>
 
       <!-- Sites table -->
-      <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <div class="table-scroll-wrapper">
-        <table class="w-full text-xs" style="min-width: 500px">
+      <div class="ds-table-section">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <table class="w-full text-sm" style="min-width: 500px">
           <thead>
-            <tr style="background: var(--accent); color: white">
-              <th class="text-left px-4 py-2.5 font-semibold">Código</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Nombre</th>
-              <th class="text-left px-4 py-2.5 font-semibold">País</th>
-              <th class="text-center px-4 py-2.5 font-semibold" style="width: 80px">Activo</th>
-              <th class="text-right px-4 py-2.5 font-semibold" style="width: 140px">Acciones</th>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>País</th>
+              <th class="text-center" style="width: 80px">Activo</th>
+              <th class="text-right" style="width: 140px">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="site in allSites" :key="site.id"
-              class="border-t transition-colors hover:bg-slate-50"
-              style="border-color: var(--border)">
-              <td class="px-4 py-2.5 font-mono font-semibold" style="color: var(--text)">{{ site.code }}</td>
-              <td class="px-4 py-2.5" style="color: var(--text)">{{ site.name }}</td>
-              <td class="px-4 py-2.5" style="color: var(--text)">{{ site.country || '—' }}</td>
-              <td class="px-4 py-2.5 text-center">
-                <span class="text-[10px] font-medium px-2 py-0.5 rounded"
-                  :style="site.isActive
-                    ? { background: '#e5e5e5', color: '#111111' }
-                    : { background: '#f5f5f5', color: '#999999' }">
+              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
+              <td class="font-mono font-semibold text-slate-900">{{ site.code }}</td>
+              <td class="text-slate-900">{{ site.name }}</td>
+              <td class="text-slate-900">{{ site.country || '—' }}</td>
+              <td class="text-center">
+                <span class="text-[12px] font-medium px-2 py-0.5 rounded"
+                  :class="site.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
                   {{ site.isActive ? 'Sí' : 'No' }}
                 </span>
               </td>
-              <td class="px-4 py-2.5 text-right">
+              <td class="text-right">
                 <div class="flex gap-1 justify-end">
-                  <button @click="startSiteEdit(site)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: var(--bg); color: var(--text)">Editar</button>
-                  <button @click="removeSite(site)"
-                    class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-                    style="background: var(--bg); color: var(--muted)">Eliminar</button>
+                  <button @click="startSiteEdit(site)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Editar</button>
+                  <button @click="removeSite(site)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Eliminar</button>
                 </div>
               </td>
             </tr>
             <tr v-if="allSites.length === 0">
-              <td colspan="5" class="px-4 py-8 text-center text-xs italic" style="color: var(--muted)">
+              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-slate-400">
                 No hay sitios
               </td>
             </tr>
@@ -385,81 +326,61 @@
       </div>
 
       <!-- Site edit modal -->
-      <div v-if="editingSite" class="fixed inset-0 z-50 flex items-center justify-center p-3"
-        style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-4 md:p-6 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-4" style="color: var(--text)">Editar sitio</h2>
-          <div class="space-y-3">
+      <div v-if="editingSite" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md max-h-[90vh] overflow-y-auto">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Editar sitio</h2>
+          </div>
+          <div class="p-6 space-y-3">
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Código</label>
-              <input v-model="siteForm.code" maxlength="10" required
-                class="w-full px-3 py-1.5 rounded text-xs outline-none font-mono uppercase"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Código</label>
+              <input v-model="siteForm.code" maxlength="10" required class="ds-input font-mono uppercase">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Nombre</label>
-              <input v-model="siteForm.name" required
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Nombre</label>
+              <input v-model="siteForm.name" required class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">País</label>
-              <input v-model="siteForm.country" maxlength="60"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">País</label>
+              <input v-model="siteForm.country" maxlength="60" class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Activo</label>
-              <select v-model="siteForm.isActive"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Activo</label>
+              <select v-model="siteForm.isActive" class="ds-input">
                 <option :value="true">Sí</option>
                 <option :value="false">No</option>
               </select>
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveSiteEdit"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--accent); color: white">Guardar</button>
-              <button @click="editingSite = null"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Cancelar</button>
+              <button @click="saveSiteEdit" class="ds-btn-primary flex-1 justify-center">Guardar</button>
+              <button @click="editingSite = null" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Site create modal -->
-      <div v-if="showSiteCreate" class="fixed inset-0 z-50 flex items-center justify-center"
-        style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-4" style="color: var(--text)">Nuevo sitio</h2>
-          <div class="space-y-3">
+      <div v-if="showSiteCreate" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Nuevo sitio</h2>
+          </div>
+          <div class="p-6 space-y-3">
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Código</label>
-              <input v-model="siteCreateForm.code" maxlength="10" required
-                class="w-full px-3 py-1.5 rounded text-xs outline-none font-mono uppercase"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Código</label>
+              <input v-model="siteCreateForm.code" maxlength="10" required class="ds-input font-mono uppercase">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Nombre</label>
-              <input v-model="siteCreateForm.name" required
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Nombre</label>
+              <input v-model="siteCreateForm.name" required class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">País</label>
-              <input v-model="siteCreateForm.country" maxlength="60"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">País</label>
+              <input v-model="siteCreateForm.country" maxlength="60" class="ds-input">
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveSiteCreate"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--accent); color: white">Crear</button>
-              <button @click="showSiteCreate = false"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Cancelar</button>
+              <button @click="saveSiteCreate" class="ds-btn-primary flex-1 justify-center">Crear</button>
+              <button @click="showSiteCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
             </div>
           </div>
         </div>

@@ -4,12 +4,12 @@
       
       <div class="border-b pb-3 mb-4 flex justify-between items-center">
         <div>
-          <h3 class="text-[13px] font-black text-slate-900 uppercase tracking-wider">
+          <h3 class="text-[15px] font-black text-slate-900 uppercase tracking-wider">
             Ingesta Masiva // Manifiesto de Rampa
           </h3>
-          <p class="text-xs text-slate-500 mt-0.5">MÓDULO: LOAD PLANNING & WEIGHT CONTROL</p>
+          <p class="text-sm text-slate-500 mt-0.5">MÓDULO: LOAD PLANNING & WEIGHT CONTROL</p>
         </div>
-        <span class="bg-slate-950 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest">
+        <span class="bg-slate-950 text-white text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-widest">
           Excel Parser Active
         </span>
       </div>
@@ -35,29 +35,29 @@
 
         <div class="space-y-2">
           <div v-if="!selectedFile" class="text-slate-400 group-hover:text-slate-600 transition-colors">
-            📊 <span class="text-xs font-black block mt-1 uppercase tracking-wider">Arrastra el archivo de Rampa aquí</span>
-            <span class="text-[9px] block text-slate-400">Formatos aceptados: .XLSX / .XLS con celdas combinadas</span>
+            📊 <span class="text-sm font-black block mt-1 uppercase tracking-wider">Arrastra el archivo de Rampa aquí</span>
+            <span class="text-[11px] block text-slate-400">Formatos aceptados: .XLSX / .XLS con celdas combinadas</span>
           </div>
           
-          <div v-else class="text-slate-700 font-black text-xs">
+          <div v-else class="text-slate-700 font-black text-sm">
             📄 {{ selectedFile.name }}
-            <span class="text-[9px] block text-slate-400 font-normal mt-1">
+            <span class="text-[11px] block text-slate-400 font-normal mt-1">
               Size: {{ (selectedFile.size / 1024).toFixed(2) }} KB
             </span>
           </div>
         </div>
       </div>
 
-      <div class="mt-4 space-y-2 text-xs">
+      <div class="mt-4 space-y-2 text-sm">
         <div v-if="uploading" class="p-3 bg-slate-50 border-l-4 border-l-slate-500 text-slate-950 rounded font-bold animate-pulse">
           ⏳ PARSEANDO MATRIZ EN LA JVM... DESCOMBINANDO REGIONES Y CALCULANDO LIBRAS...
         </div>
 
-        <div v-if="serverError" class="p-3 bg-slate-50 border-l-4 border-l-slate-500 text-slate-950 rounded font-black uppercase leading-relaxed text-xs">
+        <div v-if="serverError" class="p-3 bg-slate-50 border-l-4 border-l-slate-500 text-slate-950 rounded font-black uppercase leading-relaxed text-sm">
           ❌ {{ serverError }}
         </div>
 
-        <div v-if="successMessage" class="p-3 bg-slate-50 border-l-4 border-l-slate-500 text-slate-950 rounded font-black uppercase text-xs">
+        <div v-if="successMessage" class="p-3 bg-slate-50 border-l-4 border-l-slate-500 text-slate-950 rounded font-black uppercase text-sm">
           ✔ {{ successMessage }}
         </div>
       </div>
@@ -66,7 +66,7 @@
         @click="processRampManifest"
         :disabled="!selectedFile || uploading"
         :class="selectedFile && !uploading ? 'bg-slate-950 hover:bg-slate-900 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
-        class="w-full font-black uppercase tracking-widest py-2.5 rounded text-xs transition-colors mt-4"
+        class="w-full font-black uppercase tracking-widest py-2.5 rounded text-sm transition-colors mt-4"
       >
         Sincronizar con Base de Datos
       </button>
@@ -77,7 +77,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
 import api from '../api/client'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'

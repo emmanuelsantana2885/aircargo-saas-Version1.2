@@ -11,12 +11,13 @@ Monorepo with three main directories + microservices scaffolding:
 | `backend/aircargo-common/` | Shared entities, JWT, DTOs | Used by all backend modules |
 | `backend/aircargo-auth-service/` | Spring Boot (fully implemented) | Auth, User, Site, Audit, MFA, RolePermission |
 | `backend/aircargo-flight-service/` | Spring Boot (implemented) | Flight CRUD with SecurityConfig, AuditService |
-| `backend/aircargo-gateway/` | Spring Cloud Gateway (stub) | Routing config only |
+| `backend/aircargo-gateway/` | Spring Cloud Gateway (hardened) | JWT auth, rate limiting, circuit breaker, CORS, access logging. 10 routes with Resilience4j CB per service. |
 | `backend/aircargo-{booking,mawb,warehouse,uld,load-planning,export,notification}-service/` | Stubs | Only `*Application.java` — no logic migrated yet |
 | `database/migrations/` | PostgreSQL Flyway migrations | Root copy — see "Migrations" below |
 | `docker/` | Docker Compose files | `docker-compose.infrastructure.yml` (Postgres+RabbitMQ), `docker-compose.services.yml` (11 services) |
 | `k8s/` | Kubernetes manifests | Full K8s deployment for all services |
 | `docker-compose.yml` | Main monolith compose | PostgreSQL + aircargo-api + nginx + certbot |
+| `Documents/` | Migration plan documents | `MICROSERVICES-MIGRATION-PLAN.md` — full phase-by-phase plan |
 
 ## Commands
 

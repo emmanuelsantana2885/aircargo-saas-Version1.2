@@ -139,7 +139,7 @@ export const useAuthStore = defineStore('auth', () => {
       case 'OPERATIONS': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)
       case 'TRAFFIC': return ['DASHBOARD', 'BOOKINGS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)
       case 'LOAD_PLANNER': return ['DASHBOARD', 'FLIGHTS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)
-      case 'BI_USER': return ['DASHBOARD', 'BI'].includes(viewName)
+      case 'BI_USER': return ['DASHBOARD', 'BI', 'API_CATALOG'].includes(viewName)
       default: return false
     }
   }

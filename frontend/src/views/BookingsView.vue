@@ -1,39 +1,39 @@
 <template>
-  <div class="p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col justify-between text-slate-900 font-sans antialiased overflow-hidden select-none">
+  <div class="ds-page">
 
-    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-400 pb-3 shrink-0 gap-2">
+    <header class="ds-section-header">
       <div class="flex flex-wrap items-center gap-3 md:gap-4">
         <div>
-          <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Bookings Hub</h1>
-          <p class="text-[11px] font-mono text-slate-950 mt-0.5 uppercase tracking-widest font-bold">SDQ Control Desk</p>
+          <h1 class="ds-title">Bookings Hub</h1>
+          <p class="ds-subtitle">SDQ Control Desk</p>
         </div>
-        <div class="h-8 w-[1px] bg-slate-400"></div>
+        <div class="ds-divider"></div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-[11px] font-black text-slate-950 uppercase tracking-widest">Vuelo</span>
+          <span class="text-[13px] font-black text-slate-950 uppercase tracking-widest">Vuelo</span>
           <select v-model="localFlightId" @change="onFlightChange"
-            class="bg-slate-100 border border-slate-300 rounded px-3 py-1.5 font-black text-slate-950 focus:outline-none uppercase tracking-widest text-[12px] cursor-pointer min-w-[160px]">
+            class="bg-slate-100 border border-slate-300 rounded px-3 py-1.5 font-black text-slate-950 focus:outline-none uppercase tracking-widest text-[14px] cursor-pointer min-w-[160px]">
             <option value="" disabled>Seleccionar vuelo</option>
             <option v-for="flight in flightList" :key="flight.id" :value="flight.id">
               {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }}) — {{ flight.flightDate }}
             </option>
           </select>
         </div>
-        <div v-if="store.selectedFlight" class="flex gap-3 text-[11px] font-mono font-bold text-slate-950">
+        <div v-if="store.selectedFlight" class="flex gap-3 text-[13px] font-mono font-bold text-slate-700">
           <span>{{ store.selectedFlight.aircraftReg || '—' }}</span>
           <span>{{ store.selectedFlight.flightDate }}</span>
         </div>
         <div class="relative">
           <button @click.stop="showStatusFilter = !showStatusFilter"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono uppercase tracking-wider text-[12px] transition"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono uppercase tracking-wider text-[14px] transition"
             :class="statusFilter ? 'bg-slate-50 border-slate-400 text-slate-800' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'">
             <span class="inline-block w-2 h-2 rounded-full" :class="statusFilter ? statusFilterColor(statusFilter) : 'bg-slate-400'"></span>
             {{ statusFilterLabel }}
-            <span v-if="statusFilter" @click.stop="statusFilter = ''" class="ml-0.5 text-[12px] hover:text-slate-600">✕</span>
+            <span v-if="statusFilter" @click.stop="statusFilter = ''" class="ml-0.5 text-[14px] hover:text-slate-600">✕</span>
           </button>
           <div v-if="showStatusFilter" class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-10 min-w-[140px]">
-            <div @click="statusFilter = ''; showStatusFilter = false" class="px-3 py-1.5 text-[12px] font-mono cursor-pointer hover:bg-slate-100 text-slate-500" :class="!statusFilter ? 'bg-slate-50 font-bold' : ''">Todos</div>
+            <div @click="statusFilter = ''; showStatusFilter = false" class="px-3 py-1.5 text-[14px] font-mono cursor-pointer hover:bg-slate-100 text-slate-500" :class="!statusFilter ? 'bg-slate-50 font-bold' : ''">Todos</div>
             <div v-for="opt in statusOptions" :key="opt.value" @click="statusFilter = opt.value; showStatusFilter = false"
-              class="px-3 py-1.5 text-[12px] font-mono cursor-pointer hover:bg-slate-100 flex items-center gap-2"
+              class="px-3 py-1.5 text-[14px] font-mono cursor-pointer hover:bg-slate-100 flex items-center gap-2"
               :class="statusFilter === opt.value ? 'bg-slate-50 font-bold' : ''">
               <span class="inline-block w-2 h-2 rounded-full" :class="opt.colorClass"></span>
               {{ opt.label }}
@@ -42,25 +42,22 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="triggerImport"
-          class="flex items-center gap-1.5 text-[10px] px-3 py-2 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold transition active:scale-95 shadow-sm text-slate-950 hover:bg-slate-100">
-          <span class="text-[12px] font-semibold leading-none">↑</span> Import XLSX
+        <button @click="triggerImport" class="ds-btn-secondary">
+          <span class="text-[14px] font-semibold leading-none">↑</span> Import XLSX
         </button>
-        <button @click="exportCSV"
-          class="flex items-center gap-1.5 text-[10px] px-3 py-2 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold transition active:scale-95 shadow-sm text-slate-950 hover:bg-slate-100">
-          <span class="text-[12px] font-semibold leading-none">↓</span> Export CSV
+        <button @click="exportCSV" class="ds-btn-secondary">
+          <span class="text-[14px] font-semibold leading-none">↓</span> Export CSV
         </button>
-        <button @click="openCreate"
-          class="flex items-center gap-1.5 text-[10px] px-3 py-2 rounded border border-slate-950 font-mono uppercase tracking-wider font-bold transition active:scale-95 shadow-sm bg-slate-950 text-white hover:bg-slate-800">
-          <span class="text-[12px] font-semibold leading-none">+</span> New Booking
+        <button @click="openCreate" class="ds-btn-primary">
+          <span class="text-[14px] font-semibold leading-none">+</span> New Booking
         </button>
         <input type="file" ref="fileInput" @change="handleFileImport" accept=".xlsx,.xls" class="hidden" />
       </div>
     </header>
 
-    <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
+    <section class="ds-table-section">
       <div class="table-scroll-wrapper flex-1 min-h-0">
-      <div class="bg-slate-700 border-b border-slate-500 text-[11px] font-bold text-white uppercase tracking-wider grid grid-cols-12 py-2 px-5 items-center shrink-0 font-mono shadow-sm" style="min-width: 900px">
+      <div class="ds-table-header" style="min-width: 900px">
         <div class="col-span-2 text-left">Booking ID</div>
         <div class="col-span-2 text-left">Vuelo / Fecha</div>
         <div class="col-span-2 text-left">Agente / Broker</div>
@@ -72,34 +69,34 @@
       </div>
 
       <div v-if="store.loading && !store.bookings.length" class="flex-1 flex items-center justify-center">
-        <span class="text-[12px] font-mono text-slate-950 ">Cargando bookings...</span>
+        <span class="text-[14px] font-mono text-slate-950 ">Cargando bookings...</span>
       </div>
 
       <div v-else-if="deduplicatedBookings.length === 0" class="flex-1 flex items-center justify-center">
-        <p class="text-[12px] font-mono text-slate-950 uppercase tracking-widest">{{ store.selectedFlightId ? 'No hay reservas para este vuelo' : 'No hay reservas. Crea una con el botón New Booking.' }}</p>
+        <p class="text-[14px] font-mono text-slate-950 uppercase tracking-widest">{{ store.selectedFlightId ? 'No hay reservas para este vuelo' : 'No hay reservas. Crea una con el botón New Booking.' }}</p>
       </div>
 
-      <div v-else class="divide-y divide-slate-400 text-[11px] text-slate-950 overflow-y-auto flex-1 min-h-0 scrollbar-none">
+      <div v-else class="divide-y divide-slate-100 text-[13px] text-slate-950 overflow-y-auto flex-1 min-h-0 scrollbar-none">
         <div v-for="b in deduplicatedBookings" :key="b.id"
-          class="grid grid-cols-12 items-center py-1.5 px-5 transition-all duration-150 cursor-pointer border-t" style="border-color: var(--border)">
+          class="ds-table-row">
 
-          <div class="col-span-2 font-mono font-black text-slate-950 relative z-10 text-[11px] flex items-center gap-2">
+          <div class="col-span-2 font-mono font-black text-slate-950 relative z-10 text-[13px] flex items-center gap-2">
             <span>{{ b.awbNumber || b.id?.slice(0, 8) || 'N/A' }}</span>
-            <span v-if="b._dupCount > 1" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold" title="Reservas duplicadas agrupadas">{{ b._dupCount }}x</span>
+            <span v-if="b._dupCount > 1" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-700 text-[12px] font-bold" title="Reservas duplicadas agrupadas">{{ b._dupCount }}x</span>
           </div>
 
-          <div class="col-span-2 font-mono font-bold text-[16px] text-slate-950 relative z-10 flex flex-col leading-tight">
+          <div class="col-span-2 font-mono font-bold text-[18px] text-slate-950 relative z-10 flex flex-col leading-tight">
             <span>{{ flightNumber(b.flightId) || '—' }}</span>
-            <span v-if="b.flightId" class="text-[11px] text-slate-500 font-semibold">{{ flightDate(b.flightId) }}</span>
+            <span v-if="b.flightId" class="text-[13px] text-slate-500 font-semibold">{{ flightDate(b.flightId) }}</span>
           </div>
 
           <div class="col-span-2 text-slate-950 font-semibold relative z-10 truncate pr-3">
             {{ b.clientName || '—' }}
           </div>
 
-          <div class="col-span-2 text-slate-900 font-bold relative z-10 truncate pr-2 font-mono text-[11px] flex flex-col leading-tight">
+          <div class="col-span-2 text-slate-900 font-bold relative z-10 truncate pr-2 font-mono text-[13px] flex flex-col leading-tight">
             <span>{{ bookingReceipt(b)?.shipperName || b.shipperName || '—' }}</span>
-            <span v-if="bookingReceipt(b)" class="text-[11px] text-slate-600 font-semibold">&#10003; Recibido</span>
+            <span v-if="bookingReceipt(b)" class="text-[13px] text-slate-600 font-semibold">&#10003; Recibido</span>
           </div>
 
           <div class="col-span-1 text-center font-mono font-bold text-slate-900 relative z-10">
@@ -109,18 +106,18 @@
 
           <div class="col-span-1 text-right font-mono font-bold text-slate-950 relative z-10 pr-2">
             <template v-if="bookingReceipt(b)">
-              {{ Number(bookingReceipt(b).chargeableWeightKg || bookingReceipt(b).actualWeightKg || 0).toLocaleString() }}<span class="text-[11px] text-slate-950 font-normal font-mono">k</span>
+              {{ Number(bookingReceipt(b).chargeableWeightKg || bookingReceipt(b).actualWeightKg || 0).toLocaleString() }}<span class="text-[13px] text-slate-950 font-normal font-mono">k</span>
             </template>
             <template v-else>
-              {{ b.reservedKg ? Number(b.reservedKg).toLocaleString() : '—' }}<span class="text-[11px] text-slate-950 font-normal font-mono">k</span>
+              {{ b.reservedKg ? Number(b.reservedKg).toLocaleString() : '—' }}<span class="text-[13px] text-slate-950 font-normal font-mono">k</span>
             </template>
           </div>
 
           <div class="col-span-1 flex items-center justify-center gap-1.5 relative z-10">
-            <div class="flex items-center gap-2 text-[15px] font-mono" :title="'MAWB: ' + getMawbStatus(b)">
+            <div class="flex items-center gap-2 text-[17px] font-mono" :title="'MAWB: ' + getMawbStatus(b)">
               <span class="inline-block w-2.5 h-2.5" :class="getMawbStatusClass(b)"></span>
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="background: var(--bg); color: var(--text)">{{ getMawbStatus(b) }}</span>
-              <span v-if="getMawbStatus(b) !== '—'" class="text-slate-300 text-[11px]">·</span>
+              <span class="px-1.5 py-0.5 rounded text-[12px] font-medium" style="background: var(--bg); color: var(--text)">{{ getMawbStatus(b) }}</span>
+              <span v-if="getMawbStatus(b) !== '—'" class="text-slate-300 text-[13px]">·</span>
             </div>
           </div>
           <div class="col-span-1 flex justify-end relative z-10">
@@ -134,95 +131,92 @@
       </div>
       </div>
     </section>
-    <div v-if="showModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-4" @click.self="closeModal">
-      <div class="bg-white rounded-xl border border-slate-400 shadow-2xl w-full max-w-lg p-4 md:p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-5 pb-3 border-b border-slate-400">
-          <h2 class="text-[12px] font-black font-mono uppercase tracking-wider text-slate-950">Nuevo Booking</h2>
-          <button @click="closeModal" class="text-slate-950 hover:text-slate-950"><IconX :size="16" :stroke-width="2" /></button>
+    <div v-if="showModal" class="ds-modal-backdrop" @click.self="closeModal">
+      <div class="ds-modal-panel">
+        <div class="ds-modal-header">
+          <h2 class="ds-modal-title">Nuevo Booking</h2>
+          <button @click="closeModal" class="text-slate-400 hover:text-slate-950 transition"><IconX :size="18" :stroke-width="2" /></button>
         </div>
           <div class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Cliente *</label>
-              <input v-model="form.clientName" type="text" placeholder="Nombre del agente"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+              <label class="ds-label">Cliente *</label>
+              <input v-model="form.clientName" type="text" placeholder="Nombre del agente" class="ds-input" />
             </div>
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Contacto *</label>
-              <input v-model="form.contactName" type="text" placeholder="Persona de contacto"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+              <label class="ds-label">Contacto *</label>
+              <input v-model="form.contactName" type="text" placeholder="Persona de contacto" class="ds-input" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Shipper</label>
-              <input v-model="form.shipperName" type="text" placeholder="Nombre del shipper"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+              <label class="ds-label">Shipper</label>
+              <input v-model="form.shipperName" type="text" placeholder="Nombre del shipper" class="ds-input" />
             </div>
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Consignee (CNEE)</label>
+              <label class="ds-label">Consignee (CNEE)</label>
               <input v-model="form.cnee" type="text" placeholder="Nombre del consignatario"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+                class="ds-input" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Número MAWB</label>
+              <label class="ds-label">Número MAWB</label>
               <input v-model="form.awbNumber" type="text" placeholder="UPS-XXX-XXXX"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition uppercase" />
+                class="w-full text-[14px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition uppercase" />
             </div>
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Peso Reservado (kg) *</label>
+              <label class="ds-label">Peso Reservado (kg) *</label>
               <input v-model.number="form.reservedKg" type="number" step="0.001"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+                class="ds-input" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Destino</label>
+              <label class="ds-label">Destino</label>
               <input v-model="form.destination" type="text" maxlength="3" placeholder="MIA"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 uppercase transition" />
+                class="ds-input uppercase" />
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Skids</label>
+                <label class="ds-label">Skids</label>
                 <input v-model.number="form.skids" type="number" min="0"
-                  class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+                  class="ds-input" />
               </div>
               <div>
-                <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Unidades</label>
+                <label class="ds-label">Unidades</label>
                 <input v-model.number="form.units" type="number" min="0"
-                  class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+                  class="ds-input" />
               </div>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Tipo de Commodity</label>
+              <label class="ds-label">Tipo de Commodity</label>
               <select v-model="form.commodityType"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition">
+                class="ds-input">
                 <option v-for="c in commodityTypes" :key="c" :value="c">{{ c }}</option>
               </select>
             </div>
             <div>
-              <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Prioridad</label>
+              <label class="ds-label">Prioridad</label>
               <input v-model.number="form.priority" type="number" min="0" max="10"
-                class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition" />
+                class="ds-input" />
             </div>
           </div>
           <div>
-            <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Notas</label>
+            <label class="ds-label">Notas</label>
             <textarea v-model="form.notes" rows="2" placeholder="Instrucciones especiales..."
-              class="w-full text-[12px] font-mono px-4 py-2.5 rounded border border-slate-400 outline-none focus:border-slate-950 transition resize-none"></textarea>
+              class="ds-input resize-none"></textarea>
           </div>
         </div>
-        <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-400">
+        <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-200">
           <button @click="closeModal"
-            class="text-[10px] px-3.5 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-slate-100 transition">
+            class="ds-btn-secondary">
             Cancelar
           </button>
           <button @click="saveBooking" :disabled="saving"
-            class="flex items-center gap-1.5 text-[10px] px-5 py-2 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-950 hover:bg-slate-800 transition active:scale-95 disabled:opacity-50">
+            class="ds-btn-primary">
             <span>{{ saving ? 'Guardando...' : 'Crear Booking' }}</span>
           </button>
         </div>
@@ -230,20 +224,20 @@
     </div>
 
     <!-- IMPORT PREVIEW MODAL -->
-    <div v-if="showImportModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="closeImportModal">
-      <div class="bg-white rounded-xl border border-slate-400 shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
-        <div class="flex justify-between items-center px-6 py-4 border-b border-slate-400 shrink-0">
+    <div v-if="showImportModal" class="ds-modal-backdrop" @click.self="closeImportModal">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-slate-200 shrink-0">
           <div>
-            <h2 class="text-[12px] font-black font-mono uppercase tracking-wider text-slate-950">Previsualización de Importación</h2>
-            <p class="text-[11px] font-mono text-slate-950 mt-0.5">{{ parsedRows.length }} registros encontrados en el archivo</p>
+            <h2 class="ds-modal-title">Previsualización de Importación</h2>
+            <p class="text-[13px] font-mono text-slate-950 mt-0.5">{{ parsedRows.length }} registros encontrados en el archivo</p>
           </div>
           <button @click="closeImportModal" class="text-slate-950 hover:text-slate-950"><IconX :size="16" :stroke-width="2" /></button>
         </div>
 
         <div class="overflow-auto flex-1 min-h-0">
-          <table class="w-full text-[11px] font-mono">
+          <table class="w-full text-[13px] font-mono">
             <thead class="bg-slate-100 sticky top-0 z-10">
-              <tr class="text-[11px] font-black text-slate-950 uppercase tracking-wider">
+              <tr class="text-[13px] font-black text-slate-950 uppercase tracking-wider">
                 <th class="text-left px-5 py-3 border-b border-slate-400">#</th>
                 <th class="text-left px-5 py-3 border-b border-slate-400">Cliente</th>
                 <th class="text-left px-5 py-3 border-b border-slate-400">Contacto</th>
@@ -269,21 +263,21 @@
                 <td class="px-4 py-3 text-center font-bold text-slate-900">{{ row.units || '—' }}</td>
                 <td class="px-4 py-3 text-right font-bold text-slate-900">{{ row.reservedKg.toLocaleString() }}</td>
                 <td class="px-4 py-3 text-center font-bold text-slate-950">{{ row.destination }}</td>
-                <td class="px-4 py-3 text-center"><span class="inline-block text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-950 font-semibold">{{ row.commodityType }}</span></td>
+                <td class="px-4 py-3 text-center"><span class="inline-block text-[13px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-950 font-semibold">{{ row.commodityType }}</span></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="flex justify-between items-center px-6 py-4 border-t border-slate-400 bg-slate-100 rounded-b-xl shrink-0">
-          <span class="text-[11px] font-mono text-slate-950">Se crearán {{ parsedRows.length }} bookings + MAWBs automáticamente</span>
+        <div class="flex justify-between items-center px-6 py-4 border-t border-slate-200 bg-slate-100 rounded-b-xl shrink-0">
+          <span class="text-[13px] font-mono text-slate-950">Se crearán {{ parsedRows.length }} bookings + MAWBs automáticamente</span>
           <div class="flex gap-2">
             <button @click="closeImportModal"
-              class="text-[10px] px-3.5 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-white transition">
+              class="ds-btn-secondary">
               Cancelar
             </button>
             <button @click="confirmImport" :disabled="importing"
-              class="flex items-center gap-1.5 text-[10px] px-5 py-2 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-950 hover:bg-slate-800 transition active:scale-95 disabled:opacity-50">
+              class="ds-btn-primary">
               <span>{{ importing ? 'Importando...' : `Importar ${parsedRows.length} registros` }}</span>
             </button>
           </div>
@@ -736,7 +730,3 @@ watch(() => store.selectedFlightId, (id) => {
 })
 </script>
 
-<style scoped>
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-</style>

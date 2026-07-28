@@ -1,16 +1,16 @@
 <template>
-  <div class="p-2 md:p-5 bg-white h-screen max-h-screen flex flex-col text-slate-900 font-sans antialiased overflow-hidden select-none">
-    <header class="flex flex-wrap items-end justify-between gap-2 border-b border-slate-400 pb-3 shrink-0">
+  <div class="ds-page">
+    <header class="ds-section-header">
       <div class="flex items-end gap-3 flex-1 min-w-0 flex-wrap">
         <div>
-          <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Warehouse Receipts</h1>
-          <p class="text-[11px] font-mono text-slate-950 mt-0.5 uppercase tracking-widest font-bold hidden sm:block">SDQ Dock // Recepción de Carga</p>
+          <h1 class="ds-title">Warehouse Receipts</h1>
+          <p class="ds-subtitle hidden sm:block">SDQ Dock // Recepción de Carga</p>
         </div>
         <div class="h-8 w-[1px] bg-slate-200 hidden sm:block"></div>
         <div class="flex flex-col gap-0.5 opacity-50 hidden md:flex">
-          <span class="text-[11px] font-black text-slate-950 uppercase tracking-widest">Vuelo</span>
+          <span class="ds-label hidden sm:block">Vuelo</span>
           <select disabled
-            class="bg-slate-100 border border-slate-300 rounded px-2 py-1 font-black text-slate-800 uppercase tracking-widest text-[13px] min-w-[120px] cursor-not-allowed">
+            class="bg-slate-100 border border-slate-300 rounded px-2 py-1 font-black text-slate-800 uppercase tracking-widest text-[15px] min-w-[120px] cursor-not-allowed">
             <option value="">Todos los vuelos</option>
             <option v-for="f in store.flights" :key="f.id" :value="f.id">
               {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }} ({{ f.origin }}→{{ f.destination }})
@@ -18,24 +18,24 @@
           </select>
         </div>
         <div class="flex flex-col gap-0.5 flex-1 min-w-[140px] max-w-[280px]">
-          <span class="text-[11px] font-black text-slate-950 uppercase tracking-widest hidden sm:block">Filtro (* &lt; &gt; =)</span>
+          <span class="ds-label hidden sm:block">Filtro (* &lt; &gt; =)</span>
           <input v-model="filterTextRaw" type="text" placeholder="Filtro (* > =)"
-            class="w-full text-[11px] font-mono px-2 py-1 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+            class="ds-input" />
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-[11px] font-black text-slate-950 uppercase tracking-widest hidden sm:block">Fecha</span>
+          <span class="ds-label hidden sm:block">Fecha</span>
           <input v-model="filterDate" type="date"
-            class="text-[12px] font-mono px-2 py-1 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+            class="ds-input" />
         </div>
       </div>
-        <div class="flex items-center gap-2 text-[11px] font-mono font-bold text-slate-950 shrink-0">
+        <div class="flex items-center gap-2 text-[13px] font-mono font-bold text-slate-950 shrink-0">
         <span class="h-1.5 w-1.5 rounded-full bg-slate-500 "></span> {{ filteredMawbs.length }}/{{ store.mawbs.length }} MAWBs
       </div>
     </header>
 
-    <section class="flex-1 min-h-0 border border-slate-300 rounded overflow-hidden shadow-sm bg-white flex flex-col mb-1.5">
+    <section class="ds-table-section mb-1.5">
       <div class="overflow-x-auto shrink-0">
-      <div class="bg-slate-700 border-b border-slate-500 text-[11px] font-bold text-white uppercase tracking-wider grid grid-cols-12 py-2 px-5 items-center font-mono shadow-sm" style="min-width: 700px">
+      <div class="ds-table-header border-b border-slate-600" style="min-width: 700px">
         <div class="col-span-1 text-left flex items-center gap-1">
           <input type="checkbox" :checked="selectedMawbIds.size === filteredMawbs.length && filteredMawbs.length > 0"
             @change="toggleSelectAll"
@@ -45,10 +45,10 @@
           <span @click="toggleHeaderFilter('mawb')"
             class="cursor-pointer select-none transition-all duration-150"
             :class="columnFilters.mawb ? 'text-slate-300' : 'hover:text-white/80'">
-            MAWB <span class="text-[8px]" :class="columnFilters.mawb ? 'opacity-100' : 'opacity-40'">&#9660;</span>
+            MAWB <span class="text-[10px]" :class="columnFilters.mawb ? 'opacity-100' : 'opacity-40'">&#9660;</span>
           </span>
           <div v-if="headerFilterOpen === 'mawb'"
-            class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[200px] max-h-[200px] overflow-y-auto text-[11px] text-slate-950 font-normal normal-case">
+            class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[200px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
             <div @click="setColumnFilter('mawb', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!columnFilters.mawb ? 'bg-slate-100' : ''">Todos</div>
             <div v-for="v in uniqueValues.mawb" :key="v" @click="setColumnFilter('mawb', v)"
               class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="columnFilters.mawb === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
@@ -58,10 +58,10 @@
           <span @click="toggleHeaderFilter('shipper')"
             class="cursor-pointer select-none transition-all duration-150"
             :class="columnFilters.shipper ? 'text-slate-300' : 'hover:text-white/80'">
-            Shipper <span class="text-[8px]" :class="columnFilters.shipper ? 'opacity-100' : 'opacity-40'">&#9660;</span>
+            Shipper <span class="text-[10px]" :class="columnFilters.shipper ? 'opacity-100' : 'opacity-40'">&#9660;</span>
           </span>
           <div v-if="headerFilterOpen === 'shipper'"
-            class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[200px] max-h-[200px] overflow-y-auto text-[11px] text-slate-950 font-normal normal-case">
+            class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[200px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
             <div @click="setColumnFilter('shipper', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!columnFilters.shipper ? 'bg-slate-100' : ''">Todos</div>
             <div v-for="v in uniqueValues.shipper" :key="v" @click="setColumnFilter('shipper', v)"
               class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="columnFilters.shipper === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
@@ -73,10 +73,10 @@
           <span @click="toggleHeaderFilter('dest')"
             class="cursor-pointer select-none transition-all duration-150"
             :class="columnFilters.dest ? 'text-slate-300' : 'hover:text-white/80'">
-            Dest <span class="text-[8px]" :class="columnFilters.dest ? 'opacity-100' : 'opacity-40'">&#9660;</span>
+            Dest <span class="text-[10px]" :class="columnFilters.dest ? 'opacity-100' : 'opacity-40'">&#9660;</span>
           </span>
           <div v-if="headerFilterOpen === 'dest'"
-            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[200px] overflow-y-auto text-[11px] text-slate-950 font-normal normal-case">
+            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
             <div @click="setColumnFilter('dest', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!columnFilters.dest ? 'bg-slate-100' : ''">Todos</div>
             <div v-for="v in uniqueValues.dest" :key="v" @click="setColumnFilter('dest', v)"
               class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="columnFilters.dest === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
@@ -89,10 +89,10 @@
             :class="columnFilters.status ? 'text-slate-300' : 'hover:text-white/80'">
             <span v-if="columnFilters.status" class="w-1.5 h-1.5 rounded-full inline-block"
               :class="columnFilters.status === 'BOOKED' ? 'bg-slate-400' : columnFilters.status === 'PENDING' ? 'bg-slate-500' : 'bg-slate-600'"></span>
-            Estado <span class="text-[8px]" :class="columnFilters.status ? 'opacity-100' : 'opacity-40'">&#9660;</span>
+            Estado <span class="text-[10px]" :class="columnFilters.status ? 'opacity-100' : 'opacity-40'">&#9660;</span>
           </span>
           <div v-if="headerFilterOpen === 'status'"
-            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[160px] text-[11px] text-slate-950 font-normal normal-case">
+            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[160px] text-[13px] text-slate-950 font-normal normal-case">
             <div @click="setColumnFilter('status', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!columnFilters.status ? 'bg-slate-100' : ''">Todos</div>
             <div v-for="opt in statusOptions" :key="opt.key" @click="setColumnFilter('status', opt.key)"
               class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 flex items-center gap-2" :class="columnFilters.status === opt.key ? 'bg-slate-50 text-slate-700 font-bold' : ''">
@@ -103,25 +103,25 @@
         </div>
       </div>
       </div>
-      <div v-if="selectedMawbIds.size > 0" class="flex items-center gap-2 px-5 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] flex-wrap">
+      <div v-if="selectedMawbIds.size > 0" class="flex items-center gap-2 px-5 py-1.5 bg-slate-50 border-b border-slate-200 text-[13px] flex-wrap">
         <span class="font-mono font-bold text-slate-950">{{ selectedMawbIds.size }} seleccionados</span>
-        <select v-model="bulkStatusTarget" class="bg-white border border-slate-400 rounded px-2 py-0.5 text-[12px] font-bold font-mono">
+        <select v-model="bulkStatusTarget" class="bg-white border border-slate-400 rounded px-2 py-0.5 text-[14px] font-bold font-mono">
           <option value="">Cambiar estado...</option>
           <option v-for="s in statusSteps" :key="s.key" :value="s.key">{{ s.label }}</option>
         </select>
-        <button @click="applyBulkStatus" class="bg-slate-950 hover:bg-slate-800 text-white text-[12px] px-2.5 py-0.5 rounded font-mono font-bold transition">
+        <button @click="applyBulkStatus" class="ds-btn-primary text-[11px] px-2 py-0.5">
           Aplicar
         </button>
-        <button @click="selectedMawbIds.clear()" class="text-slate-950 hover:text-slate-950 text-[12px] font-mono underline ml-auto">Limpiar</button>
+        <button @click="selectedMawbIds.clear()" class="text-slate-950 hover:text-slate-950 text-[14px] font-mono underline ml-auto">Limpiar</button>
       </div>
 
       <div v-if="store.mawbs.length === 0" class="flex-1 flex items-center justify-center">
-        <p class="text-[12px] font-mono text-slate-950 uppercase tracking-widest">No hay MAWBs</p>
+        <p class="text-[14px] font-mono text-slate-950 uppercase tracking-widest">No hay MAWBs</p>
       </div>
       <div v-else-if="filteredMawbs.length === 0" class="flex-1 flex items-center justify-center">
-        <p class="text-[12px] font-mono text-slate-950 uppercase tracking-widest">Ningún MAWB coincide con el filtro</p>
+        <p class="text-[14px] font-mono text-slate-950 uppercase tracking-widest">Ningún MAWB coincide con el filtro</p>
       </div>
-      <div v-else class="divide-y divide-slate-200 text-[11px] text-slate-950 overflow-y-auto flex-1 min-h-0 thin-scrollbar">
+      <div v-else class="divide-y divide-slate-200 text-[13px] text-slate-950 overflow-y-auto flex-1 min-h-0 thin-scrollbar">
           <div v-for="m in filteredMawbs" :key="m.id" class="flex flex-col">
           <div class="overflow-x-auto">
           <div class="grid grid-cols-12 items-center py-1.5 px-5 transition-all duration-150 cursor-pointer border-t"
@@ -133,34 +133,37 @@
                 class="accent-slate-700 rounded w-3 h-3 cursor-pointer" />
             </div>
             <div class="col-span-2 font-mono font-bold text-slate-950 relative z-10 flex items-center gap-1.5">
-              <span class="text-[10px] text-slate-950 transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
+              <span class="text-[12px] text-slate-950 transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
               {{ m.awbNumber || m.id?.slice(0, 8) || '—' }}
               <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 1"
-                class="text-[11px] font-black text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded leading-none"
+                class="text-[13px] font-black text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded leading-none"
                 title="Múltiples HAWBs">{{ receiptHawbs[m.id].length }} HAWBs</span>
               <span v-else-if="receiptHawbs[m.id] && receiptHawbs[m.id].length === 1"
-                class="text-[11px] font-black text-slate-950 bg-slate-100 px-1.5 py-0.5 rounded leading-none">1 HAWB</span>
+                class="text-[13px] font-black text-slate-950 bg-slate-100 px-1.5 py-0.5 rounded leading-none">1 HAWB</span>
             </div>
             <div class="col-span-2 text-slate-950 font-semibold relative z-10 truncate pr-3">{{ m.shipperName || '—' }}</div>
             <div class="col-span-1 text-center font-mono font-bold relative z-10"
               :class="receiptTotals[m.id]?.pieces > 0 ? 'text-slate-700' : 'text-slate-950'">
               {{ receiptTotals[m.id]?.pieces || m.pieces || '—' }}
-              <span v-if="receiptTotals[m.id]?.pieces > 0 && receiptTotals[m.id]?.pieces !== m.pieces" class="text-[11px] text-slate-500 block leading-tight">rec: {{ receiptTotals[m.id].pieces }}</span>
+              <span v-if="receiptTotals[m.id]?.pieces > 0 && receiptTotals[m.id]?.pieces !== m.pieces" class="text-[13px] text-slate-500 block leading-tight">rec: {{ receiptTotals[m.id].pieces }}</span>
             </div>
             <div class="col-span-2 text-right font-mono font-bold relative z-10 pr-2"
               :class="receiptTotals[m.id]?.weightKg > 0 ? 'text-slate-700' : 'text-slate-950'">
               {{ receiptTotals[m.id]?.weightKg ? Number(receiptTotals[m.id].weightKg).toLocaleString() : (m.reportedWeightKg ? Number(m.reportedWeightKg).toLocaleString() : '—') }}
-              <span v-if="receiptTotals[m.id]?.weightKg > 0 && receiptTotals[m.id]?.weightKg !== Number(m.reportedWeightKg)" class="text-[11px] text-slate-500 block leading-tight">recibo</span>
+              <span v-if="receiptTotals[m.id]?.weightKg > 0 && receiptTotals[m.id]?.weightKg !== Number(m.reportedWeightKg)" class="text-[13px] text-slate-500 block leading-tight">recibo</span>
             </div>
             <div class="col-span-1 text-center font-mono font-bold text-slate-950 relative z-10">{{ m.destination || '—' }}</div>
-            <div class="col-span-1 flex items-center justify-center gap-0.5 relative z-10">
+            <div class="col-span-1 flex items-center justify-center gap-1 relative z-10">
+              <button @click.stop="editOrExpandReceipt(m)" title="Editar/Crear recibo"
+                class="text-[16px] px-1 py-0.5 rounded transition font-bold leading-none shadow-sm"
+                :class="receiptById[m.id] ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'">&#9998;</button>
               <template v-if="receiptById[m.id]">
                 <button @click.stop="downloadReceiptById(m)" title="Descargar Excel"
-                  class="text-[11px] px-0.5 py-0.5 rounded hover:bg-slate-100 hover:text-slate-700 transition">&#11015;</button>
+                  class="text-[15px] px-1 py-0.5 rounded hover:bg-slate-100 hover:text-slate-700 transition leading-none">&#11015;</button>
                 <button @click.stop="downloadHtmlById(m)" title="Descargar HTML evidencias"
-                  class="text-[11px] px-0.5 py-0.5 rounded hover:bg-slate-200 hover:text-slate-950 transition">&#128196;</button>
+                  class="text-[15px] px-1 py-0.5 rounded hover:bg-slate-200 hover:text-slate-950 transition leading-none">&#128196;</button>
                 <button @click.stop="downloadPdfById(m)" title="Descargar PDF evidencias"
-                  class="text-[11px] px-0.5 py-0.5 rounded hover:bg-slate-100 hover:text-slate-700 transition">&#128213;</button>
+                  class="text-[15px] px-1 py-0.5 rounded hover:bg-slate-100 hover:text-slate-700 transition leading-none">&#128213;</button>
               </template>
             </div>
             <div class="col-span-2 flex items-center gap-2 relative z-10">
@@ -171,10 +174,10 @@
                   :class="getStatusDot(m, s)"
                   :title="s.key + ((m.status || 'BOOKED') === s.key ? ' (actual)' : ' → clic')"></span>
               </div>
-              <span class="text-[10px] font-mono font-bold uppercase tracking-wider whitespace-nowrap"
+              <span class="text-[12px] font-mono font-bold uppercase tracking-wider whitespace-nowrap"
                 :class="statusLabelClass(m)">{{ statusLabel(m) }}</span>
               <button @click.stop="toggleMawbEvidenceManager(m)"
-                class="ml-auto text-[11px] px-1.5 py-0.5 rounded border border-slate-300 text-slate-950 hover:text-slate-950 hover:border-slate-950 transition font-mono"
+                class="ml-auto text-[13px] px-1.5 py-0.5 rounded border border-slate-300 text-slate-950 hover:text-slate-950 hover:border-slate-950 transition font-mono"
                 title="Gestionar evidencias documentales de esta MAWB">
                 &#128193;
               </button>
@@ -191,7 +194,7 @@
                     <div @click="localStep = si + 1"
                       class="flex flex-col items-center cursor-pointer group flex-1 min-w-0">
                       <div class="flex items-center w-full">
-                        <div class="flex items-center justify-center w-7 h-7 rounded-full text-[12px] font-black font-mono transition-all duration-200 border-2 shrink-0"
+                        <div class="flex items-center justify-center w-7 h-7 rounded-full text-[14px] font-black font-mono transition-all duration-200 border-2 shrink-0"
                           :class="stepClass(si)">
                           <span v-if="stepDone(si)">&#10003;</span>
                           <span v-else-if="stepError(si)">&#33;</span>
@@ -200,7 +203,7 @@
                         <div v-if="si < steps.length - 1" class="flex-1 h-1 mx-1 rounded transition-all duration-200"
                           :class="stepBarClass(si)"></div>
                       </div>
-                      <span class="text-[12px] font-mono font-bold mt-0.5 transition-all duration-200 truncate max-w-full px-1"
+                      <span class="text-[14px] font-mono font-bold mt-0.5 transition-all duration-200 truncate max-w-full px-1"
                         :class="localStep === si + 1 ? 'text-slate-950' : 'text-slate-500'">
                         {{ step }}
                       </span>
@@ -208,11 +211,8 @@
                   </div>
                 </div>
                 <div class="flex items-center justify-between mt-1">
-                  <span v-if="lastDraftSave && !receiptForms[m.id]?._existingReceiptId" class="text-[12px] font-mono text-slate-700 italic">
+                  <span v-if="lastDraftSave" class="text-[14px] font-mono text-slate-700 italic">
                     &#9998; Borrador guardado {{ lastDraftSave }}
-                  </span>
-                  <span v-else-if="receiptForms[m.id]?._existingReceiptId" class="text-[12px] font-mono text-slate-600 italic ml-auto">
-                    &#9998; Modo edici&oacute;n
                   </span>
                 </div>
               </div>
@@ -224,55 +224,55 @@
                   <!-- Left column -->
                   <div class="space-y-3">
                     <div>
-                      <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Gateway / CFS Name</label>
+                      <label class="ds-label">Gateway / CFS Name</label>
                       <input v-model="receiptForms[m.id].gatewayCfs" type="text" placeholder="SDQ"
-                        class="w-full text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 uppercase transition" />
+                        class="ds-input uppercase" />
                     </div>
                     <div>
-                      <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Shipper Name</label>
+                      <label class="ds-label">Shipper Name</label>
                       <div class="flex gap-2 items-center">
                         <input v-model="receiptForms[m.id].shipperName" type="text" placeholder="Shipper"
-                          class="flex-1 text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition"
+                          class="ds-input flex-1"
                           @blur="syncMawbName(m, 'shipperName')" />
-                        <span class="text-[10px] text-slate-950 font-mono shrink-0">MAWB: {{ m.shipperName || '—' }}</span>
+                        <span class="text-[12px] text-slate-950 font-mono shrink-0">MAWB: {{ m.shipperName || '—' }}</span>
                       </div>
                     </div>
                     <div>
-                      <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Consignee Name</label>
+                      <label class="ds-label">Consignee Name</label>
                       <div class="flex gap-2 items-center">
                         <input v-model="receiptForms[m.id].consigneeName" type="text" placeholder="Consignee"
-                          class="flex-1 text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition"
+                          class="ds-input flex-1"
                           @blur="syncMawbName(m, 'consigneeName')" />
-                        <span class="text-[10px] text-slate-950 font-mono shrink-0">MAWB: {{ m.consigneeName || '—' }}</span>
+                        <span class="text-[12px] text-slate-950 font-mono shrink-0">MAWB: {{ m.consigneeName || '—' }}</span>
                       </div>
                     </div>
                     <div>
-                      <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">MAWB Number</label>
+                      <label class="ds-label">MAWB Number</label>
                       <input :value="m.awbNumber || ''" readonly
-                        class="w-full text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-slate-100 outline-none text-slate-950" />
+                        class="ds-input bg-slate-100 text-slate-950" />
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                       <div>
-                        <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Origin</label>
+                        <label class="ds-label">Origin</label>
                         <input v-model="receiptForms[m.id].origin" type="text" maxlength="3" placeholder="SDQ"
-                          class="w-full text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 uppercase transition" />
+                          class="ds-input uppercase" />
                       </div>
                       <div>
-                        <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Destination</label>
+                        <label class="ds-label">Destination</label>
                         <input v-model="receiptForms[m.id].destination" type="text" maxlength="3" placeholder="MIA"
-                          class="w-full text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 uppercase transition" />
+                          class="ds-input uppercase" />
                       </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                       <div>
-                        <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">AWB Reported Pieces</label>
+                        <label class="ds-label">AWB Reported Pieces</label>
                         <input v-model.number="receiptForms[m.id].awbReportedPieces" type="number" min="0"
-                          class="w-full text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                          class="ds-input" />
                       </div>
                       <div>
-                        <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">MAWB Weight (Greatest Shipper Reported)</label>
+                        <label class="ds-label">MAWB Weight (Greatest Shipper Reported)</label>
                         <input v-model.number="receiptForms[m.id].mawbWeightGreatest" type="number" step="0.001"
-                          class="w-full text-[11px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                          class="ds-input" />
                       </div>
                     </div>
                   </div>
@@ -281,20 +281,20 @@
                   <div class="space-y-2">
                     <div class="border-2 border-slate-700 rounded-lg bg-white overflow-hidden shadow-sm">
                       <div class="flex items-center justify-between bg-slate-700 px-3 py-1.5 border-b border-slate-800">
-                        <span class="text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                        <span class="text-[12px] font-mono font-bold text-white uppercase tracking-wider">
                           HAWBs
                         </span>
-                        <div class="flex items-center gap-2 text-[11px] font-mono">
+                        <div class="flex items-center gap-2 text-[13px] font-mono">
                           <span class="text-slate-200">HAWBs: <strong class="text-white">{{ (receiptForms[m.id].hawbEntries || []).length }}</strong></span>
                           <button @click="addHawbEntry(m)"
-                            class="ml-1 w-5 h-5 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-200 transition text-[12px] font-bold leading-none"
+                            class="ml-1 w-5 h-5 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-200 transition text-[14px] font-bold leading-none"
                             title="Agregar HAWB">+</button>
                           <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 0"
                             class="text-slate-300 ml-1">({{ receiptHawbs[m.id].length }} en DB)</span>
                         </div>
                       </div>
                       <div class="overflow-x-auto p-2">
-                        <table class="w-full text-[11px] font-mono border-collapse">
+                        <table class="w-full text-[13px] font-mono border-collapse">
                           <thead>
                             <tr class="text-slate-800 font-bold uppercase tracking-wider">
                               <th class="px-2 py-1 text-left border-b-2 border-slate-200"># HAWB</th>
@@ -311,28 +311,28 @@
                               class="hover:bg-slate-50">
                               <td class="px-2 py-1 border-b border-slate-100">
                                 <input v-model="entry.hawbNumber" placeholder="HAWB #"
-                                  class="w-20 border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[11px] font-bold text-slate-950" />
+                                  class="w-20 border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px] font-bold text-slate-950" />
                               </td>
                               <td class="px-2 py-1 border-b border-slate-100">
                                 <input v-model="entry.consigneeName" placeholder="Consignee"
-                                  class="w-full min-w-[100px] border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[11px]" />
+                                  class="w-full min-w-[100px] border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px]" />
                               </td>
                               <td class="px-2 py-1 border-b border-slate-100">
                                 <input v-model.number="entry.pieces" type="number" min="0" placeholder="0"
-                                  class="w-14 text-center border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[11px]" />
+                                  class="w-14 text-center border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px]" />
                               </td>
                               <td class="px-2 py-1 border-b border-slate-100">
                                 <input v-model.number="entry.weightKg" type="number" step="0.1" min="0" placeholder="0"
-                                  class="w-20 text-right border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[11px]" />
+                                  class="w-20 text-right border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px]" />
                               </td>
                               <td class="px-2 py-1 border-b border-slate-100">
                                 <input v-model="entry.destination" maxlength="3" placeholder="MIA"
-                                  class="w-14 text-center border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[11px] uppercase" />
+                                  class="w-14 text-center border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px] uppercase" />
                               </td>
                               <td v-if="(receiptForms[m.id].hawbEntries || []).length > 1"
                                 class="px-2 py-1 text-center border-b border-slate-100">
                                 <button @click="removeHawbEntry(m.id, ei)"
-                                  class="text-slate-400 hover:text-slate-600 transition text-[10px] font-bold">✕</button>
+                                  class="text-slate-400 hover:text-slate-600 transition text-[12px] font-bold">✕</button>
                               </td>
                             </tr>
                           </tbody>
@@ -342,25 +342,25 @@
 
                     <!-- Checkboxes group -->
                     <div class="border-2 border-slate-700 rounded-lg bg-white p-3 shadow-sm">
-                      <div class="text-[10px] font-mono font-bold text-slate-800 uppercase tracking-wider mb-2">Flags / Marcas</div>
+                      <div class="text-[12px] font-mono font-bold text-slate-800 uppercase tracking-wider mb-2">Flags / Marcas</div>
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                        <label class="text-[10px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].cashOnly" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Cash Only</span>
                         </label>
-                        <label class="text-[10px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].bookedInAcoms" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Booked in ACOMS</span>
                         </label>
-                        <label class="text-[10px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].docsProvided" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Documents Provided</span>
                         </label>
-                        <label class="text-[10px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].customsCompleted" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Export Customs Completed</span>
                         </label>
-                        <label class="text-[10px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].preBuilt" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Pre-built / Shipper Built</span>
                         </label>
@@ -372,18 +372,18 @@
 
               <!-- ═══ STEP 2: PIECES ═══ -->
               <div v-if="localStep === 2" class="space-y-2">
-                <div class="text-[10px] font-mono font-bold text-slate-950 uppercase tracking-wider flex items-center gap-2">
+                <div class="text-[12px] font-mono font-bold text-slate-950 uppercase tracking-wider flex items-center gap-2">
                   <span>Loose Tender — Dimensiones y Pesos</span>
-                  <span class="text-[10px] font-mono font-normal text-slate-950 normal-case tracking-normal">
+                  <span class="text-[12px] font-mono font-normal text-slate-950 normal-case tracking-normal">
                     ((L x W x H) x #pcs) / 366 = Kg dimensional
                   </span>
                 </div>
 
                 <template v-if="(receiptHawbs[m.id] || []).length <= 1 && (receiptForms[m.id]?.hawbEntries || []).length <= 1">
                   <div class="overflow-x-auto border border-slate-400 rounded">
-                    <table class="w-full text-[11px] font-mono border-collapse">
+                    <table class="w-full text-[13px] font-mono border-collapse">
                       <thead>
-                        <tr class="bg-slate-700 text-white text-[11px] uppercase tracking-wider">
+                        <tr class="bg-slate-700 text-white text-[13px] uppercase tracking-wider">
                           <th class="px-2 py-1 border-r border-slate-600 w-5 text-center">#</th>
                           <th class="px-2 py-1 border-r border-slate-600 w-10 text-center">Pieces</th>
                           <th class="px-2 py-1 border-r border-slate-600 w-14 text-center">Length (in)</th>
@@ -405,28 +405,28 @@
                           <td class="px-2 py-1 text-center text-slate-950 border-r border-slate-300">{{ pi + 1 }}</td>
                           <td class="px-2 py-1 border-r border-slate-300">
                             <input v-model.number="p.pieces" type="number" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
                           <td class="px-2 py-1 border-r border-slate-300">
                             <input v-model.number="p.lengthIn" type="number" step="0.01" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
                           <td class="px-2 py-1 border-r border-slate-300">
                             <input v-model.number="p.widthIn" type="number" step="0.01" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
                           <td class="px-2 py-1 border-r border-slate-300">
                             <input v-model.number="p.heightIn" type="number" step="0.01" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
                           <td class="px-2 py-1 border-r border-slate-300 text-right font-semibold text-slate-950">{{ p.dimWeight ? p.dimWeight.toFixed(1) : '—' }}</td>
                           <td class="px-2 py-1 border-r border-slate-300">
                             <input v-model.number="p.scaleWeightLbs" type="number" step="0.001" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
                           <td class="px-2 py-1 border-r border-slate-300 text-right font-semibold text-slate-950">{{ p.dimWeightLbs ? p.dimWeightLbs.toFixed(1) : '—' }}</td>
@@ -435,15 +435,15 @@
                           <td class="px-2 py-1 border-r border-slate-300 text-right text-slate-900">{{ p.chargeableKg ? p.chargeableKg.toFixed(2) : '—' }}</td>
                           <td class="px-2 py-1 border-r border-slate-300 text-right text-slate-900">{{ p.chargeableLbs ? p.chargeableLbs.toFixed(2) : '—' }}</td>
                           <td class="px-2 py-1 text-center">
-                            <button @click="removePiece(m.id, pi)" class="text-slate-400 hover:text-slate-600 transition text-[10px]">✕</button>
+                            <button @click="removePiece(m.id, pi)" class="text-slate-400 hover:text-slate-600 transition text-[12px]">✕</button>
                           </td>
                         </tr>
                       </tbody>
                       <tfoot>
-                        <tr class="bg-slate-100 text-slate-950 text-[11px]">
+                        <tr class="bg-slate-100 text-slate-950 text-[13px]">
                           <td class="px-2 py-1 border-t border-slate-300 text-slate-950 text-center"></td>
                           <td class="px-2 py-1 border-t border-slate-300 text-center">{{ totalPieces(m.id, null) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-slate-950 text-[11px]" colspan="3">TOTAL</td>
+                          <td class="px-2 py-1 border-t border-slate-300 text-slate-950 text-[13px]" colspan="3">TOTAL</td>
                           <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalDimWeight(m.id, null).toFixed(1) }}</td>
                           <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalScaleLbs(m.id, null).toFixed(2) }}</td>
                           <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalDimLbs(m.id, null).toFixed(2) }}</td>
@@ -457,29 +457,29 @@
                     </table>
                   </div>
                     <div class="flex justify-between items-center">
-                      <button @click="addPiece(m.id)" class="text-[10px] text-slate-950 font-mono uppercase tracking-wider hover:text-slate-950 transition">+ Agregar pieza</button>
-                      <div class="flex gap-3 text-[10px] font-mono text-slate-950">
+                      <button @click="addPiece(m.id)" class="text-[12px] text-slate-950 font-mono uppercase tracking-wider hover:text-slate-950 transition">+ Agregar pieza</button>
+                      <div class="flex gap-3 text-[12px] font-mono text-slate-950">
                       <span>Piece Count: <strong class="text-slate-900">{{ totalPieces(m.id, null) }}</strong></span>
                       <span>Actual: <strong class="text-slate-900">{{ totalScaleKg(m.id, null).toFixed(0) }} KGS / {{ totalScaleLbs(m.id, null).toFixed(0) }} LBS</strong></span>
                       <span>Chargeable: <strong class="text-slate-900">{{ totalChargeableKg(m.id).toFixed(0) }} KGS / {{ totalChargeableLbs(m.id).toFixed(0) }} LBS</strong></span>
                     </div>
                   </div>
-                  <div class="text-[9px] text-slate-400 font-mono mt-1 text-right">* S.KGS = LBS ÷ 2.20462 (auto)</div>
+                  <div class="text-[11px] text-slate-400 font-mono mt-1 text-right">* S.KGS = LBS ÷ 2.20462 (auto)</div>
                 </template>
 
                 <template v-else>
                   <div v-for="(h, hi) in hawbsForDisplay(m.id)" :key="h._hawbId || h.id" class="border border-slate-400 rounded overflow-hidden bg-white">
                     <div class="flex items-center justify-between bg-slate-100 px-3 py-1.5 border-b border-slate-400">
-                      <span class="text-[10px] font-mono font-bold text-slate-950">
+                      <span class="text-[12px] font-mono font-bold text-slate-950">
                         HAWB {{ hi + 1 }}: {{ h.hawbNumber || h.hawbNumber || '—' }} &mdash; {{ h.consigneeName || h.consigneeName || '—' }}
                         <span class="text-slate-950 font-normal ml-2">({{ piecesByHawb(m.id, h._hawbId || h.id).length }} pieza(s))</span>
                       </span>
-                      <span class="text-[10px] font-mono text-slate-950 font-bold">{{ piecesByHawb(m.id, h._hawbId || h.id).reduce((s, p) => s + (p.pieces || 1), 0) }} pcs</span>
+                      <span class="text-[12px] font-mono text-slate-950 font-bold">{{ piecesByHawb(m.id, h._hawbId || h.id).reduce((s, p) => s + (p.pieces || 1), 0) }} pcs</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="w-full text-[11px] font-mono border-collapse">
+                      <table class="w-full text-[13px] font-mono border-collapse">
                         <thead>
-                          <tr class="bg-slate-600 text-white text-[11px] uppercase tracking-wider">
+                          <tr class="bg-slate-600 text-white text-[13px] uppercase tracking-wider">
                             <th class="px-1 py-0.5 border-r border-slate-500 w-5 text-center">#</th>
                             <th class="px-1 py-0.5 border-r border-slate-500 w-10 text-center">Pcs</th>
                             <th class="px-1 py-0.5 border-r border-slate-500 w-14 text-center">L</th>
@@ -501,28 +501,28 @@
                             <td class="px-1 py-0.5 text-center text-slate-950 border-r border-slate-300">{{ pi + 1 }}</td>
                             <td class="px-1 py-0.5 border-r border-slate-300">
                               <input v-model.number="entry.piece.pieces" type="number" min="0"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
                             <td class="px-1 py-0.5 border-r border-slate-300">
                               <input v-model.number="entry.piece.lengthIn" type="number" step="0.01"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
                             <td class="px-1 py-0.5 border-r border-slate-300">
                               <input v-model.number="entry.piece.widthIn" type="number" step="0.01"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
                             <td class="px-1 py-0.5 border-r border-slate-300">
                               <input v-model.number="entry.piece.heightIn" type="number" step="0.01"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
                             <td class="px-1 py-0.5 border-r border-slate-300 text-right text-slate-950">{{ entry.piece.dimWeight ? entry.piece.dimWeight.toFixed(1) : '—' }}</td>
                             <td class="px-1 py-0.5 border-r border-slate-300">
                               <input v-model.number="entry.piece.scaleWeightLbs" type="number" step="0.001"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[11px]"
+                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
                             <td class="px-1 py-0.5 border-r border-slate-300 text-right text-slate-950">{{ entry.piece.dimWeightLbs ? entry.piece.dimWeightLbs.toFixed(1) : '—' }}</td>
@@ -531,12 +531,12 @@
                             <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.chargeableKg ? entry.piece.chargeableKg.toFixed(2) : '—' }}</td>
                             <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.chargeableLbs ? entry.piece.chargeableLbs.toFixed(2) : '—' }}</td>
                             <td class="px-1 py-0.5 text-center">
-                              <button @click="removePiece(m.id, entry.idx)" class="text-slate-400 hover:text-slate-600 text-[10px]">✕</button>
+                              <button @click="removePiece(m.id, entry.idx)" class="text-slate-400 hover:text-slate-600 text-[12px]">✕</button>
                             </td>
                           </tr>
                         </tbody>
                         <tfoot>
-                          <tr class="bg-slate-100 text-slate-950 text-[11px]">
+                          <tr class="bg-slate-100 text-slate-950 text-[13px]">
                             <td class="px-1 py-0.5 border-t border-slate-400"></td>
                             <td class="px-1 py-0.5 border-t border-slate-400 text-center">{{ hawbTotalPieces(m.id, (h._hawbId || h.id)) }}</td>
                             <td class="px-1 py-0.5 border-t border-slate-400" colspan="3">TOTAL</td>
@@ -553,20 +553,20 @@
                       </table>
                     </div>
                     <div class="px-2 py-1 border-t border-slate-300">
-                      <button @click="addPiece(m.id, (h._hawbId || h.id))" class="text-[10px] text-slate-950 font-mono uppercase tracking-wider hover:text-slate-950 transition">+ Agregar pieza a este HAWB</button>
-                      <span class="text-[9px] text-slate-400 font-mono ml-4">* S.KGS = LBS ÷ 2.20462 (auto)</span>
+                      <button @click="addPiece(m.id, (h._hawbId || h.id))" class="text-[12px] text-slate-950 font-mono uppercase tracking-wider hover:text-slate-950 transition">+ Agregar pieza a este HAWB</button>
+                      <span class="text-[11px] text-slate-400 font-mono ml-4">* S.KGS = LBS ÷ 2.20462 (auto)</span>
                     </div>
                   </div>
                   <!-- Resumen General: agrupado por dimensión única LxWxH -->
                   <div class="border-2 border-slate-600 rounded overflow-hidden bg-white mt-2">
                     <div class="flex items-center justify-between bg-slate-600 px-3 py-1.5 border-b border-slate-700">
-                      <span class="text-[10px] font-mono font-bold text-white uppercase tracking-wider">Resumen General — Todas las HAWBs</span>
-                      <span class="text-[10px] font-mono text-slate-200">{{ totalPieces(m.id, null) }} piezas · {{ groupedSummary(m.id).length }} dim</span>
+                      <span class="text-[12px] font-mono font-bold text-white uppercase tracking-wider">Resumen General — Todas las HAWBs</span>
+                      <span class="text-[12px] font-mono text-slate-200">{{ totalPieces(m.id, null) }} piezas · {{ groupedSummary(m.id).length }} dim</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="w-full text-[11px] font-mono border-collapse">
+                      <table class="w-full text-[13px] font-mono border-collapse">
                         <thead>
-                          <tr class="bg-slate-200 text-slate-800 text-[11px] uppercase tracking-wider">
+                          <tr class="bg-slate-200 text-slate-800 text-[13px] uppercase tracking-wider">
                             <th class="px-1 py-0.5 border-r border-slate-300 w-5 text-center">#</th>
                             <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-center">L</th>
                             <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-center">W</th>
@@ -599,7 +599,7 @@
                           </tr>
                         </tbody>
                         <tfoot>
-                          <tr class="bg-slate-100 text-slate-950 text-[11px] font-bold">
+                          <tr class="bg-slate-100 text-slate-950 text-[13px] font-bold">
                             <td class="px-1 py-0.5 border-t-2 border-slate-400" colspan="4">TOTAL</td>
                             <td class="px-1 py-0.5 border-t-2 border-slate-400 text-center">{{ totalPieces(m.id, null) }}</td>
                             <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalDimWeight(m.id, null).toFixed(1) }}</td>
@@ -619,56 +619,56 @@
 
               <!-- ═══ STEP 3: REMARKS ═══ -->
               <div v-if="localStep === 3" class="space-y-2">
-                <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Remarks / Observaciones</label>
+                <label class="ds-label">Remarks / Observaciones</label>
                 <textarea v-model="receiptForms[m.id].remarks" rows="3" placeholder="Notas, observaciones, instrucciones especiales..."
-                  class="w-full text-[10px] font-mono px-3 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition resize-none"></textarea>
+                  class="ds-input resize-none"></textarea>
               </div>
 
               <!-- ═══ STEP 4: EVIDENCE ═══ -->
               <div v-if="localStep === 4" class="space-y-2">
-                <p class="text-[10px] font-mono text-slate-950">Adjuntar fotos, documentos u otras evidencias</p>
+                <p class="text-[12px] font-mono text-slate-950">Adjuntar fotos, documentos u otras evidencias</p>
 
                 <!-- Evidencias del MAWB (desde base de datos) -->
                 <div v-if="(receiptForms[m.id].mawbEvidence || []).length > 0">
-                  <span class="text-[10px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1 block">Evidencias del MAWB</span>
+                  <span class="text-[12px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1 block">Evidencias del MAWB</span>
                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                     <div v-for="(ev, ei) in receiptForms[m.id].mawbEvidence" :key="'mawb-' + ei"
                       class="relative border border-slate-200 rounded bg-slate-50/30 overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
                       <img v-if="ev.type === 'image' && ev.url" :src="ev.url" class="w-full h-20 object-cover" />
-                      <div v-else-if="ev.type === 'text'" class="w-full h-20 flex items-center justify-center bg-slate-50 text-slate-950 text-[10px] font-mono px-2 text-center leading-tight">{{ ev.name }}</div>
-                      <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 text-[10px] font-mono">
+                      <div v-else-if="ev.type === 'text'" class="w-full h-20 flex items-center justify-center bg-slate-50 text-slate-950 text-[12px] font-mono px-2 text-center leading-tight">{{ ev.name }}</div>
+                      <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 text-[12px] font-mono">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-                        <span class="text-[8px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
+                        <span class="text-[10px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                       </div>
-                      <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[10px] font-mono">{{ ev.name }}</div>
-                      <span class="block text-[10px] font-mono text-slate-950 px-1.5 py-0.5 leading-tight">{{ ev.name }}</span>
+                      <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[12px] font-mono">{{ ev.name }}</div>
+                      <span class="block text-[12px] font-mono text-slate-950 px-1.5 py-0.5 leading-tight">{{ ev.name }}</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Nuevas evidencias (subidas en este formulario) -->
-                <span class="text-[10px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1 block">Nuevas evidencias (este recibo)</span>
+                <span class="text-[12px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1 block">Nuevas evidencias (este recibo)</span>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div v-for="(ev, ei) in receiptForms[m.id].evidence" :key="'rec-' + ei"
                     class="relative border border-slate-400 rounded bg-white overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
                     <img v-if="ev.type === 'image'" :src="ev.url" class="w-full h-20 object-cover" />
-                    <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 text-[10px] font-mono">
+                    <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 text-[12px] font-mono">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-                      <span class="text-[9px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
+                      <span class="text-[11px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                     </div>
-                    <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[10px] font-mono">{{ ev.name }}</div>
-                    <button @click.stop="removeEvidence(m.id, ei)" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
-                    <span class="block text-[10px] font-mono text-slate-950 px-1.5 py-0.5 truncate">{{ ev.name }}</span>
+                    <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[12px] font-mono">{{ ev.name }}</div>
+                    <button @click.stop="removeEvidence(m.id, ei)" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                    <span class="block text-[12px] font-mono text-slate-950 px-1.5 py-0.5 truncate">{{ ev.name }}</span>
                   </div>
                   <div class="border-2 border-dashed border-slate-400 rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
                     @click="addEvidence(m.id)">
-                    <span class="text-[12px] text-slate-300 font-mono group-hover:text-slate-950 transition leading-none">+</span>
-                    <span class="text-[10px] font-mono text-slate-950 mt-0.5 uppercase tracking-wider">Subir</span>
+                    <span class="text-[14px] text-slate-300 font-mono group-hover:text-slate-950 transition leading-none">+</span>
+                    <span class="text-[12px] font-mono text-slate-950 mt-0.5 uppercase tracking-wider">Subir</span>
                   </div>
                   <div class="border-2 border-dashed border-slate-400 rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
                     @click="openCamera(m.id)">
                     <IconCamera :size="16" class="text-slate-300 group-hover:text-slate-950 transition" />
-                    <span class="text-[10px] font-mono text-slate-950 mt-0.5 uppercase tracking-wider">Cámara</span>
+                    <span class="text-[12px] font-mono text-slate-950 mt-0.5 uppercase tracking-wider">Cámara</span>
                   </div>
                 </div>
                 <CameraCapture :show="showCamera" @close="showCamera = false" @captured="onCameraCapture" />
@@ -678,44 +678,44 @@
               <div v-if="localStep === 5" class="space-y-2">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Dock Signature</label>
+                    <label class="ds-label">Dock Signature</label>
                     <SignaturePad v-model="receiptForms[m.id].dockSignature" :width="280" :height="60" />
                   </div>
                   <div class="flex flex-col justify-end">
-                    <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Print Name</label>
-                      <input v-model="receiptForms[m.id].printName" type="text" placeholder="Nombre"
-                        class="w-full text-[10px] font-mono px-2.5 py-1.5 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                    <label class="ds-label">Print Name</label>
+                        <input v-model="receiptForms[m.id].printName" type="text" placeholder="Nombre"
+                          class="ds-input" />
                   </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-400 pt-2">
                   <div>
-                    <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Delivered By</label>
+                    <label class="ds-label">Delivered By</label>
                     <div class="grid grid-cols-2 gap-1.5 mb-1">
                       <div>
-                        <label class="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Name</label>
+                        <label class="ds-label text-[12px]">Name</label>
                         <input v-model="receiptForms[m.id].deliveredByName" type="text"
-                          class="w-full text-[10px] font-mono px-2.5 py-1 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                          class="ds-input" />
                       </div>
                       <div>
-                        <label class="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">ID / Cédula</label>
+                        <label class="ds-label text-[12px]">ID / Cédula</label>
                         <input v-model="receiptForms[m.id].deliveredByIdNum" type="text"
-                          class="w-full text-[10px] font-mono px-2.5 py-1 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                          class="ds-input" />
                       </div>
                     </div>
                     <SignaturePad v-model="receiptForms[m.id].deliveredBySig" :width="280" :height="50" />
                   </div>
                   <div>
-                    <label class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-1">Broker Representative</label>
+                    <label class="ds-label">Broker Representative</label>
                     <div class="grid grid-cols-2 gap-1.5 mb-1">
                       <div>
-                        <label class="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">Name</label>
+                        <label class="ds-label text-[12px]">Name</label>
                         <input v-model="receiptForms[m.id].brokerName" type="text"
-                          class="w-full text-[10px] font-mono px-2.5 py-1 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                          class="ds-input" />
                       </div>
                       <div>
-                        <label class="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-950 block mb-0.5">ID / Cédula</label>
+                        <label class="ds-label text-[12px]">ID / Cédula</label>
                         <input v-model="receiptForms[m.id].brokerIdNum" type="text"
-                          class="w-full text-[10px] font-mono px-2.5 py-1 rounded border border-slate-400 bg-white outline-none focus:border-slate-950 transition" />
+                          class="ds-input" />
                       </div>
                     </div>
                     <SignaturePad v-model="receiptForms[m.id].brokerSig" :width="280" :height="50" />
@@ -728,37 +728,30 @@
               <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-400 shrink-0">
                 <div class="flex items-center gap-2">
                   <button @click="prevStep" :disabled="localStep === 1"
-                    class="text-[10px] px-2.5 py-1 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-white transition disabled:opacity-30">
+                    class="ds-btn-secondary text-[11px] px-2 py-1 disabled:opacity-30">
                     &#9664; Anterior
                   </button>
                   <button @click="cancelForm"
-                    class="text-[10px] px-2.5 py-1 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-600 hover:bg-slate-50 transition">
+                    class="ds-btn-secondary text-[11px] px-2 py-1 text-slate-600">
                     &#10005; Cancelar
                   </button>
-                  <span v-if="successMsg" class="text-slate-700 text-[12px] font-mono font-bold ">{{ successMsg }}</span>
+                  <span v-if="successMsg" class="text-slate-700 text-[14px] font-mono font-bold ">{{ successMsg }}</span>
                 </div>
                 <div v-if="localStep < 5">
                   <button @click="nextStep"
-                    class="text-[10px] px-2.5 py-1 rounded border border-slate-950 font-mono uppercase tracking-wider font-bold text-white bg-slate-950 hover:bg-slate-800 transition">
+                    class="ds-btn-primary text-[11px] px-2 py-1">
                     Siguiente &#9654;
                   </button>
                 </div>
                 <div v-else class="flex items-center gap-2">
-                  <div v-if="receiptForms[m.id]._existingReceiptId" class="flex-1">
-                    <input v-model="receiptForms[m.id].correctionReason" type="text"
-                      placeholder="Motivo de corrección (requerido)"
-                      class="w-full text-[10px] font-mono px-2.5 py-1.5 rounded border border-amber-400 bg-amber-50 outline-none focus:border-amber-600 transition"
-                      :class="{'border-red-400 bg-red-50': !receiptForms[m.id].correctionReason?.trim()}" />
-                  </div>
                   <button @click="printPreview(m)"
-                    class="text-[10px] px-2.5 py-1 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-slate-100 transition shrink-0"
+                    class="ds-btn-secondary text-[11px] px-2 py-1 shrink-0"
                     title="Vista previa para impresión">
                     &#128424; Vista Previa
                   </button>
-                  <button @click="openConfirmModal(m)" :disabled="submitting || (receiptForms[m.id]._existingReceiptId && !receiptForms[m.id].correctionReason?.trim())"
-                    class="flex items-center gap-1 text-[10px] px-3 py-1 rounded font-mono uppercase tracking-wider font-bold text-white transition disabled:opacity-50 shrink-0"
-                    :class="receiptForms[m.id]._existingReceiptId ? 'bg-amber-700 hover:bg-amber-600' : 'bg-slate-800 hover:bg-slate-700'">
-                    <span>{{ submitting ? 'Guardando...' : (receiptForms[m.id]._existingReceiptId ? '&#10003; Corregir Recibo' : '&#10003; Confirmar Recibo') }}</span>
+                  <button @click="openConfirmModal(m)" :disabled="submitting"
+                    class="ds-btn-primary text-[11px] px-2.5 py-1 shrink-0">
+                    <span>{{ submitting ? 'Guardando...' : '&#10003; Confirmar Recibo' }}</span>
                   </button>
                 </div>
               </div>
@@ -770,16 +763,16 @@
 
     <!-- MAWB Evidence Manager Modal -->
     <Teleport to="body">
-      <div v-if="mawbEvidenceMgr.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="closeMawbEvidenceMgr">
-        <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4" style="max-width: 640px; width: 100%; max-height: 80vh;">
-          <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-400">
-            <span class="text-[12px] font-mono font-black uppercase tracking-widest text-slate-950">
+      <div v-if="mawbEvidenceMgr.show" class="ds-modal-backdrop" @click.self="closeMawbEvidenceMgr">
+        <div class="ds-modal-panel max-w-xl p-0" style="max-height: 80vh;">
+          <div class="ds-modal-header px-4 py-2.5">
+            <span class="ds-modal-title">
               Evidencias — {{ mawbEvidenceMgr.mawb?.awbNumber || 'MAWB' }}
             </span>
             <button @click="closeMawbEvidenceMgr" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
           </div>
           <div class="p-4 overflow-y-auto" style="max-height: calc(80vh - 120px);">
-            <div v-if="mawbEvidenceMgr.docs.length === 0" class="text-[12px] font-mono text-slate-950 text-center py-6 uppercase tracking-widest">
+            <div v-if="mawbEvidenceMgr.docs.length === 0" class="text-[14px] font-mono text-slate-950 text-center py-6 uppercase tracking-widest">
               Sin evidencias documentales
             </div>
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-4">
@@ -788,33 +781,33 @@
                 <img v-if="doc.type === 'image' && doc.url" :src="doc.url" class="w-full h-20 object-cover" />
                 <div v-else-if="isPdfUrl(doc.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 font-mono">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-7 h-7 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-                  <span class="text-[10px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
+                  <span class="text-[12px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                 </div>
-                <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[11px] font-mono">{{ doc.name }}</div>
-                <button @click.stop="removeMawbEvidence(di)" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
-                <span class="block text-[11px] font-mono text-slate-950 px-2 py-1 truncate">{{ doc.name }}</span>
+                <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[13px] font-mono">{{ doc.name }}</div>
+                <button @click.stop="removeMawbEvidence(di)" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                <span class="block text-[13px] font-mono text-slate-950 px-2 py-1 truncate">{{ doc.name }}</span>
               </div>
             </div>
             <div class="flex items-center gap-2 border-t border-slate-300 pt-3">
               <button @click="mawbEvidenceInput.click()"
-                class="text-[10px] px-3 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-white transition">
+                class="ds-btn-secondary text-[11px] px-2.5 py-1">
                 + Subir archivo
               </button>
               <button @click="openMawbCamera()"
-                class="text-[10px] px-3 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider font-bold text-slate-950 hover:bg-white transition flex items-center gap-1">
+                class="ds-btn-secondary text-[11px] px-2.5 py-1 flex items-center gap-1">
                 <IconCamera :size="12" /> Cámara
               </button>
               <button v-if="mawbEvidenceMgr.docs.length > 0" @click="downloadMawbEvidencePdf()"
-                class="ml-auto text-[10px] px-3 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-700 hover:bg-slate-600 transition">
+                class="ml-auto ds-btn-primary text-[11px] px-2.5 py-1">
                 &#128196; PDF
               </button>
             </div>
             <input type="file" ref="mawbEvidenceInput" @change="handleMawbEvidenceUpload" accept="image/*,.pdf" class="hidden" />
             <CameraCapture :show="mawbCameraOpen" @close="mawbCameraOpen = false" @captured="onMawbCameraCapture" />
           </div>
-          <div class="flex justify-end px-4 py-2.5 border-t border-slate-400 bg-slate-100">
+          <div class="flex justify-end px-4 py-2.5 border-t border-slate-200 bg-slate-50">
             <button @click="saveMawbEvidence()"
-              class="text-[10px] px-4 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-950 hover:bg-slate-800 transition">
+              class="ds-btn-primary text-[11px] px-3 py-1.5">
               Guardar cambios
             </button>
           </div>
@@ -824,15 +817,15 @@
 
     <!-- Confirm Submit Modal -->
     <Teleport to="body">
-      <div v-if="showConfirmModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showConfirmModal = false">
-        <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4" style="max-width: 520px; width: 100%; max-height: 80vh;">
-          <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-400">
-            <span class="text-[12px] font-mono font-black uppercase tracking-widest text-slate-950">Confirmar Recibo</span>
+      <div v-if="showConfirmModal" class="ds-modal-backdrop" @click.self="showConfirmModal = false" style="z-index: 70;">
+        <div class="ds-modal-panel max-w-lg p-0" style="max-height: 80vh;">
+          <div class="ds-modal-header px-4 py-2.5">
+            <span class="ds-modal-title">Confirmar Recibo</span>
             <button @click="showConfirmModal = false" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
           </div>
           <div class="overflow-y-auto" style="max-height: calc(80vh - 110px);">
             <template v-if="pendingSubmitMawb">
-              <div class="px-4 py-3 space-y-2 text-[11px] font-mono text-slate-950">
+              <div class="px-4 py-3 space-y-2 text-[13px] font-mono text-slate-950">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
                   <span class="text-slate-500 uppercase tracking-wider">MAWB</span>
                   <span class="font-bold text-right">{{ pendingSubmitMawb.awbNumber }}</span>
@@ -849,27 +842,27 @@
                 </div>
                 <div class="border-t border-slate-300 pt-2 mt-2">
                   <div class="flex flex-wrap gap-2">
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.cashOnly" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">Cash Only</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.bookedInAcoms" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">Booked in ACOMS</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.docsProvided" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">Docs Provided</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.customsCompleted" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">Customs Done</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.preBuilt" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">Pre-built</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.cashOnly" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Cash Only</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.bookedInAcoms" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Booked in ACOMS</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.docsProvided" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Docs Provided</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.customsCompleted" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Customs Done</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.preBuilt" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Pre-built</span>
                   </div>
                 </div>
-                <div class="border-t border-slate-300 pt-2 mt-2 flex justify-between text-[10px] text-slate-500">
+                <div class="border-t border-slate-300 pt-2 mt-2 flex justify-between text-[12px] text-slate-500">
                   <span>{{ (receiptForms[pendingSubmitMawb.id]?.evidence || []).length }} evidencias</span>
                   <span>{{ (receiptForms[pendingSubmitMawb.id]?.pieces || []).filter(p => p.lengthIn).length }} piezas con dimensiones</span>
                 </div>
               </div>
             </template>
           </div>
-          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-400 bg-slate-100">
+          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-200 bg-slate-50">
             <button @click="showConfirmModal = false"
-              class="text-[10px] px-3 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-white transition">
+              class="ds-btn-secondary text-[11px] px-3 py-1.5">
               Cancelar
             </button>
             <button @click="confirmSubmit"
-              class="text-[10px] px-4 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-800 hover:bg-slate-700 transition">
+              class="ds-btn-primary text-[11px] px-3 py-1.5">
               &#10003; Confirmar
             </button>
           </div>
@@ -879,33 +872,33 @@
 
     <!-- Booking Correction Modal -->
     <Teleport to="body">
-      <div v-if="showBookingCorrectionModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="cancelBookingCorrection">
-        <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4" style="max-width: 480px; width: 100%;">
+      <div v-if="showBookingCorrectionModal" class="ds-modal-backdrop" @click.self="cancelBookingCorrection" style="z-index: 80; --tw-bg-opacity: 0.7;">
+        <div class="ds-modal-panel max-w-md p-0">
           <div class="px-5 py-4 border-b border-amber-300 bg-amber-50">
             <div class="flex items-center gap-2">
               <span class="text-amber-600 text-lg">&#9888;</span>
-              <span class="text-[13px] font-mono font-black uppercase tracking-widest text-amber-900">Booking Auto-Correccion</span>
+              <span class="ds-modal-title text-amber-900">Booking Auto-Correccion</span>
             </div>
           </div>
           <div class="px-5 py-4 space-y-3">
-            <p class="text-[12px] font-mono text-slate-600">
+            <p class="text-[14px] font-mono text-slate-600">
               Las piezas recibidas superan las reservadas en el Booking. El sistema corregira automaticamente:
             </p>
             <div v-for="(c, idx) in pendingBookingCorrections" :key="idx"
               class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
-              <div class="text-[11px] font-mono text-amber-900" v-html="formatCorrection(c)"></div>
+              <div class="text-[13px] font-mono text-amber-900" v-html="formatCorrection(c)"></div>
             </div>
-            <p class="text-[11px] font-mono text-slate-500 italic">
+            <p class="text-[13px] font-mono text-slate-500 italic">
               Al aceptar, el Booking se actualizara y el recibo se guardara.
             </p>
           </div>
           <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-amber-200 bg-amber-50/50">
             <button @click="cancelBookingCorrection"
-              class="text-[11px] px-4 py-2 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-700 hover:bg-white transition">
+              class="ds-btn-secondary text-[12px] px-3 py-1.5 text-slate-700">
               &#10007; Ajustar
             </button>
             <button @click="confirmBookingCorrection"
-              class="text-[11px] px-5 py-2 rounded font-mono uppercase tracking-wider font-bold text-white bg-amber-600 hover:bg-amber-500 transition">
+              class="flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-amber-600 hover:bg-amber-500 transition">
               &#10003; Aceptar y Emitir
             </button>
           </div>
@@ -915,10 +908,10 @@
 
     <!-- Evidence Preview Modal -->
     <Teleport to="body">
-      <div v-if="evidencePreview.show" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="closeEvidencePreview">
-        <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4" style="max-width: 900px; width: 100%; max-height: 90vh;">
-          <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-400">
-            <span class="text-[12px] font-mono font-black uppercase tracking-widest text-slate-950 truncate max-w-[70%]">
+      <div v-if="evidencePreview.show" class="ds-modal-backdrop" @click.self="closeEvidencePreview" style="z-index: 60; --tw-bg-opacity: 0.7;">
+        <div class="ds-modal-panel max-w-4xl p-0" style="max-height: 90vh;">
+          <div class="ds-modal-header px-4 py-2.5">
+            <span class="ds-modal-title truncate max-w-[70%]">
               {{ evidencePreview.item?.name || 'Vista previa' }}
             </span>
             <button @click="closeEvidencePreview" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
@@ -928,17 +921,17 @@
               class="max-w-full max-h-full object-contain" style="max-height: calc(90vh - 120px);" />
             <embed v-else-if="isPdfUrl(evidencePreview.item?.url)" :src="evidencePreview.item.url"
               type="application/pdf" class="w-full" style="height: calc(90vh - 110px);" />
-            <div v-else class="text-white/60 font-mono text-[12px] p-8 text-center">
+            <div v-else class="text-white/60 font-mono text-[14px] p-8 text-center">
               {{ evidencePreview.item?.name || 'Sin vista previa disponible' }}
             </div>
           </div>
-          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-400 bg-slate-100">
+          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-200 bg-slate-50">
             <button @click="closeEvidencePreview"
-              class="text-[10px] px-3 py-1.5 rounded border border-slate-300 font-mono uppercase tracking-wider text-slate-950 hover:bg-white transition">
+              class="ds-btn-secondary text-[11px] px-3 py-1.5">
               Cerrar
             </button>
             <button @click="downloadEvidenceItem(evidencePreview.item)"
-              class="text-[10px] px-3 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-slate-950 hover:bg-slate-800 transition">
+              class="ds-btn-primary text-[11px] px-3 py-1.5">
               &#128229; Descargar
             </button>
           </div>
@@ -946,6 +939,7 @@
       </div>
     </Teleport>
   </div>
+  <EditReceiptModal ref="editModalRef" @saved="onEditReceiptSaved" />
 </template>
 
 <script setup>
@@ -954,6 +948,7 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import SignaturePad from '../components/SignaturePad.vue'
 import CameraCapture from '../components/CameraCapture.vue'
+import EditReceiptModal from '../components/EditReceiptModal.vue'
 import { IconCamera } from '@tabler/icons-vue'
 import { hawbsApi } from '../api/hawbs'
 import { mawbsApi } from '../api/mawbs'
@@ -975,6 +970,7 @@ const localStep = ref(1)
 const submitting = ref(false)
 const successMsg = ref('')
 const showConfirmModal = ref(false)
+const editModalRef = ref(null)
 const pendingSubmitMawb = ref(null)
 const showBookingCorrectionModal = ref(false)
 const pendingBookingCorrections = ref([])
@@ -1113,7 +1109,6 @@ const activeFormJson = computed(() => {
   const mId = expandedId.value
   if (!mId || !receiptForms[mId]) return null
   const f = receiptForms[mId]
-  if (f._existingReceiptId) return null // don't auto-save existing receipts
   return JSON.stringify({
     gc: f.gatewayCfs, sn: f.shipperName, cn: f.consigneeName,
     or: f.origin, de: f.destination, arp: f.awbReportedPieces,
@@ -1331,6 +1326,27 @@ function statusLabelClass(m) {
   return cls[m.status] || 'text-slate-500'
 }
 
+function editOrExpandReceipt(m) {
+  const rid = receiptById.value[m.id]
+  if (rid && editModalRef.value) {
+    editModalRef.value.open(rid)
+  } else {
+    toggleExpand(m)
+  }
+}
+
+async function onEditReceiptSaved() {
+  await store.loadReceipts()
+  if (store.selectedFlightId) {
+    await store.loadMawbs(store.selectedFlightId)
+  } else {
+    await store.loadAllMawbs()
+  }
+  successMsg.value = 'Recibo actualizado correctamente'
+  if (successTimer) clearTimeout(successTimer)
+  successTimer = setTimeout(() => { successMsg.value = '' }, 4000)
+}
+
 function initForm(m) {
   if (!receiptForms[m.id]) {
   const hawbs = hawbsForDisplay(m.id)
@@ -1384,9 +1400,7 @@ function initForm(m) {
       receivedBySig: '',
       receiptDate: null,
       startDatetime: null,
-      _existingReceiptId: null,
-      _correctionNumber: 1,
-      correctionReason: '',
+      _piecesLoadedFromDb: false,
       pieceCount: 0,
       totalWeightKg: 0,
     }
@@ -1405,15 +1419,9 @@ async function loadExistingReceiptData(m) {
   })
   // Prefer non-superseded receipts as the active source
   const activeReceipts = existingReceipts.filter(r => !r.superseded)
-  const generalActive = activeReceipts.filter(r => !r.hawbId)
-  const sourceReceipt = generalActive.length > 0
-    ? generalActive[generalActive.length - 1]
-    : activeReceipts.length > 0
-      ? activeReceipts[activeReceipts.length - 1]
-      : existingReceipts[existingReceipts.length - 1]
-  f._existingReceiptId = sourceReceipt?.id ?? null
-  f._correctionNumber = sourceReceipt?.correctionNumber ?? 1
-  f.correctionReason = ''
+  const sourceReceipts = activeReceipts.length > 0 ? activeReceipts : existingReceipts
+  // Use the last receipt for metadata (field values), but load pieces from ALL
+  const sourceReceipt = sourceReceipts[sourceReceipts.length - 1]
   f.gatewayCfs = sourceReceipt.gatewayCfs ?? 'SDQ'
   f.shipperName = sourceReceipt.shipperName ?? f.shipperName
   f.consigneeName = sourceReceipt.consigneeName ?? f.consigneeName
@@ -1443,11 +1451,14 @@ async function loadExistingReceiptData(m) {
   f.startDatetime = sourceReceipt.startDatetime ?? f.startDatetime
   f.pieceCount = sourceReceipt.pieceCount ?? 0
   f.totalWeightKg = sourceReceipt.actualWeightKg ?? sourceReceipt.chargeableWeightKg ?? 0
+  // Load pieces from ALL non-superseded receipts (not just one)
   try {
-    const piecesRes = await receiptsApi.getPieces(sourceReceipt.id)
-    const loadedPieces = piecesRes.data || []
-    if (loadedPieces.length > 0) {
-      f.pieces = loadedPieces.map((p) => {
+    const pieceResults = await Promise.all(
+      sourceReceipts.map(r => receiptsApi.getPieces(r.id).catch(() => ({ data: [] })))
+    )
+    const allLoadedPieces = pieceResults.flatMap(res => res.data || [])
+    if (allLoadedPieces.length > 0) {
+      f.pieces = allLoadedPieces.map((p) => {
         return {
           pieces: p.pieces ?? 1,
           hawbId: p.hawbId ?? null,
@@ -1463,6 +1474,7 @@ async function loadExistingReceiptData(m) {
           chargeableLbs: Number(p.chargeableLbs) || 0,
         }
       })
+      f._piecesLoadedFromDb = true
       f.mawbWeightGreatest = totalScaleLbs(m.id, null)
     }
   } catch (e) { toast.error(extractError(e)) }
@@ -1775,14 +1787,6 @@ async function toggleExpand(m) {
               p.hawbId = f.hawbEntries[0]?._hawbId || null
             }
           }
-          // Ensure every HAWB entry has at least one piece
-          if (f.hawbEntries.length > 0) {
-            for (const e of f.hawbEntries) {
-              if (!f.pieces.some(p => p.hawbId === e._hawbId)) {
-                f.pieces.push({ pieces: 1, hawbId: e._hawbId, lengthIn: null, widthIn: null, heightIn: null, scaleWeightLbs: null, dimWeight: 0, dimWeightLbs: 0, scaleWeightKg: 0, dimWeightKg: 0, chargeableKg: 0, chargeableLbs: 0 })
-              }
-            }
-          }
         }
       }
     } catch (e) {
@@ -2015,7 +2019,16 @@ async function confirmBookingCorrection() {
   pendingEmitPayload.value = null
   pendingEmitMawb.value = null
   pendingEmitHawbs.value = null
-  await executeEmit(m, hawbs, payload)
+  try {
+    await executeEmit(m, hawbs, payload)
+  } catch (e) {
+    submitting.value = false
+    toast.error(extractError(e))
+    const data = e.response?.data
+    const msg = data?.error || data?.message || (typeof data === 'string' ? data : null) || e.message
+    console.error('Booking correction emit error:', { error: e, responseData: data })
+    alert('Error (' + (e.response?.status || '?') + '): ' + msg)
+  }
 }
 
 async function submitReceipt(m) {
@@ -2028,9 +2041,14 @@ async function submitReceipt(m) {
     alert('Ingresa al menos una pieza')
     return
   }
+  if (receiptById.value[m.id]) {
+    if (!confirm('Este MAWB ya tiene un recibo activo. Emitir uno nuevo reemplazara el recibo existente. ¿Continuar?')) {
+      return
+    }
+  }
   submitting.value = true
   try {
-    console.warn('[Submit] START', { mawbId: m.id, awbNumber: m.awbNumber, existingReceipt: f._existingReceiptId, pieceCount: f.pieces.length, hawbCount: hawbs.length })
+    console.warn('[Submit] START', { mawbId: m.id, awbNumber: m.awbNumber, pieceCount: f.pieces.length, hawbCount: hawbs.length })
     try {
       if (f.shipperName && f.shipperName !== m.shipperName) {
         await mawbsApi.update(m.id, { shipperName: f.shipperName })
@@ -2134,7 +2152,6 @@ async function submitReceipt(m) {
           type: ev.type,
           url: ev.url,
         })),
-        correctionReason: f.correctionReason || '',
       }
     }
 
@@ -2156,6 +2173,7 @@ async function submitReceipt(m) {
         pendingEmitPayload.value = payload
         pendingEmitMawb.value = m
         pendingEmitHawbs.value = hawbs
+        showBookingCorrectionModal.value = true
         return
       }
     } catch (valErr) {
@@ -2179,19 +2197,7 @@ async function executeEmit(m, hawbs, payload) {
   const f = receiptForms[m.id]
   if (!f) return
 
-  const isVersioned = !!f._existingReceiptId
-  if (isVersioned && !f.correctionReason?.trim()) {
-    alert('El motivo de la corrección es obligatorio')
-    return
-  }
-
-  let res
-  if (isVersioned) {
-    res = await receiptsApi.createCorrection(f._existingReceiptId, payload)
-    res = res.data
-  } else {
-    res = await store.emitReceipt(payload)
-  }
+  const res = await store.emitReceipt(payload)
   const receiptId = res?.id || null
   if (receiptId) generatedReceiptId.value = receiptId
 
@@ -2209,8 +2215,7 @@ async function executeEmit(m, hawbs, payload) {
   const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
   const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
   const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
-  const label = isVersioned ? 'Corrección aplicada' : 'Recibo generado'
-  successMsg.value = label +
+  successMsg.value = 'Recibo generado' +
     ` — ${totalPieces(m.id, null)} pzas, ${totalKg.toFixed(1)} KGS / ${totalLbs.toFixed(1)} LBS (facturable: ${chargeKg.toFixed(1)} KGS)`
   if (successTimer) clearTimeout(successTimer)
   successTimer = setTimeout(() => { successMsg.value = '' }, 6000)
@@ -2400,9 +2405,9 @@ async function downloadMawbEvidencePdf() {
 async function printPreview(m) {
   const f = receiptForms[m.id]
   if (!f) return
-  const receiptId = f._existingReceiptId || generatedReceiptId.value
+  const receiptId = generatedReceiptId.value
   if (!receiptId) {
-    toast.error('Primero confirma o actualiza el recibo antes de imprimir')
+    toast.error('Primero confirma el recibo antes de imprimir')
     return
   }
   try {
@@ -2446,7 +2451,6 @@ onMounted(async () => {
             const h0 = hawbData[0]
             if (!f.shipperName) f.shipperName = m.shipperName || h0?.shipperName || ''
             if (!f.consigneeName) f.consigneeName = m.consigneeName || (hawbData.length === 1 ? h0?.consigneeName : '') || ''
-            // mawbWeightGreatest se auto-calculó desde scaleWeightLbs en loadExistingReceiptData o calcPiece
             if (f.awbReportedPieces == null) f.awbReportedPieces = m.pieces || hawbData.reduce((s, h) => s + (h.pieces || 0), 0) || 0
             const existingIds = new Set(f.hawbEntries.filter(e => e._dbId).map(e => e._dbId))
             for (const h of hawbData) {
@@ -2462,21 +2466,14 @@ onMounted(async () => {
                 })
               }
             }
-            // Remove phantom default entries (no _dbId) when real DB HAWBs exist
             f.hawbEntries = f.hawbEntries.filter(e => e._dbId != null || f.hawbEntries.filter(e2 => e2._dbId != null).length === 0)
             f.hawbCount = f.hawbEntries.length
-            // Clean up phantom pieces (same logic as toggleExpand)
-            const validHawbIds = new Set(f.hawbEntries.map(e => e._hawbId).filter(Boolean))
-            f.pieces = f.pieces.filter(p => validHawbIds.has(p.hawbId) || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
-            for (const p of f.pieces) {
-              if (!validHawbIds.has(p.hawbId)) {
-                p.hawbId = f.hawbEntries[0]?._hawbId || null
-              }
-            }
-            if (f.hawbEntries.length > 0) {
-              for (const e of f.hawbEntries) {
-                if (!f.pieces.some(p => p.hawbId === e._hawbId)) {
-                  f.pieces.push({ pieces: 1, hawbId: e._hawbId, lengthIn: null, widthIn: null, heightIn: null, scaleWeightLbs: null, dimWeight: 0, dimWeightLbs: 0, scaleWeightKg: 0, dimWeightKg: 0, chargeableKg: 0, chargeableLbs: 0 })
+            if (!f._piecesLoadedFromDb) {
+              const validHawbIds = new Set(f.hawbEntries.map(e => e._hawbId).filter(Boolean))
+              f.pieces = f.pieces.filter(p => validHawbIds.has(p.hawbId) || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
+              for (const p of f.pieces) {
+                if (!validHawbIds.has(p.hawbId)) {
+                  p.hawbId = f.hawbEntries[0]?._hawbId || null
                 }
               }
             }
@@ -2524,17 +2521,12 @@ onMounted(async () => {
             }
             f.hawbEntries = f.hawbEntries.filter(e => e._dbId != null || f.hawbEntries.filter(e2 => e2._dbId != null).length === 0)
             f.hawbCount = f.hawbEntries.length
-            const validHawbIds = new Set(f.hawbEntries.map(e => e._hawbId).filter(Boolean))
-            f.pieces = f.pieces.filter(p => validHawbIds.has(p.hawbId) || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
-            for (const p of f.pieces) {
-              if (!validHawbIds.has(p.hawbId)) {
-                p.hawbId = f.hawbEntries[0]?._hawbId || null
-              }
-            }
-            if (f.hawbEntries.length > 0) {
-              for (const e of f.hawbEntries) {
-                if (!f.pieces.some(p => p.hawbId === e._hawbId)) {
-                  f.pieces.push({ pieces: 1, hawbId: e._hawbId, lengthIn: null, widthIn: null, heightIn: null, scaleWeightLbs: null, dimWeight: 0, dimWeightLbs: 0, scaleWeightKg: 0, dimWeightKg: 0, chargeableKg: 0, chargeableLbs: 0 })
+            if (!f._piecesLoadedFromDb) {
+              const validHawbIds = new Set(f.hawbEntries.map(e => e._hawbId).filter(Boolean))
+              f.pieces = f.pieces.filter(p => validHawbIds.has(p.hawbId) || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
+              for (const p of f.pieces) {
+                if (!validHawbIds.has(p.hawbId)) {
+                  p.hawbId = f.hawbEntries[0]?._hawbId || null
                 }
               }
             }

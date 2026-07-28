@@ -87,6 +87,123 @@ input:focus, select:focus, textarea:focus {
   outline-offset: -1px;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Componentes reutilizables
+   ══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* ── Page wrapper ─────────────────────────── */
+  .ds-page {
+    @apply p-3 md:p-5 bg-white h-screen max-h-screen flex flex-col
+           text-slate-900 font-sans antialiased overflow-hidden select-none;
+  }
+
+  /* ── Table section (wraps header + scroll) ── */
+  .ds-table-section {
+    @apply flex-1 min-h-0 border border-slate-200 rounded-lg overflow-hidden
+           bg-white flex flex-col;
+  }
+
+  /* ── Table header row (dark bar) ──────────── */
+  .ds-table-header {
+    @apply bg-slate-800 text-white text-[13px] font-bold uppercase
+           tracking-wider grid grid-cols-12 py-2.5 px-5 items-center
+           shrink-0 font-mono;
+  }
+
+  /* ── Table body row ───────────────────────── */
+  .ds-table-row {
+    @apply grid grid-cols-12 items-center py-2 px-5
+           transition-all duration-150 cursor-pointer
+           hover:bg-slate-50/80 border-b border-slate-100;
+  }
+
+  /* ── Primary button (dark fill) ───────────── */
+  .ds-btn-primary {
+    @apply flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-lg
+           font-mono uppercase tracking-wider font-bold text-white
+           bg-slate-950 hover:bg-slate-800 shadow-sm
+           transition active:scale-95 disabled:opacity-50;
+  }
+
+  /* ── Secondary button (outline) ───────────── */
+  .ds-btn-secondary {
+    @apply flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-lg
+           border border-slate-300 font-mono uppercase tracking-wider
+           font-bold text-slate-950 hover:bg-slate-100
+           transition active:scale-95 disabled:opacity-40;
+  }
+
+  /* ── Modal backdrop ───────────────────────── */
+  .ds-modal-backdrop {
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50
+           flex items-center justify-center p-4;
+  }
+
+  /* ── Modal panel ──────────────────────────── */
+  .ds-modal-panel {
+    @apply bg-white rounded-xl border border-slate-200 shadow-2xl
+           w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto;
+  }
+
+  /* ── Modal header (inside panel) ──────────── */
+  .ds-modal-header {
+    @apply flex justify-between items-center mb-5 pb-3
+           border-b border-slate-200;
+  }
+
+  /* ── Modal title ──────────────────────────── */
+  .ds-modal-title {
+    @apply text-[15px] font-black font-mono uppercase tracking-wider text-slate-950;
+  }
+
+  /* ── Form input ───────────────────────────── */
+  .ds-input {
+    @apply w-full text-[14px] font-mono px-4 py-2.5 rounded-lg
+           border border-slate-300 bg-white outline-none
+           focus:ring-2 focus:ring-slate-950/10 focus:border-slate-950
+           transition;
+  }
+
+  /* ── Form label ───────────────────────────── */
+  .ds-label {
+    @apply text-[13px] font-mono uppercase tracking-wider
+           font-bold text-slate-700 block mb-1.5;
+  }
+
+  /* ── View title ───────────────────────────── */
+  .ds-title {
+    @apply text-[16px] font-black tracking-tight text-slate-950 uppercase font-mono;
+  }
+
+  /* ── View subtitle ────────────────────────── */
+  .ds-subtitle {
+    @apply text-[13px] font-mono text-slate-500 mt-0.5 uppercase tracking-wider font-bold;
+  }
+
+  /* ── Section header (inside page) ─────────── */
+  .ds-section-header {
+    @apply flex flex-col sm:flex-row justify-between items-start
+           sm:items-center border-b border-slate-200 pb-3 shrink-0 gap-2;
+  }
+
+  /* ── Stats badge ──────────────────────────── */
+  .ds-stat {
+    @apply flex items-center gap-1.5 text-[13px] font-mono font-bold text-slate-950;
+  }
+
+  /* ── Divider (vertical) ───────────────────── */
+  .ds-divider {
+    @apply h-8 w-[1px] bg-slate-200;
+  }
+
+  /* ── Empty state ──────────────────────────── */
+  .ds-empty {
+    @apply flex-1 flex flex-col items-center justify-center gap-3
+           text-[14px] font-mono text-slate-500;
+  }
+}
+
 /* ── Table horizontal scroll wrapper ────────── */
 .table-scroll-wrapper {
   overflow-x: auto;

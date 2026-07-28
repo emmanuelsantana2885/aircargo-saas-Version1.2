@@ -1,13 +1,11 @@
 <template>
-  <div class="p-3 md:p-6 max-w-7xl mx-auto">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-2">
-      <h1 class="text-[13px] font-black tracking-tight text-slate-950 uppercase font-mono">Users</h1>
+  <div class="p-3 md:p-5 bg-white text-slate-900 font-sans antialiased select-none min-h-screen">
+    <div class="max-w-7xl mx-auto">
+    <div class="ds-section-header mb-4">
+      <h1 class="ds-title">Users</h1>
       <div class="flex gap-1">
         <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
-          class="px-4 py-1.5 rounded text-xs font-semibold transition-all"
-          :class="activeTab === tab.key
-            ? 'bg-black text-white'
-            : 'bg-[var(--bg)] text-[var(--muted)]'">
+          :class="activeTab === tab.key ? 'ds-btn-primary' : 'ds-btn-secondary'">
           {{ tab.label }}
         </button>
       </div>
@@ -15,33 +13,31 @@
 
     <!-- ────────────── TAB: CONNECTED USERS ────────────── -->
     <template v-if="activeTab === 'connected'">
-      <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <div class="table-scroll-wrapper">
-        <table class="w-full text-xs" style="min-width: 700px">
+      <div class="ds-table-section">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <table class="w-full text-sm" style="min-width: 700px">
           <thead>
-            <tr style="background: var(--accent); color: white">
-              <th class="text-left px-4 py-2.5 font-semibold" style="width: 16px"></th>
-              <th class="text-left px-4 py-2.5 font-semibold">Nombre</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Email</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Rol</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Último latido</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Último login</th>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+              <th style="width: 16px"></th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Último latido</th>
+              <th>Último login</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="u in connected" :key="u.userId"
-              class="border-t transition-colors" style="border-color: var(--border)"
-              @mouseenter="$event.currentTarget.style.background = '#eff6ff'"
-              @mouseleave="$event.currentTarget.style.background = ''">
-              <td class="px-4 py-2.5"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background: #22c55e"></span></td>
-              <td class="px-4 py-2.5 font-medium" style="color: var(--text)">{{ u.fullName || u.email }}</td>
-              <td class="px-4 py-2.5" style="color: var(--muted)">{{ u.email }}</td>
-              <td class="px-4 py-2.5"><span class="text-[10px] font-medium px-2 py-0.5 rounded" style="background: var(--bg); color: var(--text)">{{ roleLabel(u.role) }}</span></td>
-              <td class="px-4 py-2.5 text-[10px]" style="color: var(--muted)">{{ formatDate(u.lastHeartbeat) }}</td>
-              <td class="px-4 py-2.5 text-[10px]" style="color: var(--muted)">{{ formatDate(u.lastLogin) }}</td>
+              class="border-b border-slate-100 transition-colors hover:bg-blue-50">
+              <td><span class="w-1.5 h-1.5 rounded-full inline-block bg-green-500"></span></td>
+              <td class="font-medium text-slate-900">{{ u.fullName || u.email }}</td>
+              <td class="text-slate-500">{{ u.email }}</td>
+              <td><span class="ds-label bg-slate-100 px-2 py-0.5 rounded">{{ roleLabel(u.role) }}</span></td>
+              <td class="text-[12px] text-slate-500">{{ formatDate(u.lastHeartbeat) }}</td>
+              <td class="text-[12px] text-slate-500">{{ formatDate(u.lastLogin) }}</td>
             </tr>
             <tr v-if="connected.length === 0">
-              <td colspan="6" class="px-4 py-8 text-center text-xs italic" style="color: var(--muted)">No hay usuarios conectados</td>
+              <td colspan="6" class="px-4 py-8 text-center text-sm italic text-slate-400">No hay usuarios conectados</td>
             </tr>
           </tbody>
         </table>
@@ -51,43 +47,37 @@
     <template v-if="activeTab === 'audit'">
       <div class="flex items-center justify-between mb-3">
         <div class="flex gap-2">
-          <select v-model="filterUser"
-            class="px-2 py-1 rounded text-[10px] outline-none"
-            style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+          <select v-model="filterUser" class="ds-input !w-auto !py-1">
             <option value="">Todos los usuarios</option>
             <option v-for="u in userOptions" :key="u.id" :value="u.id">{{ u.email }}</option>
           </select>
-          <button @click="loadLogs"
-            class="px-2 py-1 rounded text-[10px] font-medium transition-all hover:brightness-110"
-            style="background: var(--accent); color: white">Actualizar</button>
+          <button @click="loadLogs" class="ds-btn-primary !px-3 !py-1 !text-[12px]">Actualizar</button>
         </div>
       </div>
-      <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <div class="table-scroll-wrapper">
-        <table class="w-full text-xs" style="min-width: 600px">
+      <div class="ds-table-section">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <table class="w-full text-sm" style="min-width: 600px">
           <thead>
-            <tr style="background: var(--accent); color: white">
-              <th class="text-left px-4 py-2.5 font-semibold">Fecha/Hora</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Usuario</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Acción</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Entidad</th>
-              <th class="text-left px-4 py-2.5 font-semibold">Detalle</th>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+              <th>Fecha/Hora</th>
+              <th>Usuario</th>
+              <th>Acción</th>
+              <th>Entidad</th>
+              <th>Detalle</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(log, idx) in logs" :key="log.id"
-              class="border-t transition-all" style="border-color: var(--border)"
-              :style="idx % 2 === 0 ? {} : { background: '#f8fafc' }"
-              @mouseenter="$event.currentTarget.style.background = '#dbeafe'"
-              @mouseleave="$event.currentTarget.style.background = idx % 2 === 0 ? '' : '#f8fafc'">
-              <td class="px-4 py-2 whitespace-nowrap text-[10px]" style="color: var(--muted)">{{ formatDate(log.createdAt) }}</td>
-              <td class="px-4 py-2" style="color: var(--text)">{{ log.fullName || log.email || '—' }}</td>
-              <td class="px-4 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-medium" :style="actionColor(log.action)">{{ log.action }}</span></td>
-              <td class="px-4 py-2" style="color: var(--text)">{{ log.entityType || '—' }}</td>
-              <td class="px-4 py-2 max-w-xs truncate text-[10px]" style="color: var(--muted)">{{ log.details || '—' }}</td>
+              class="border-b border-slate-100 transition-colors hover:bg-blue-50"
+              :class="idx % 2 !== 0 ? 'bg-slate-50/50' : ''">
+              <td class="whitespace-nowrap text-[12px] text-slate-500">{{ formatDate(log.createdAt) }}</td>
+              <td class="text-slate-900">{{ log.fullName || log.email || '—' }}</td>
+              <td><span class="px-1.5 py-0.5 rounded text-[12px] font-medium" :style="actionColor(log.action)">{{ log.action }}</span></td>
+              <td class="text-slate-900">{{ log.entityType || '—' }}</td>
+              <td class="max-w-xs truncate text-[12px] text-slate-500">{{ log.details || '—' }}</td>
             </tr>
             <tr v-if="logs.length === 0">
-              <td colspan="5" class="px-4 py-8 text-center text-xs italic" style="color: var(--muted)">No hay transacciones registradas</td>
+              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-slate-400">No hay transacciones registradas</td>
             </tr>
           </tbody>
         </table>
@@ -99,12 +89,10 @@
     <template v-if="activeTab === 'roles'">
       <!-- Role selector -->
       <div class="flex items-center gap-4 mb-4">
-        <label class="text-[10px] font-bold uppercase tracking-wider shrink-0" style="color: var(--muted)">Roles del sistema</label>
+        <label class="ds-label shrink-0">Roles del sistema</label>
         <select v-model="selectedRole" @change="onRoleChange"
-          class="px-3 py-1.5 rounded text-xs outline-none min-w-[200px] transition-all"
-          :style="selectedRole
-            ? { background: '#dcfce7', color: '#166534', border: '2px solid #22c55e', fontWeight: '600' }
-            : { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }">
+          class="ds-input !w-auto min-w-[200px]"
+          :class="selectedRole ? '!bg-green-50 !text-green-800 !border-2 !border-green-500 !font-semibold' : ''">
           <option value="">— Seleccionar rol —</option>
           <option v-for="r in allRoles" :key="r.role" :value="r.role">
             {{ roleLabel(r.role) }} ({{ countAccess(r.views) }}/{{ r.views.length }})
@@ -112,93 +100,87 @@
         </select>
 
         <button @click="showConnectedOnly = !showConnectedOnly"
-          class="px-3 py-1.5 rounded text-[10px] font-semibold transition-all flex items-center gap-1.5"
-          :style="showConnectedOnly
-            ? { background: '#22c55e', color: 'white' }
-            : { background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }">
-          <span class="w-1.5 h-1.5 rounded-full" :style="{ background: showConnectedOnly ? 'white' : '#94a3b8' }"></span>
+          class="ds-btn-secondary !px-3 !py-1.5 !text-[12px]"
+          :class="showConnectedOnly ? '!bg-green-500 !text-white !border-green-500' : ''">
+          <span class="w-1.5 h-1.5 rounded-full" :class="showConnectedOnly ? 'bg-white' : 'bg-slate-400'"></span>
           {{ showConnectedOnly ? 'Conectados' : 'Todos' }}
         </button>
-        <span v-if="roleUsers.length" class="text-[10px]" style="color: var(--muted)">{{ roleUsers.length }} usuario(s)</span>
+        <span v-if="roleUsers.length" class="ds-stat">{{ roleUsers.length }} usuario(s)</span>
       </div>
 
       <div v-if="selectedRole" class="space-y-5">
         <!-- Users by role -->
-        <div class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-          <div class="px-4 py-2 text-[10px] font-bold uppercase tracking-wider flex items-center justify-between"
-            style="background: var(--bg); color: var(--muted); border-bottom: 1px solid var(--border)">
-            <span>Connected users with role {{ roleLabel(selectedRole) }}</span>
+        <div class="ds-table-section">
+          <div class="ds-section-header px-4 py-2">
+            <span class="ds-label">Connected users with role {{ roleLabel(selectedRole) }}</span>
           </div>
-          <table class="w-full text-xs">
+          <table class="w-full text-sm">
             <thead>
-              <tr style="background: var(--accent); color: white">
-                <th class="text-left px-4 py-2 font-semibold">Nombre</th>
-                <th class="text-left px-4 py-2 font-semibold">Email</th>
-                <th class="text-left px-4 py-2 font-semibold">Último Login</th>
-                <th class="text-center px-4 py-2 font-semibold" style="width: 100px">Transacciones</th>
+              <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Último Login</th>
+                <th class="text-center" style="width: 100px">Transacciones</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="u in roleUsers" :key="u.userId"
                 class="border-t transition-all cursor-pointer"
-                :style="selectedUserId === u.userId
-                  ? { background: '#dbeafe', borderLeft: '4px solid #2563eb', fontWeight: '600' }
-                  : { borderColor: 'var(--border)' }"
+                :class="selectedUserId === u.userId
+                  ? 'bg-blue-50 border-l-4 border-l-blue-600 font-semibold'
+                  : 'border-slate-100 hover:bg-slate-50'"
                 @click="selectUser(u)">
-                <td class="px-4 py-2" :style="{ color: selectedUserId === u.userId ? '#1e40af' : 'var(--text)' }">
-                  <span class="w-1.5 h-1.5 rounded-full inline-block mr-1.5" style="background: #22c55e"></span>
+                <td :class="selectedUserId === u.userId ? 'text-blue-700' : 'text-slate-900'">
+                  <span class="w-1.5 h-1.5 rounded-full inline-block mr-1.5 bg-green-500"></span>
                   {{ u.fullName || '—' }}
                 </td>
-                <td class="px-4 py-2" :style="{ color: selectedUserId === u.userId ? '#1e40af' : 'var(--muted)' }">{{ u.email }}</td>
-                <td class="px-4 py-2 text-[10px]" :style="{ color: selectedUserId === u.userId ? '#1e40af' : 'var(--muted)' }">{{ formatDate(u.lastHeartbeat) }}</td>
-                <td class="px-4 py-2 text-center">
-                  <span v-if="selectedUserId === u.userId" class="text-[10px] font-medium px-2 py-0.5 rounded" style="background: #2563eb; color: white">
+                <td :class="selectedUserId === u.userId ? 'text-blue-700' : 'text-slate-500'">{{ u.email }}</td>
+                <td class="text-[12px]" :class="selectedUserId === u.userId ? 'text-blue-700' : 'text-slate-500'">{{ formatDate(u.lastHeartbeat) }}</td>
+                <td class="text-center">
+                  <span v-if="selectedUserId === u.userId" class="text-[12px] font-medium px-2 py-0.5 rounded bg-blue-600 text-white">
                     {{ userAuditLogs.length }} eventos
                   </span>
-                  <span v-else class="text-[10px] hover:text-blue-600 transition-colors" style="color: var(--muted)">Ver</span>
+                  <span v-else class="text-[12px] hover:text-blue-600 transition-colors text-slate-400">Ver</span>
                 </td>
               </tr>
               <tr v-if="!roleUsers.length">
-                <td colspan="4" class="px-4 py-8 text-center text-xs italic" style="color: var(--muted)">No hay usuarios con este rol</td>
+                <td colspan="4" class="px-4 py-8 text-center text-sm italic text-slate-400">No hay usuarios con este rol</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <!-- User audit transactions -->
-        <div v-if="selectedUserId" class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-          <div class="px-4 py-2 text-[10px] font-bold uppercase tracking-wider flex items-center justify-between"
-            style="background: var(--bg); color: var(--muted); border-bottom: 1px solid var(--border)">
-            <span>Transacciones de {{ selectedUserFullName }}</span>
-            <span>{{ userAuditLogs.length }} registros</span>
+        <div v-if="selectedUserId" class="ds-table-section">
+          <div class="ds-section-header px-4 py-2">
+            <span class="ds-label">Transacciones de {{ selectedUserFullName }}</span>
+            <span class="ds-stat">{{ userAuditLogs.length }} registros</span>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs">
+          <div class="overflow-x-auto flex-1 min-h-0">
+            <table class="w-full text-sm">
               <thead>
-                <tr style="background: var(--accent); color: white">
-                  <th class="text-left px-3 py-2 font-semibold" style="width: 90px"># Transacción</th>
-                  <th class="text-left px-3 py-2 font-semibold" style="width: 130px">Fecha/Hora</th>
-                  <th class="text-left px-3 py-2 font-semibold">Acción</th>
-                  <th class="text-left px-3 py-2 font-semibold">Entidad</th>
-                  <th class="text-left px-3 py-2 font-semibold" style="width: 100px">ID Entidad</th>
-                  <th class="text-left px-3 py-2 font-semibold">Detalle</th>
+                <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
+                  <th style="width: 90px"># Transacción</th>
+                  <th style="width: 130px">Fecha/Hora</th>
+                  <th>Acción</th>
+                  <th>Entidad</th>
+                  <th style="width: 100px">ID Entidad</th>
+                  <th>Detalle</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(log, idx) in userAuditLogs" :key="log.id"
-                  class="border-t transition-all" style="border-color: var(--border)"
-                  :style="idx % 2 === 0 ? {} : { background: '#f8fafc' }"
-                  @mouseenter="$event.currentTarget.style.background = '#dbeafe'"
-                  @mouseleave="$event.currentTarget.style.background = idx % 2 === 0 ? '' : '#f8fafc'">
-                  <td class="px-3 py-2 font-mono text-[9px]" style="color: #2563eb; font-weight: 600">{{ (log.id || '').slice(0, 8) }}</td>
-                  <td class="px-3 py-2 whitespace-nowrap text-[10px]" style="color: var(--muted)">{{ formatDate(log.createdAt) }}</td>
-                  <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-medium" :style="actionColor(log.action)" style="background: var(--bg)">{{ log.action }}</span></td>
-                  <td class="px-3 py-2 text-[10px]" style="color: var(--text)">{{ log.entityType || '—' }}</td>
-                  <td class="px-3 py-2 font-mono text-[9px]" style="color: var(--muted)">{{ (log.entityId || '').slice(0, 8) || '—' }}</td>
-                  <td class="px-3 py-2 max-w-[200px] truncate text-[10px]" style="color: var(--muted)">{{ log.details || '—' }}</td>
+                  class="border-b border-slate-100 transition-colors hover:bg-blue-50"
+                  :class="idx % 2 !== 0 ? 'bg-slate-50/50' : ''">
+                  <td class="font-mono text-[11px] text-blue-600 font-semibold">{{ (log.id || '').slice(0, 8) }}</td>
+                  <td class="whitespace-nowrap text-[12px] text-slate-500">{{ formatDate(log.createdAt) }}</td>
+                  <td><span class="px-1.5 py-0.5 rounded text-[11px] font-medium" :style="actionColor(log.action)">{{ log.action }}</span></td>
+                  <td class="text-[12px] text-slate-900">{{ log.entityType || '—' }}</td>
+                  <td class="font-mono text-[11px] text-slate-500">{{ (log.entityId || '').slice(0, 8) || '—' }}</td>
+                  <td class="max-w-[200px] truncate text-[12px] text-slate-500">{{ log.details || '—' }}</td>
                 </tr>
                 <tr v-if="!userAuditLogs.length">
-                  <td colspan="6" class="px-4 py-8 text-center text-xs italic" style="color: var(--muted)">No hay transacciones registradas para este usuario</td>
+                  <td colspan="6" class="px-4 py-8 text-center text-sm italic text-slate-400">No hay transacciones registradas para este usuario</td>
                 </tr>
               </tbody>
             </table>
@@ -206,52 +188,47 @@
         </div>
 
         <!-- Role permission grid -->
-        <div v-if="selectedRoleData" class="rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-          <div class="px-4 py-2 text-[10px] font-bold uppercase tracking-wider flex items-center justify-between"
-            style="background: var(--bg); color: var(--muted); border-bottom: 1px solid var(--border)">
-            <span>Permisos del rol {{ roleLabel(selectedRole) }}</span>
+        <div v-if="selectedRoleData" class="ds-table-section">
+          <div class="ds-section-header px-4 py-2">
+            <span class="ds-label">Permisos del rol {{ roleLabel(selectedRole) }}</span>
             <div class="flex gap-2">
-              <button @click="toggleAllViews(true)"
-                class="px-2 py-1 rounded text-[9px] font-medium transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Select All</button>
-              <button @click="toggleAllViews(false)"
-                class="px-2 py-1 rounded text-[9px] font-medium transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Deselect All</button>
+              <button @click="toggleAllViews(true)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">Select All</button>
+              <button @click="toggleAllViews(false)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">Deselect All</button>
               <button @click="saveRolePermissions"
-                class="px-3 py-1 rounded text-[9px] font-bold transition-all hover:brightness-110"
-                :style="hasChanges
-                  ? { background: '#16a34a', color: 'white' }
-                  : { background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }"
+                class="px-3 py-1 rounded text-[11px] font-bold transition-all"
+                :class="hasChanges
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
                 :disabled="!hasChanges">
                 {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
               </button>
             </div>
           </div>
-          <div v-for="cat in categories" :key="cat" class="border-b" style="border-color: var(--border)">
-            <div class="px-4 py-1.5 text-[9px] font-bold uppercase tracking-wider" style="background: var(--bg); color: var(--muted)">
+          <div v-for="cat in categories" :key="cat" class="border-b border-slate-100">
+            <div class="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-50 text-slate-500">
               {{ categoryLabel(cat) }}
               <span class="ml-2 font-normal normal-case">{{ catViews(cat).length }} transacciones</span>
             </div>
-            <div class="divide-y" style="border-color: var(--border)">
+            <div class="divide-y divide-slate-100">
               <div v-for="v in catViews(cat)" :key="v.viewCode"
                 class="flex items-center justify-between px-4 py-2 hover:bg-slate-50 transition-colors">
                 <div class="flex items-center gap-3 min-w-0">
                   <button @click="toggleView(v.viewCode)"
                     class="w-7 h-4 rounded-sm border transition-all shrink-0 relative flex items-center"
-                    :style="localPerms[v.viewCode]
-                      ? { background: '#2563eb', borderColor: '#2563eb' }
-                      : { background: '#ffffff', borderColor: '#cbd5e1' }">
+                    :class="localPerms[v.viewCode]
+                      ? 'bg-blue-600 border-blue-600'
+                      : 'bg-white border-slate-300'">
                     <span class="w-[11px] h-[11px] rounded-sm absolute transition-all"
-                      :style="localPerms[v.viewCode]
-                        ? { background: '#ffffff', left: '11px' }
-                        : { background: '#94a3b8', left: '1px' }"></span>
+                      :class="localPerms[v.viewCode]
+                        ? 'bg-white left-[11px]'
+                        : 'bg-slate-400 left-[1px]'"></span>
                   </button>
                   <div class="min-w-0">
-                    <div class="text-[10px] font-semibold" style="color: var(--text)">{{ v.viewName }}</div>
-                    <div class="text-[9px] truncate max-w-md" style="color: var(--muted)">{{ v.viewDescription }}</div>
+                    <div class="text-[12px] font-semibold text-slate-900">{{ v.viewName }}</div>
+                    <div class="text-[11px] truncate max-w-md text-slate-500">{{ v.viewDescription }}</div>
                   </div>
                 </div>
-                <div class="text-[8px] font-mono px-1.5 py-0.5 rounded shrink-0" :class="localPerms[v.viewCode] ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-400'">
+                <div class="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0" :class="localPerms[v.viewCode] ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-400'">
                   {{ localPerms[v.viewCode] ? 'AUTHORIZED' : 'RESTRICTED' }}
                 </div>
               </div>
@@ -261,39 +238,37 @@
       </div>
 
       <!-- No role selected -->
-      <div v-if="!selectedRole" class="flex items-center justify-center h-64 text-xs italic" style="color: var(--muted)">
+      <div v-if="!selectedRole" class="flex items-center justify-center h-64 text-sm italic text-slate-400">
         Selecciona un rol del menú desplegable para administrar permisos y ver usuarios.
       </div>
 
       <!-- ── View Master Data: mini table ── -->
-      <div class="mt-6 rounded-lg overflow-hidden" style="background: var(--surface); border: 1px solid var(--border)">
-        <div class="flex items-center justify-between px-4 py-2" style="background: var(--bg); border-bottom: 1px solid var(--border)">
-          <span class="text-[10px] font-bold uppercase tracking-wider" style="color: var(--muted)">Catálogo de Transacciones</span>
-          <button @click="openViewEditor(null)"
-            class="px-3 py-1.5 rounded text-[10px] font-semibold transition-all hover:brightness-110"
-            style="background: var(--accent); color: white">+ Nueva Transacción</button>
+      <div class="mt-6 ds-table-section">
+        <div class="ds-section-header px-4 py-2">
+          <span class="ds-label">Catálogo de Transacciones</span>
+          <button @click="openViewEditor(null)" class="ds-btn-primary !px-3 !py-1.5 !text-[12px]">+ Nueva Transacción</button>
         </div>
-        <table class="w-full text-xs">
+        <table class="w-full text-sm">
           <thead>
-            <tr style="background: var(--accent); color: white">
-              <th class="text-left px-4 py-2 font-semibold">Código</th>
-              <th class="text-left px-4 py-2 font-semibold">Nombre</th>
-              <th class="text-left px-4 py-2 font-semibold">Categoría</th>
-              <th class="text-left px-4 py-2 font-semibold">Descripción</th>
-              <th class="text-center px-4 py-2 font-semibold" style="width: 100px">Acciones</th>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>Categoría</th>
+              <th>Descripción</th>
+              <th class="text-center" style="width: 100px">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="view in allViews" :key="view.id"
-              class="border-t hover:bg-slate-50 transition-colors" style="border-color: var(--border)">
-              <td class="px-4 py-2 font-mono text-[10px]" style="color: var(--text)">{{ view.code }}</td>
-              <td class="px-4 py-2 text-xs font-medium" style="color: var(--text)">{{ view.name }}</td>
-              <td class="px-4 py-2 text-[10px]" style="color: var(--muted)">{{ categoryLabel(view.category) }}</td>
-              <td class="px-4 py-2 text-[10px]" style="color: var(--muted)">{{ view.description }}</td>
-              <td class="px-4 py-2 text-center">
+              class="border-b border-slate-100 transition-colors hover:bg-slate-50">
+              <td class="font-mono text-[12px] text-slate-900">{{ view.code }}</td>
+              <td class="text-sm font-medium text-slate-900">{{ view.name }}</td>
+              <td class="text-[12px] text-slate-500">{{ categoryLabel(view.category) }}</td>
+              <td class="text-[12px] text-slate-500">{{ view.description }}</td>
+              <td class="text-center">
                 <div class="flex gap-1 justify-center">
-                  <button @click="openViewEditor(view)" class="px-2 py-1 rounded text-[9px] font-medium transition-all hover:brightness-110" style="background: var(--bg); color: var(--text)">Editar</button>
-                  <button @click="deleteView(view)" class="px-2 py-1 rounded text-[9px] font-medium transition-all hover:brightness-110" style="background: var(--bg); color: var(--muted)">Eliminar</button>
+                  <button @click="openViewEditor(view)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">Editar</button>
+                  <button @click="deleteView(view)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">Eliminar</button>
                 </div>
               </td>
             </tr>
@@ -302,27 +277,23 @@
       </div>
 
       <!-- ── View Editor Modal ── -->
-      <div v-if="showViewEditor" class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.4)">
-        <div class="w-full max-w-md p-6 rounded-xl shadow-xl" style="background: var(--surface); border: 1px solid var(--border)">
-          <h2 class="text-sm font-bold mb-4" style="color: var(--text)">{{ editingView ? 'Editar Transacción' : 'Nueva Transacción' }}</h2>
-          <div class="space-y-3">
+      <div v-if="showViewEditor" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">{{ editingView ? 'Editar Transacción' : 'Nueva Transacción' }}</h2>
+          </div>
+          <div class="p-6 space-y-3">
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Código *</label>
-              <input v-model="viewForm.code" maxlength="50" placeholder="NUEVA_VISTA"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none font-mono"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Código *</label>
+              <input v-model="viewForm.code" maxlength="50" placeholder="NUEVA_VISTA" class="ds-input font-mono">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Nombre *</label>
-              <input v-model="viewForm.name" maxlength="100" placeholder="Nombre de la vista"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Nombre *</label>
+              <input v-model="viewForm.name" maxlength="100" placeholder="Nombre de la vista" class="ds-input">
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Categoría</label>
-              <select v-model="viewForm.category"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Categoría</label>
+              <select v-model="viewForm.category" class="ds-input">
                 <option value="PRINCIPAL">Principal</option>
                 <option value="OPERACIONES">Operaciones</option>
                 <option value="CONFIGURACION">Configuración</option>
@@ -330,24 +301,19 @@
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-medium mb-0.5" style="color: var(--muted)">Descripción</label>
-              <input v-model="viewForm.description" maxlength="255" placeholder="Descripción de la transacción"
-                class="w-full px-3 py-1.5 rounded text-xs outline-none"
-                style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">
+              <label class="ds-label block mb-0.5">Descripción</label>
+              <input v-model="viewForm.description" maxlength="255" placeholder="Descripción de la transacción" class="ds-input">
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveView"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--accent); color: white">Guardar</button>
-              <button @click="showViewEditor = false"
-                class="flex-1 py-1.5 rounded text-xs font-semibold transition-all hover:brightness-110"
-                style="background: var(--bg); color: var(--text)">Cancelar</button>
+              <button @click="saveView" class="ds-btn-primary flex-1 justify-center">Guardar</button>
+              <button @click="showViewEditor = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
             </div>
           </div>
         </div>
       </div>
     </template>
   </div>
+</div>
 </template>
 
 <script setup>

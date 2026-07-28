@@ -2,15 +2,15 @@
   <div class="flex items-center gap-1 flex-wrap justify-center min-w-[80px]">
     <template v-for="item in visible" :key="item.type">
       <span
-        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono font-medium uppercase tracking-tight border"
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium uppercase tracking-tight border"
         :style="chipStyle(item.type)"
         :title="`${item.label}: ${item.weight} lbs (${item.pieces} pcs)`">
         <span class="w-1.5 h-1.5 rounded-full" :style="{ background: chipColor(item.type) }"></span>
         <span>{{ item.shortLabel }}</span>
-        <span class="text-[8px] text-slate-500 font-normal">{{ item.weight }} lbs</span>
+        <span class="text-[10px] text-slate-500 font-normal">{{ item.weight }} lbs</span>
       </span>
     </template>
-    <span v-if="hidden > 0" class="px-1.5 py-0.5 text-[9px] font-mono text-slate-400" title="{{ hidden }} más">
+    <span v-if="hidden > 0" class="px-1.5 py-0.5 text-[11px] font-mono text-slate-400" title="{{ hidden }} más">
       +{{ hidden }}
     </span>
   </div>

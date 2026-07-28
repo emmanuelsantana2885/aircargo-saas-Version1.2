@@ -59,4 +59,36 @@ public class BiController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
         return ResponseEntity.ok(biService.getDaily(dateFrom, dateTo));
     }
+
+    @GetMapping("/summary")
+    public ResponseEntity<Map<String, Object>> getSummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity.ok(biService.getSummary(dateFrom, dateTo));
+    }
+
+    @GetMapping("/by-location")
+    public ResponseEntity<List<Map<String, Object>>> getByLocation() {
+        return ResponseEntity.ok(biService.getByLocation());
+    }
+
+    @GetMapping("/timeline")
+    public ResponseEntity<List<Map<String, Object>>> getTimeline(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity.ok(biService.getTimeline(dateFrom, dateTo));
+    }
+
+    @GetMapping("/top-mawbs")
+    public ResponseEntity<List<Map<String, Object>>> getTopMawbs(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(biService.getTopMawbs(limit));
+    }
+
+    @GetMapping("/flight-performance")
+    public ResponseEntity<List<Map<String, Object>>> getFlightPerformance(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity.ok(biService.getFlightPerformance(dateFrom, dateTo));
+    }
 }

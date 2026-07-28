@@ -1,1 +1,9 @@
-/home/manolov/Desktop/Projects/Rannik/aircargo-saas/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/GatewayApplication.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/fallback/CircuitBreakerFallbackFilter.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/filter/AccessLogFilter.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/fallback/FallbackController.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/exception/GatewayAuthenticationException.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/config/GatewayConfig.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/config/RouteConfig.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/GatewayApplication.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/filter/RateLimitFilter.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-gateway/src/main/java/com/aircargo/gateway/filter/JwtGatewayFilter.java
