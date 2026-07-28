@@ -1,6 +1,7 @@
 package com.aircargo.feign.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public class UldDTO {
@@ -20,6 +21,7 @@ public class UldDTO {
     private BigDecimal netWeightKg;
     private String status;
     private String notes;
+    private List<UldAwbDTO> awbs;
 
     public UldDTO() {}
 
@@ -55,4 +57,6 @@ public class UldDTO {
     public void setStatus(String status) { this.status = status; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public List<UldAwbDTO> getAwbs() { return awbs; }
+    public void setAwbs(List<UldAwbDTO> awbs) { this.awbs = awbs; }
 }

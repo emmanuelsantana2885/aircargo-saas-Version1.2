@@ -54,7 +54,7 @@ public class RouteConfig {
 
                 .route("mawb-service", r -> r
                         .path("/api/cargo/mawbs/**", "/api/cargo/hawbs/**",
-                             "/api/tracking/**", "/api/mawbs/**")
+                             "/api/tracking/**", "/api/mawbs/**", "/api/compliance/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("mawb-service")
@@ -119,23 +119,29 @@ public class RouteConfig {
                         )
                         .uri("http://localhost:9099"))
 
-                .route("compliance-service", r -> r
-                        .path("/api/compliance/**")
+                .route("notification-service", r -> r
+                        .path("/api/notifications/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
-                                        .setName("compliance-service")
-                                        .setFallbackUri("forward:/fallback/compliance"))
+                                        .setName("notification-service")
+                                        .setFallbackUri("forward:/fallback/notification"))
+                                .retry(config -> config
+                                        .setRetries(2)
+                                        .setBackoff(java.time.Duration.ofMillis(500),
+                                                     java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9091"))
+                        .uri("http://localhost:9100"))
 
-                .route("api-fallback", r -> r
-                        .path("/api/**")
-                        .filters(f -> f
-                                .circuitBreaker(config -> config
-                                        .setName("default")
-                                        .setFallbackUri("forward:/fallback/default"))
-                        )
-                        .uri("http://localhost:9091"))
+                // ─── Swagger API docs routes ────────────────────────
+                .route("auth-api-docs", r -> r.path("/auth/api-docs/**").uri("http://localhost:9092"))
+                .route("flight-api-docs", r -> r.path("/flight/api-docs/**").uri("http://localhost:9093"))
+                .route("booking-api-docs", r -> r.path("/booking/api-docs/**").uri("http://localhost:9094"))
+                .route("mawb-api-docs", r -> r.path("/mawb/api-docs/**").uri("http://localhost:9095"))
+                .route("warehouse-api-docs", r -> r.path("/warehouse/api-docs/**").uri("http://localhost:9096"))
+                .route("uld-api-docs", r -> r.path("/uld/api-docs/**").uri("http://localhost:9097"))
+                .route("load-planning-api-docs", r -> r.path("/load-planning/api-docs/**").uri("http://localhost:9098"))
+                .route("export-api-docs", r -> r.path("/export/api-docs/**").uri("http://localhost:9099"))
+                .route("notification-api-docs", r -> r.path("/notification/api-docs/**").uri("http://localhost:9100"))
 
                 .build();
     }

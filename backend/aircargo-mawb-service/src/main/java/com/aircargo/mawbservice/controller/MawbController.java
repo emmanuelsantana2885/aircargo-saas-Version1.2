@@ -1,9 +1,11 @@
 package com.aircargo.mawbservice.controller;
 
+import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.mawbservice.dto.MawbDTO;
 import com.aircargo.mawbservice.entity.MawbStatus;
 import com.aircargo.mawbservice.service.MawbService;
-import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.mawbservice.service.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -12,7 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -20,9 +22,9 @@ import java.util.UUID;
 public class MawbController {
 
     private final MawbService mawbService;
-    private final com.aircargo.mawbservice.service.AuditService auditService;
+    private final AuditService auditService;
 
-    public MawbController(MawbService mawbService, com.aircargo.mawbservice.service.AuditService auditService) {
+    public MawbController(MawbService mawbService, AuditService auditService) {
         this.mawbService = mawbService;
         this.auditService = auditService;
     }
@@ -31,9 +33,17 @@ public class MawbController {
     public List<MawbDTO> getAll(
             @RequestParam(required = false) UUID airlineId,
             @RequestParam(required = false) UUID flightId,
+            @RequestParam(required = false) MawbStatus status) {
+        return mawbService.getAll(airlineId, flightId, status);
+    }
+
+    @GetMapping(params = {"page", "size"})
+    public PageResponse<MawbDTO> getAllPaginated(
+            @RequestParam(required = false) UUID airlineId,
+            @RequestParam(required = false) UUID flightId,
             @RequestParam(required = false) MawbStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "50") int size) {
         return mawbService.getAll(airlineId, flightId, status, page, size);
     }
 
@@ -59,7 +69,7 @@ public class MawbController {
                 principal != null ? principal.email() : "system",
                 principal != null ? principal.fullName() : "system",
                 "CREATE", "MAWB", created.getId().toString(),
-                "{\"awbNumber\":\"" + created.getAwbNumber() + "\"}",
+                "{\"awbNumber\":\"" + safe(created.getAwbNumber()) + "\"}",
                 request.getRemoteAddr()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -76,7 +86,7 @@ public class MawbController {
                             principal != null ? principal.email() : "system",
                             principal != null ? principal.fullName() : "system",
                             "UPDATE", "MAWB", id.toString(),
-                            "{\"awbNumber\":\"" + updated.getAwbNumber() + "\"}",
+                            "{\"awbNumber\":\"" + safe(updated.getAwbNumber()) + "\"}",
                             request.getRemoteAddr()
                     );
                     return ResponseEntity.ok(updated);
@@ -103,6 +113,39 @@ public class MawbController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{id}/supporting-docs")
+    public ResponseEntity<String> getSupportingDocs(@PathVariable UUID id) {
+        return mawbService.getById(id)
+                .map(m -> m.getSupportingDocs() != null ? m.getSupportingDocs() : "[]")
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/supporting-docs")
+    public ResponseEntity<Void> updateSupportingDocs(@PathVariable UUID id,
+                                                      @RequestBody Map<String, Object> body,
+                                                      @AuthenticationPrincipal UserPrincipal principal,
+                                                      HttpServletRequest request) {
+        mawbService.updateSupportingDocs(id, body);
+        auditService.log(
+                principal != null ? principal.getUserIdAsUuid() : null,
+                principal != null ? principal.email() : "system",
+                principal != null ? principal.fullName() : "system",
+                "UPDATE_SUPPORTING_DOCS", "MAWB", id.toString(), null, request.getRemoteAddr()
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/supporting-docs/pdf")
+    public ResponseEntity<byte[]> getSupportingDocsPdf(@PathVariable UUID id) {
+        byte[] pdf = mawbService.getSupportingDocsPdf(id);
+        if (pdf == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition", "inline; filename=MAWB_" + id + "_docs.pdf")
+                .body(pdf);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id,
                                         @AuthenticationPrincipal UserPrincipal principal,
@@ -116,5 +159,9 @@ public class MawbController {
                 "DELETE", "MAWB", id.toString(), null, request.getRemoteAddr()
         );
         return ResponseEntity.noContent().build();
+    }
+
+    private static String safe(String s) {
+        return com.aircargo.common.util.TextUtil.safe(s);
     }
 }

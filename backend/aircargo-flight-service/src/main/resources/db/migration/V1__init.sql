@@ -1,10 +1,19 @@
 -- V1__init.sql
 -- Initial schema for flight-service (flight and airline tables)
 
-CREATE TYPE flight_status AS ENUM ('SCHEDULED', 'BOARDING', 'DEPARTED', 'ARRIVED', 'CANCELLED', 'DELAYED');
-CREATE TYPE aircraft_type AS ENUM ('MD11', 'B747', 'B757', 'B737', 'B767', 'B777', 'B727', 'A300', 'A310', 'A330', 'DC8', 'OTHER');
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'flight_status') THEN
+        CREATE TYPE flight_status AS ENUM ('SCHEDULED', 'BOARDING', 'DEPARTED', 'ARRIVED', 'CANCELLED', 'DELAYED');
+    END IF;
+END $$;
 
-CREATE TABLE airline (
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'aircraft_type') THEN
+        CREATE TYPE aircraft_type AS ENUM ('MD11', 'B747', 'B757', 'B737', 'B767', 'B777', 'B727', 'A300', 'A310', 'A330', 'DC8', 'OTHER');
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS airline (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(10) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
@@ -15,12 +24,12 @@ CREATE TABLE airline (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE flight (
+CREATE TABLE IF NOT EXISTS flight (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     airline_id UUID NOT NULL REFERENCES airline(id),
     flight_number VARCHAR(20) NOT NULL,
-    origin BPCHAR(3) NOT NULL,
-    destination BPCHAR(3) NOT NULL,
+    origin VARCHAR(3) NOT NULL,
+    destination VARCHAR(3) NOT NULL,
     aircraft_reg VARCHAR(20),
     aircraft_type aircraft_type,
     flight_date DATE NOT NULL,
@@ -33,10 +42,10 @@ CREATE TABLE flight (
     UNIQUE (airline_id, flight_number, flight_date)
 );
 
-CREATE INDEX idx_flight_airline_id ON flight(airline_id);
-CREATE INDEX idx_flight_flight_date ON flight(flight_date);
-CREATE INDEX idx_flight_status ON flight(status);
-CREATE INDEX idx_flight_airline_date ON flight(airline_id, flight_date);
+CREATE INDEX IF NOT EXISTS idx_flight_airline_id ON flight(airline_id);
+CREATE INDEX IF NOT EXISTS idx_flight_flight_date ON flight(flight_date);
+CREATE INDEX IF NOT EXISTS idx_flight_status ON flight(status);
+CREATE INDEX IF NOT EXISTS idx_flight_airline_date ON flight(airline_id, flight_date);
 
 -- Seed UPS airline (UUID must match hardcoded value in frontend)
 INSERT INTO airline (id, code, name, iata_code, country, is_active, created_at, updated_at)

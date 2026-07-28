@@ -1,5 +1,6 @@
 /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/auth/UserPrincipal.java
 /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/util/TextUtil.java
+/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/dto/PageResponse.java
 /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/event/ReceiptCreatedEvent.java
 /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/entity/AircraftType.java
 /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/backend/aircargo-common/src/main/java/com/aircargo/common/auth/JwtUtil.java

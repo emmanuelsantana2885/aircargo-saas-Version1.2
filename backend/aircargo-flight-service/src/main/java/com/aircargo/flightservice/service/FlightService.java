@@ -1,5 +1,6 @@
 package com.aircargo.flightservice.service;
 
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.flightservice.dto.FlightDTO;
 import com.aircargo.flightservice.entity.FlightStatus;
 
@@ -7,13 +8,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
 
 public interface FlightService {
 
     List<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber);
 
-    Page<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber, int page, int size);
+    PageResponse<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber, int page, int size);
 
     Optional<FlightDTO> getById(UUID id);
 

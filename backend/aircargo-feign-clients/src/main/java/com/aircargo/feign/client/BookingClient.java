@@ -19,6 +19,9 @@ public interface BookingClient {
     @GetMapping("/api/bookings/flight/{flightId}")
     List<BookingDTO> getBookingsByFlight(@PathVariable UUID flightId);
 
+    @PostMapping("/api/bookings")
+    BookingDTO createBooking(@RequestBody BookingDTO dto);
+
     @PatchMapping("/api/bookings/{id}/awb")
     void updateBookingAwb(@PathVariable UUID id, @RequestBody String awbNumber);
 }

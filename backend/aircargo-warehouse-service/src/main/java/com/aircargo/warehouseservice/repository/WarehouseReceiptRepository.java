@@ -1,0 +1,28 @@
+package com.aircargo.warehouseservice.repository;
+
+import com.aircargo.warehouseservice.entity.WarehouseReceipt;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface WarehouseReceiptRepository extends JpaRepository<WarehouseReceipt, UUID> {
+    List<WarehouseReceipt> findByMawbId(UUID mawbId);
+    Page<WarehouseReceipt> findByMawbId(UUID mawbId, Pageable pageable);
+
+    List<WarehouseReceipt> findBySupersededFalse();
+    Page<WarehouseReceipt> findBySupersededFalse(Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE WarehouseReceipt r SET r.superseded = true WHERE r.mawbId = :mawbId AND r.id <> :excludeId")
+    void supersedeAllByMawbId(UUID mawbId, UUID excludeId);
+
+    @Modifying
+    @Query("UPDATE WarehouseReceipt r SET r.superseded = true WHERE r.mawbId = :mawbId")
+    void supersedeAllByMawbId(UUID mawbId);
+}

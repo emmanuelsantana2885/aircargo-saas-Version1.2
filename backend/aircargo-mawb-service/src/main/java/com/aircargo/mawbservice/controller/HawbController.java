@@ -13,10 +13,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/mawbs/{mawbId}/hawbs")
+@RequestMapping("/api/cargo/hawbs")
 public class HawbController {
 
     private final HawbService hawbService;
@@ -27,8 +26,8 @@ public class HawbController {
         this.auditService = auditService;
     }
 
-    @GetMapping
-    public List<HawbDTO> getAll(@PathVariable UUID mawbId) {
+    @GetMapping("/mawb/{mawbId}")
+    public List<HawbDTO> getByMawb(@PathVariable UUID mawbId) {
         return hawbService.getByMawbId(mawbId);
     }
 

@@ -1,14 +1,18 @@
 -- V1__init.sql
 -- Initial schema for booking-service
 
-CREATE TYPE commodity_type AS ENUM (
-    'DRY_CARGO', 'ELECTRONICS', 'PERISHABLE', 'HIGH_VALUES', 'CIGARETTES',
-    'SMALL_PACKAGES', 'WWEF', 'LIVE_PLANTS', 'GENERAL', 'COMAT', 'FCC',
-    'EMPTY_ULD', 'EMPTY_PALLET', 'RED_TAG', 'EMPTY_BAGS', 'NETS',
-    'SDQ_SDF', 'SDQ_MIA'
-);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'commodity_type') THEN
+        CREATE TYPE commodity_type AS ENUM (
+            'DRY_CARGO', 'ELECTRONICS', 'PERISHABLE', 'HIGH_VALUES', 'CIGARETTES',
+            'SMALL_PACKAGES', 'WWEF', 'LIVE_PLANTS', 'GENERAL', 'COMAT', 'FCC',
+            'EMPTY_ULD', 'EMPTY_PALLET', 'RED_TAG', 'EMPTY_BAGS', 'NETS',
+            'SDQ_SDF', 'SDQ_MIA'
+        );
+    END IF;
+END $$;
 
-CREATE TABLE booking (
+CREATE TABLE IF NOT EXISTS booking (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     airline_id UUID NOT NULL,
     flight_id UUID NOT NULL,
@@ -39,7 +43,7 @@ CREATE TABLE booking (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_booking_airline_id ON booking(airline_id);
-CREATE INDEX idx_booking_flight_id ON booking(flight_id);
-CREATE INDEX idx_booking_mawb_id ON booking(mawb_id);
-CREATE INDEX idx_booking_is_confirmed ON booking(is_confirmed);
+CREATE INDEX IF NOT EXISTS idx_booking_airline_id ON booking(airline_id);
+CREATE INDEX IF NOT EXISTS idx_booking_flight_id ON booking(flight_id);
+CREATE INDEX IF NOT EXISTS idx_booking_mawb_id ON booking(mawb_id);
+CREATE INDEX IF NOT EXISTS idx_booking_is_confirmed ON booking(is_confirmed);

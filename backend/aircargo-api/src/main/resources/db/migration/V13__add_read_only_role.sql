@@ -1,2 +1,0 @@
--- No DDL changes needed — READ_ONLY is a new enum value, and UserRole is stored as varchar(50)
--- Existing users keep their roles; READ_ONLY can be assigned manually via settings UI

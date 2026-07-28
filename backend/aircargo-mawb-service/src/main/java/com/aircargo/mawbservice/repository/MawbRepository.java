@@ -23,6 +23,9 @@ public interface MawbRepository extends JpaRepository<Mawb, UUID> {
     List<Mawb> findByAirlineIdAndFlightId(UUID airlineId, UUID flightId);
     Page<Mawb> findByAirlineIdAndFlightId(UUID airlineId, UUID flightId, Pageable pageable);
 
+    List<Mawb> findByAirlineIdAndFlightIdAndStatus(UUID airlineId, UUID flightId, MawbStatus status);
+    Page<Mawb> findByAirlineIdAndFlightIdAndStatus(UUID airlineId, UUID flightId, MawbStatus status, Pageable pageable);
+
     Optional<Mawb> findByAwbNumber(String awbNumber);
     boolean existsByAwbNumber(String awbNumber);
 }

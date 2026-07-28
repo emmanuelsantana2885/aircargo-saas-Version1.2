@@ -1,5 +1,6 @@
 package com.aircargo.flightservice.service;
 
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.flightservice.dto.FlightDTO;
 import com.aircargo.flightservice.entity.Flight;
 import com.aircargo.flightservice.entity.FlightStatus;
@@ -8,8 +9,9 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +29,7 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     @Cacheable(value = "flights", key = "{#airlineId, #flightNumber, #flightDate, #status}")
     public List<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber) {
         List<Flight> results;
@@ -47,33 +50,38 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
-    @Cacheable(value = "flights", key = "{#airlineId, #flightNumber, #flightDate, #status, #page, #size}")
-    public Page<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    @Transactional(readOnly = true)
+    public PageResponse<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber, int page, int size) {
+        PageRequest pageReq = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "flightDate"));
         Page<Flight> results;
-        
+
         if (flightNumber != null && airlineId != null) {
-            results = flightRepository.findByAirlineIdAndFlightNumber(airlineId, flightNumber, pageable);
+            results = flightRepository.findByAirlineIdAndFlightNumber(airlineId, flightNumber, pageReq);
         } else if (flightDate != null && airlineId != null) {
-            results = flightRepository.findByAirlineIdAndFlightDate(airlineId, flightDate, pageable);
+            results = flightRepository.findByAirlineIdAndFlightDate(airlineId, flightDate, pageReq);
         } else if (status != null && airlineId != null) {
-            results = flightRepository.findByAirlineIdAndStatus(airlineId, status, pageable);
+            results = flightRepository.findByAirlineIdAndStatus(airlineId, status, pageReq);
         } else if (airlineId != null) {
-            results = flightRepository.findByAirlineId(airlineId, pageable);
+            results = flightRepository.findByAirlineId(airlineId, pageReq);
         } else {
-            results = flightRepository.findAll(pageable);
+            results = flightRepository.findAll(pageReq);
         }
-        
-        return results.map(FlightDTO::fromEntity);
+
+        return PageResponse.of(
+                results.getContent().stream().map(FlightDTO::fromEntity).collect(Collectors.toList()),
+                page, size, results.getTotalElements()
+        );
     }
 
     @Override
+    @Transactional(readOnly = true)
     @Cacheable(value = "flights", key = "#id")
     public Optional<FlightDTO> getById(UUID id) {
         return flightRepository.findById(id).map(FlightDTO::fromEntity);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<FlightDTO> getByAirlineIdAndFlightNumber(UUID airlineId, String flightNumber) {
         List<Flight> list = flightRepository.findByAirlineIdAndFlightNumber(airlineId, flightNumber);
         if (list == null || list.isEmpty()) return Optional.empty();
@@ -81,6 +89,7 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public Optional<FlightDTO> updateStatus(UUID id, FlightStatus status) {
         return flightRepository.findById(id)
@@ -92,6 +101,7 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public FlightDTO create(FlightDTO dto) {
         Flight entity = FlightDTO.toEntity(dto);
@@ -100,6 +110,7 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public Optional<FlightDTO> update(UUID id, FlightDTO dto) {
         return flightRepository.findById(id)
@@ -125,6 +136,7 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "flights", allEntries = true)
     public boolean delete(UUID id) {
         if (!flightRepository.existsById(id)) return false;

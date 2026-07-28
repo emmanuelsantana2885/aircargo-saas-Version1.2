@@ -1,0 +1,3 @@
+CREATE SCHEMA IF NOT EXISTS export_bi;
+
+SELECT 1;

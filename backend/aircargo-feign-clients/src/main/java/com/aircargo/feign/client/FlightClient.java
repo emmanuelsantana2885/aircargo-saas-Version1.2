@@ -5,6 +5,8 @@ import com.aircargo.feign.dto.AirlineDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +19,9 @@ public interface FlightClient {
 
     @GetMapping("/api/flights")
     List<FlightDTO> getAllFlights();
+
+    @PutMapping("/api/flights/{id}/status")
+    FlightDTO updateFlightStatus(@PathVariable UUID id, @RequestBody String status);
 
     @GetMapping("/api/airlines/{id}")
     AirlineDTO getAirlineById(@PathVariable UUID id);

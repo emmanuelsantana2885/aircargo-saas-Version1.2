@@ -1,0 +1,477 @@
+package com.aircargo.warehouseservice.service;
+
+import com.aircargo.warehouseservice.dto.ReceiptPieceDTO;
+import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
+import com.aircargo.warehouseservice.entity.ReceiptPiece;
+import com.aircargo.warehouseservice.entity.WarehouseReceipt;
+import com.aircargo.warehouseservice.repository.ReceiptPieceRepository;
+import com.aircargo.warehouseservice.repository.WarehouseReceiptRepository;
+import com.aircargo.feign.client.MawbClient;
+import com.aircargo.feign.client.BookingClient;
+import com.aircargo.common.auth.UserPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class WarehouseServiceImpl implements WarehouseService {
+
+    private final WarehouseReceiptRepository receiptRepository;
+    private final ReceiptPieceRepository pieceRepository;
+    private final MawbClient mawbClient;
+    private final BookingClient bookingClient;
+    private final RabbitTemplate rabbitTemplate;
+    private final ReceiptExportService receiptExportService;
+    private final ReceiptFullPdfService receiptFullPdfService;
+    private final PdfGenerationService pdfGenerationService;
+    private final ObjectMapper objectMapper;
+
+    @Value("${rabbitmq.exchange:aircargo.events}")
+    private String exchange;
+
+    public WarehouseServiceImpl(WarehouseReceiptRepository receiptRepository,
+                                 ReceiptPieceRepository pieceRepository,
+                                 MawbClient mawbClient,
+                                 BookingClient bookingClient,
+                                 RabbitTemplate rabbitTemplate,
+                                 ReceiptExportService receiptExportService,
+                                 ReceiptFullPdfService receiptFullPdfService,
+                                 PdfGenerationService pdfGenerationService,
+                                 ObjectMapper objectMapper) {
+        this.receiptRepository = receiptRepository;
+        this.pieceRepository = pieceRepository;
+        this.mawbClient = mawbClient;
+        this.bookingClient = bookingClient;
+        this.rabbitTemplate = rabbitTemplate;
+        this.receiptExportService = receiptExportService;
+        this.receiptFullPdfService = receiptFullPdfService;
+        this.pdfGenerationService = pdfGenerationService;
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    @CacheEvict(value = "warehouse-receipts", allEntries = true)
+    public WarehouseReceiptDTO emitReceipt(WarehouseReceiptDTO dto, UserPrincipal principal, jakarta.servlet.http.HttpServletRequest request) {
+        // Supersede existing receipts for this MAWB
+        if (dto.getMawbId() != null) {
+            receiptRepository.supersedeAllByMawbId(dto.getMawbId(), dto.getId());
+        }
+
+        // Set audit fields
+        dto.setCreatedByUserId(principal != null ? principal.getUserIdAsUuid() : null);
+        dto.setCreatedByName(principal != null ? principal.fullName() : "system");
+        dto.setReceiptDate(OffsetDateTime.now());
+        dto.setSuperseded(false);
+
+        // Fetch MAWB number from Feign client
+        if (dto.getMawbId() != null) {
+            try {
+                var mawb = mawbClient.getMawbById(dto.getMawbId());
+                if (mawb != null) {
+                    dto.setMawbNumber(mawb.getAwbNumber());
+                }
+            } catch (Exception e) {
+                // Non-fatal - mawbNumber may be missing
+            }
+        }
+
+        // Process pieces
+        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
+        dto.setPieces(pieces);
+        dto.setPieceCount(pieces.size());
+
+        // Calculate totals
+        calculateTotals(dto);
+
+        // Save receipt
+        WarehouseReceipt entity = WarehouseReceiptDTO.toEntity(dto);
+        WarehouseReceipt saved = receiptRepository.save(entity);
+
+        // Save pieces
+        List<ReceiptPiece> pieceEntities = pieces.stream()
+                .map(p -> ReceiptPieceDTO.toEntity(p))
+                .peek(e -> e.setReceiptId(saved.getId()))
+                .toList();
+        pieceRepository.saveAll(pieceEntities);
+
+        // Generate async artifacts
+        generatePersistedArtifacts(saved.getId());
+
+        // Sync MAWB and booking
+        syncMawbAndBooking(saved);
+
+        // Publish event
+        publishReceiptCreatedEvent(saved);
+
+        return WarehouseReceiptDTO.fromEntity(saved);
+    }
+
+    @Override
+    @CacheEvict(value = "warehouse-receipts", allEntries = true)
+    public Optional<WarehouseReceiptDTO> updateReceipt(UUID receiptId,
+                                                        WarehouseReceiptDTO dto,
+                                                        UserPrincipal principal,
+                                                        jakarta.servlet.http.HttpServletRequest request) {
+        return receiptRepository.findById(receiptId).map(existing -> {
+            // Update fields
+            existing.setShipperName(dto.getShipperName());
+            existing.setConsigneeName(dto.getConsigneeName());
+            existing.setOrigin(dto.getOrigin());
+            existing.setDestination(dto.getDestination());
+            existing.setAwbReportedPieces(dto.getAwbReportedPieces());
+            existing.setMawbWeightGreatest(dto.getMawbWeightGreatest());
+            existing.setShipperReportedWeight(dto.getShipperReportedWeight());
+            existing.setCashOnly(dto.getCashOnly());
+            existing.setBookedInAcoms(dto.getBookedInAcoms());
+            existing.setDocsProvided(dto.getDocsProvided());
+            existing.setCustomsCompleted(dto.getCustomsCompleted());
+            existing.setPreBuilt(dto.getPreBuilt());
+            existing.setLooseTender(dto.getLooseTender());
+            existing.setShipperComment(dto.getShipperComment());
+            existing.setObservations(dto.getObservations());
+            existing.setRemarks(dto.getRemarks());
+            existing.setCreatedByName(dto.getCreatedByName());
+            existing.setDeliveredByName(dto.getDeliveredByName());
+            existing.setDeliveredByIdNum(dto.getDeliveredByIdNum());
+            existing.setDeliveredByIdDocUrl(dto.getDeliveredByIdDocUrl());
+            existing.setDeliveredBySigUrl(dto.getDeliveredBySigUrl());
+            existing.setReceivedByName(dto.getReceivedByName());
+            existing.setReceivedByIdNum(dto.getReceivedByIdNum());
+            existing.setReceivedByIdDocUrl(dto.getReceivedByIdDocUrl());
+            existing.setReceivedBySigUrl(dto.getReceivedBySigUrl());
+            existing.setBrokerName(dto.getBrokerName());
+            existing.setBrokerIdNum(dto.getBrokerIdNum());
+            existing.setBrokerIdDocUrl(dto.getBrokerIdDocUrl());
+            existing.setBrokerSigUrl(dto.getBrokerSigUrl());
+            existing.setReceiptDocUrl(dto.getReceiptDocUrl());
+            existing.setDockSignature(dto.getDockSignature());
+            existing.setSupportingDocs(dto.getSupportingDocs());
+            existing.setPrintName(dto.getPrintName());
+            existing.setCorrectionReason(dto.getCorrectionReason());
+            existing.setCorrectedByName(dto.getCorrectedByName());
+            existing.setDimFactorDom(dto.getDimFactorDom());
+            existing.setDimFactorIntl(dto.getDimFactorIntl());
+
+            // Update pieces
+            pieceRepository.deleteByReceiptId(existing.getId());
+            List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
+            dto.setPieces(pieces);
+            calculateTotals(dto);
+
+            List<ReceiptPiece> pieceEntities = pieces.stream()
+                    .map(p -> ReceiptPieceDTO.toEntity(p))
+                    .peek(e -> e.setReceiptId(existing.getId()))
+                    .toList();
+            pieceRepository.saveAll(pieceEntities);
+
+            // Recalculate totals
+            WarehouseReceiptDTO dtoForCalc = WarehouseReceiptDTO.fromEntity(existing);
+            dtoForCalc.setPieces(dto.getPieces());
+            calculateTotals(dtoForCalc);
+
+            WarehouseReceipt saved = receiptRepository.save(existing);
+
+            // Regenerate artifacts
+            generatePersistedArtifacts(existing.getId());
+
+            // Sync
+            syncMawbAndBooking(existing);
+
+            return WarehouseReceiptDTO.fromEntity(saved);
+        });
+    }
+
+    @Override
+    public WarehouseReceiptDTO validateReceipt(WarehouseReceiptDTO dto) {
+        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
+        dto.setPieces(pieces);
+        calculateTotals(dto);
+        return dto;
+    }
+
+    @Override
+    @Cacheable("warehouse-receipts")
+    public List<ReceiptPieceDTO> getPieces(UUID receiptId) {
+        return pieceRepository.findByReceiptId(receiptId).stream()
+                .map(ReceiptPieceDTO::fromEntity)
+                .toList();
+    }
+
+    @Override
+    public String getSupportingDocsJson(UUID receiptId) {
+        return receiptRepository.findById(receiptId)
+                .map(WarehouseReceipt::getSupportingDocs)
+                .orElse("[]");
+    }
+
+    @Override
+    public String getSupportingDocsHtml(UUID receiptId) {
+        WarehouseReceipt receipt = receiptRepository.findById(receiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+
+        String rawDocs = receipt.getSupportingDocs();
+        if (rawDocs == null || rawDocs.isBlank() || "[]".equals(rawDocs)) {
+            return "<html><body style='font-family:monospace;padding:2rem;color:#333'><h2>Sin evidencias documentales</h2><p>Este recibo no tiene documentos de soporte asociados.</p></body></html>";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>");
+        sb.append("<title>Evidencias Documentales - ").append(receiptId.toString().substring(0, 8)).append("</title>");
+        sb.append("<style>");
+        sb.append("*{margin:0;padding:0;box-sizing:border-box}");
+        sb.append("body{font-family:'Courier New',monospace;background:#f5f5f5;color:#1a1a1a;padding:2rem}");
+        sb.append(".header{max-width:900px;margin:0 auto 2rem;padding:1.5rem;background:#fff;border:1px solid #ddd;border-left:4px solid #1a1a1a}");
+        sb.append(".header h1{font-size:1.2rem;text-transform:uppercase;letter-spacing:0.05em}");
+        sb.append(".header p{font-size:0.75rem;color:#666;margin-top:0.25rem}");
+        sb.append(".grid{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}");
+        sb.append(".card{background:#fff;border:1px solid #e0e0e0;border-radius:4px;overflow:hidden;break-inside:avoid}");
+        sb.append(".card img{width:100%;height:200px;object-fit:cover;display:block;border-bottom:1px solid #eee}");
+        sb.append(".card .doc-icon{width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-bottom:1px solid #eee;font-size:2.5rem;color:#999}");
+        sb.append(".card .info{padding:0.6rem;font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:0.03em}");
+        sb.append(".footer{max-width:900px;margin:2rem auto 0;padding:1rem 1.5rem;background:#fff;border:1px solid #ddd;font-size:0.65rem;color:#999;text-align:center;text-transform:uppercase;letter-spacing:0.05em}");
+        sb.append("@media print{body{background:#fff;padding:0}.header,.card,.footer{border-color:#ccc;box-shadow:none}.card{break-inside:avoid}}");
+        sb.append("</style></head><body>");
+
+        String mawbNum = receipt.getMawbNumber() != null ? receipt.getMawbNumber() : "\u2014";
+        sb.append("<div class='header'><h1>Evidencias Documentales</h1>");
+        sb.append("<p>Recibo: ").append(receiptId.toString().substring(0, 8)).append(" &middot; MAWB: ").append(mawbNum);
+        sb.append(" &middot; ").append(receipt.getShipperName() != null ? receipt.getShipperName() : "").append("</p></div>");
+
+        sb.append("<div class='grid'>");
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> docs = objectMapper.readValue(rawDocs, List.class);
+            for (Map<String, String> doc : docs) {
+                String name = doc.getOrDefault("name", "Documento");
+                String type = doc.getOrDefault("type", "document");
+                String url = doc.getOrDefault("url", "");
+                if ("document".equals(type) && url != null && url.startsWith("data:application/pdf")) {
+                    String base64Data = url.substring(url.indexOf(',') + 1);
+                    List<String> pageImages = pdfGenerationService.pdfPagesToDataUris(base64Data);
+                    if (!pageImages.isEmpty()) {
+                        for (int pi = 0; pi < pageImages.size(); pi++) {
+                            sb.append("<div class='card'>");
+                            sb.append("<img src='").append(pageImages.get(pi)).append("' alt='").append(name).append("' loading='lazy' />");
+                            sb.append("<div class='info'>").append(name).append(" (p\u00e1gina ").append(pi + 1).append(")").append("</div>");
+                            sb.append("</div>");
+                        }
+                    } else {
+                        sb.append("<div class='card'>");
+                        sb.append("<div class='doc-icon'>&#128196;</div>");
+                        sb.append("<div class='info'>").append(name).append("</div>");
+                        sb.append("</div>");
+                    }
+                } else if ("image".equals(type) && url != null && !url.isEmpty()) {
+                    sb.append("<div class='card'>");
+                    sb.append("<img src='").append(url).append("' alt='").append(name).append("' loading='lazy' />");
+                    sb.append("<div class='info'>").append(name).append("</div>");
+                    sb.append("</div>");
+                } else {
+                    sb.append("<div class='card'>");
+                    sb.append("<div class='doc-icon'>&#128196;</div>");
+                    sb.append("<div class='info'>").append(name).append("</div>");
+                    sb.append("</div>");
+                }
+            }
+        } catch (Exception e) {
+            sb.append("<p>Error al procesar evidencias</p>");
+        }
+        sb.append("</div>");
+        sb.append("<div class='footer'>AirCargo &mdash; Documento generado el ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16)).append("</div>");
+        sb.append("</body></html>");
+        return sb.toString();
+    }
+
+    @Override
+    public byte[] getSupportingDocsPdf(UUID receiptId) {
+        WarehouseReceipt receipt = receiptRepository.findById(receiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'/>");
+        sb.append("<meta name='viewport' content='width=device-width,initial-scale=1.0'/>");
+        sb.append("<title>Evidencias - ").append(receiptId.toString().substring(0, 8)).append("</title>");
+        sb.append("<style>");
+        sb.append("@page{margin:1cm}");
+        sb.append("body{font-family:'JetBrains Mono',Helvetica,Arial,sans-serif;color:#1a1a1a;font-size:10pt;margin:0;padding:0}");
+        sb.append(".page{page-break-after:always;display:flex;flex-direction:column;align-items:center;min-height:100vh;box-sizing:border-box;padding:0.5cm 1cm 1cm}");
+        sb.append(".page:last-child{page-break-after:auto}");
+        sb.append(".page-header{width:100%;border-bottom:2px solid #333;padding-bottom:0.3cm;margin-bottom:0.5cm;text-align:center}");
+        sb.append(".page-header h2{font-size:12pt;margin:0;color:#1a1a1a}");
+        sb.append(".page-header .meta{font-size:7pt;color:#555;margin-top:0.15cm}");
+        sb.append(".page img{display:block;margin:0 auto;max-width:100%;max-height:75vh;object-fit:contain}");
+        sb.append(".page .placeholder{font-size:10pt;color:#999;text-align:center;padding:3cm 1cm}");
+        sb.append(".footer-text{font-size:7pt;color:#999;text-align:center;margin-top:auto;padding-top:0.5cm;width:100%;border-top:1px solid #ddd}");
+        sb.append("</style></head><body>");
+
+        String rawDocs = receipt.getSupportingDocs();
+        if (rawDocs == null || rawDocs.isBlank() || "[]".equals(rawDocs)) {
+            sb.append("<div class='page'><div class='page-header'><h2>Evidencias Documentales</h2></div>");
+            sb.append("<div class='placeholder'>Sin evidencias registradas</div>");
+            sb.append("<div class='footer-text'>AirCargo &mdash; ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16)).append("</div>");
+            sb.append("</div>");
+            sb.append("</body></html>");
+            return pdfGenerationService.generatePdf(sb.toString());
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> docs = objectMapper.readValue(rawDocs, List.class);
+            String mawbNum = receipt.getMawbNumber() != null ? receipt.getMawbNumber() : "\u2014";
+
+            for (int i = 0; i < docs.size(); i++) {
+                Map<String, String> doc = docs.get(i);
+                String name = doc.getOrDefault("name", "Documento " + (i + 1));
+                String type = doc.getOrDefault("type", "document");
+                String url = doc.getOrDefault("url", "");
+
+                sb.append("<div class='page'>");
+                sb.append("<div class='page-header'><h2>Evidencias Documentales</h2>");
+                sb.append("<div class='meta'>").append(name).append(" &middot; MAWB: ").append(mawbNum).append("</div>");
+                sb.append("</div>");
+
+                if ("image".equals(type) && url != null && !url.isEmpty()) {
+                    sb.append("<img src='").append(url).append("' alt='").append(name).append("' />");
+                } else if ("document".equals(type) && url != null && url.startsWith("data:application/pdf")) {
+                    String base64Data = url.substring(url.indexOf(',') + 1);
+                    List<String> pageImages = pdfGenerationService.pdfPagesToDataUris(base64Data);
+                    if (!pageImages.isEmpty()) {
+                        sb.append("<img src='").append(pageImages.get(0)).append("' alt='").append(name).append("' />");
+                    } else {
+                        sb.append("<div class='placeholder'>PDF sin p\u00e1ginas renderizables</div>");
+                    }
+                } else {
+                    sb.append("<div class='placeholder'>Documento: ").append(name).append("</div>");
+                }
+
+                sb.append("<div class='footer-text'>AirCargo &mdash; P\u00e1gina ").append(i + 1).append(" de ").append(docs.size());
+                sb.append(" &mdash; ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16));
+                sb.append("</div></div>");
+            }
+        } catch (Exception e) {
+            sb.append("<div class='page'><div class='page-header'><h2>Error</h2></div>");
+            sb.append("<div class='placeholder'>Error al procesar evidencias: ").append(e.getMessage()).append("</div>");
+            sb.append("</div>");
+        }
+
+        sb.append("</body></html>");
+        return pdfGenerationService.generatePdf(sb.toString());
+    }
+
+    @Override
+    public byte[] exportReceipt(UUID receiptId) {
+        return receiptExportService.generateAndPersistExcel(receiptId);
+    }
+
+    @Override
+    public String getExportUrl(UUID receiptId) {
+        return "/api/warehouse/receipts/" + receiptId + "/export";
+    }
+
+    @Override
+    public byte[] getReceiptPdf(UUID receiptId) {
+        return receiptFullPdfService.generateReceiptPdf(receiptId);
+    }
+
+    private List<ReceiptPieceDTO> processPieces(List<ReceiptPieceDTO> pieces,
+                                                 Integer dimFactorDom, Integer dimFactorIntl) {
+        if (pieces == null || pieces.isEmpty()) return List.of();
+        int factor = dimFactorDom != null ? dimFactorDom : 194;
+        return pieces.stream()
+                .peek(p -> calculatePieceWeights(p, factor))
+                .collect(Collectors.toList());
+    }
+
+    private void calculatePieceWeights(ReceiptPieceDTO piece, int dimFactor) {
+        if (piece.getLengthIn() != null && piece.getWidthIn() != null && piece.getHeightIn() != null) {
+            BigDecimal volume = piece.getLengthIn().multiply(piece.getWidthIn())
+                    .multiply(piece.getHeightIn());
+            BigDecimal dimWeightLbs = volume.divide(BigDecimal.valueOf(dimFactor), 2, BigDecimal.ROUND_HALF_UP);
+            piece.setDimWeightLbs(dimWeightLbs);
+            piece.setDimWeightKg(dimWeightLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
+        }
+        BigDecimal scaleLbs = piece.getScaleWeightLbs() != null ? piece.getScaleWeightLbs() : BigDecimal.ZERO;
+        BigDecimal dimLbs = piece.getDimWeightLbs() != null ? piece.getDimWeightLbs() : BigDecimal.ZERO;
+        BigDecimal chargeableLbs = scaleLbs.max(dimLbs);
+        piece.setChargeableLbs(chargeableLbs);
+        piece.setChargeableKg(chargeableLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
+    }
+
+    private void calculateTotals(WarehouseReceiptDTO dto) {
+        if (dto.getPieces() == null || dto.getPieces().isEmpty()) {
+            dto.setActualWeightLbs(BigDecimal.ZERO);
+            dto.setActualWeightKg(BigDecimal.ZERO);
+            dto.setChargeableWeightLbs(BigDecimal.ZERO);
+            dto.setChargeableWeightKg(BigDecimal.ZERO);
+            dto.setPieceCount(0);
+            return;
+        }
+
+        int pieceCount = dto.getPieces().size();
+        BigDecimal totalScaleLbs = dto.getPieces().stream()
+                .map(p -> p.getScaleWeightLbs() != null ? p.getScaleWeightLbs() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalChargeableLbs = dto.getPieces().stream()
+                .map(p -> p.getChargeableLbs() != null ? p.getChargeableLbs() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        dto.setPieceCount(pieceCount);
+        dto.setActualWeightLbs(totalScaleLbs);
+        dto.setActualWeightKg(totalScaleLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
+        dto.setChargeableWeightLbs(totalChargeableLbs);
+        dto.setChargeableWeightKg(totalChargeableLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
+    }
+
+    @Async
+    public void generatePersistedArtifacts(UUID receiptId) {
+        try {
+            receiptRepository.findById(receiptId).ifPresent(receipt -> {
+                receiptExportService.generateAndPersistExcel(receiptId);
+                receiptFullPdfService.generateReceiptPdf(receiptId);
+            });
+        } catch (Exception e) {
+            // Log error
+        }
+    }
+
+    private void supersedeExistingReceipts(UUID mawbId, UUID newReceiptId) {
+        if (mawbId != null) {
+            receiptRepository.supersedeAllByMawbId(mawbId, newReceiptId);
+        }
+    }
+
+    private void syncMawbAndBooking(WarehouseReceipt receipt) {
+        try {
+            if (receipt.getMawbId() != null) {
+                var mawb = mawbClient.getMawbById(receipt.getMawbId());
+            }
+            if (receipt.getMawbId() != null) {
+                var booking = bookingClient.getBookingByMawbId(receipt.getMawbId());
+            }
+        } catch (Exception e) {
+            // Log but don't fail
+        }
+    }
+
+    private void publishReceiptCreatedEvent(WarehouseReceipt receipt) {
+        try {
+            var event = new com.aircargo.warehouseservice.event.ReceiptCreatedEvent(
+                    receipt.getId(), receipt.getMawbId(),
+                    receipt.getMawbNumber() != null ? receipt.getMawbNumber() : ""
+            );
+            rabbitTemplate.convertAndSend(exchange, "receipt.created", event);
+        } catch (Exception e) {
+            // Log but don't fail
+        }
+    }
+}

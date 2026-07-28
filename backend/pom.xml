@@ -22,7 +22,6 @@
     <modules>
         <module>aircargo-common</module>
         <module>aircargo-feign-clients</module>
-        <module>aircargo-api</module>
         <module>aircargo-gateway</module>
         <module>aircargo-auth-service</module>
         <module>aircargo-flight-service</module>

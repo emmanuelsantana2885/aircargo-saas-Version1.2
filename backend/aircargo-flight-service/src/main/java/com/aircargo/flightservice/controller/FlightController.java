@@ -1,13 +1,13 @@
 package com.aircargo.flightservice.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.flightservice.dto.FlightDTO;
 import com.aircargo.flightservice.entity.FlightStatus;
 import com.aircargo.flightservice.service.FlightService;
 import com.aircargo.flightservice.service.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -31,24 +30,14 @@ public class FlightController {
     }
 
     @GetMapping
-    public List<FlightDTO> getAll(
-            @RequestParam(required = false) UUID airlineId,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) FlightStatus status,
-            @RequestParam(required = false) String flightNumber) {
-        return flightService.getAll(airlineId, date, status, flightNumber);
-    }
-
-    @GetMapping("/paged")
-    public Page<FlightDTO> getAllPaged(
+    public PageResponse<FlightDTO> getAll(
             @RequestParam(required = false) UUID airlineId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) FlightStatus status,
             @RequestParam(required = false) String flightNumber,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "50") int size) {
         return flightService.getAll(airlineId, date, status, flightNumber, page, size);
     }
 

@@ -11,5 +11,8 @@ import java.util.UUID;
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByMawbId(UUID mawbId);
     List<Booking> findByFlightId(UUID flightId);
+    List<Booking> findByAirlineId(UUID airlineId);
+    Page<Booking> findByFlightId(UUID flightId, Pageable pageable);
+    Page<Booking> findByAirlineId(UUID airlineId, Pageable pageable);
     Page<Booking> findAll(Pageable pageable);
 }

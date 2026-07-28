@@ -7,3 +7,4 @@ com/aircargo/common/auth/JwtAuthFilter.class
 com/aircargo/common/event/ReceiptCreatedEvent.class
 com/aircargo/common/entity/CommodityType.class
 com/aircargo/common/entity/Airline$AirlineBuilder.class
+com/aircargo/common/dto/PageResponse.class

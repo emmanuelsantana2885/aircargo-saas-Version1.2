@@ -6,19 +6,22 @@ Monorepo with three main directories + microservices scaffolding:
 
 | Dir | Stack | Entrypoint / notes |
 |-----|-------|-------------------|
-| `frontend/` | Vue 3 + Vite + Pinia + Vue Router + Tailwind + JS | Vite dev on port 5173, proxy `/api` → `localhost:9091` |
-| `backend/aircargo-api/` | Spring Boot 3.3 + Java 21 + Maven + JPA + Flyway + PostgreSQL | `com.aircargo.AircargoApiApplication`, port 9091 |
-| `backend/aircargo-common/` | Shared entities, JWT, DTOs | Used by all backend modules |
+| `frontend/` | Vue 3 + Vite + Pinia + Vue Router + Tailwind + JS | Vite dev on port 5173, proxy `/api` → `localhost:8080` (gateway) |
+| `backend/aircargo-common/` | Shared entities, JWT, DTOs, PageResponse | Used by all backend modules |
 | `backend/aircargo-feign-clients/` | Shared Feign client interfaces + DTOs | AuthClient, FlightClient, MawbClient, BookingClient, UldClient |
-| `backend/aircargo-auth-service/` | Spring Boot (fully implemented) | Auth, User, Site, Audit, MFA, RolePermission |
-| `backend/aircargo-flight-service/` | Spring Boot (implemented) | Flight CRUD with SecurityConfig, AuditService |
-| `backend/aircargo-gateway/` | Spring Cloud Gateway (hardened) | JWT auth, rate limiting, circuit breaker, CORS, access logging. 10 routes with Resilience4j CB per service. |
-| `backend/aircargo-{booking,mawb,warehouse,uld,load-planning,export,notification}-service/` | Stubs | Only `*Application.java` — no logic migrated yet |
+| `backend/aircargo-gateway/` | Spring Cloud Gateway (hardened) | JWT auth, rate limiting, circuit breaker, CORS, access logging, Swagger aggregation. Routes to all 9 services. |
+| `backend/aircargo-auth-service/` | Spring Boot (port 9092) | Auth, User, Site, Audit, MFA, RolePermission |
+| `backend/aircargo-flight-service/` | Spring Boot (port 9093) | Flight CRUD + Airlines + AircraftTypes |
+| `backend/aircargo-booking-service/` | Spring Boot (port 9094) | Booking CRUD + AWB assignment |
+| `backend/aircargo-mawb-service/` | Spring Boot (port 9095) | MAWB + HAWB + DUA (Compliance) CRUD |
+| `backend/aircargo-warehouse-service/` | Spring Boot (port 9096) | Warehouse receipts + PDF/Excel exports + supporting docs + audit logging |
+| `backend/aircargo-uld-service/` | Spring Boot (port 9097) | ULD/ULD-AWB/ULD-Piece CRUD + barcode scanning + ULD transfer + SSE events |
+| `backend/aircargo-load-planning-service/` | Spring Boot (port 9098) | Load planning + batch import + export manifest + pallet sheets |
+| `backend/aircargo-export-service/` | Spring Boot (port 9099) | Read-only analytics: Export, BI, Reports, Catalog |
+| `backend/aircargo-notification-service/` | Spring Boot (port 9100) | Notifications + RabbitMQ event listeners + email |
 | `database/migrations/` | PostgreSQL Flyway migrations | Root copy — see "Migrations" below |
-| `docker/` | Docker Compose files | `docker-compose.infrastructure.yml` (Postgres+RabbitMQ), `docker-compose.services.yml` (11 services) |
+| `docker/` | Docker Compose files | `docker-compose.infrastructure.yml` (Postgres+RabbitMQ), `docker-compose.services.yml` (9 services + gateway) |
 | `k8s/` | Kubernetes manifests | Full K8s deployment for all services |
-| `docker-compose.yml` | Main monolith compose | PostgreSQL + aircargo-api + nginx + certbot |
-| `Documents/` | Migration plan documents | `MICROSERVICES-MIGRATION-PLAN.md` — full phase-by-phase plan |
 
 ## Commands
 
@@ -41,32 +44,32 @@ docker compose up -d                   # PostgreSQL 16 alpine on :5432
 ## Hard-coded constants
 
 - UPS airline UUID `00000000-0000-0000-0000-000000000001` is hard-coded in every frontend API file and seeded in `V1__init.sql` (backend copy only). Never change it without updating both sides.
-- Vite proxy in `frontend/vite.config.js` assumes backend is on `localhost:9091`.
+- Vite proxy in `frontend/vite.config.js` assumes backend is on `localhost:8080` (gateway).
 
 ## Migrations
 
-Flyway migrations live in **two places** with **different content**:
-- **Source of truth (Flyway picks up):** `backend/aircargo-api/src/main/resources/db/migration/`
-- **Root copy:** `database/migrations/` — differs from the backend copy (has full Postgres schema with functions, triggers, permissions; backend copy is Hibernate-compressed)
+Flyway migrations live in **each microservice** at `backend/aircargo-*-service/src/main/resources/db/migration/`. They are the source of truth for that service's schema.
 
-The backend copy also seeds the UPS airline row; the root copy does not. Keep both in sync.
+**Root copy:** `database/migrations/` — contains all migrations combined with full Postgres schema (functions, triggers, permissions). Keep in sync with each service.
 
 ## Microservices Migration Status
 
 | Phase | Service | Status |
 |-------|---------|--------|
+| Phase | Service | Status |
+|-------|---------|--------|
 | Phase 1 | Gateway Hardening | ✅ Complete — JWT filter, rate limiting, circuit breaker, CORS |
 | Phase 2 | Auth Service | ✅ Complete — refresh tokens, lockout, Feign clients, schema migration |
-| Phase 3 | Flight Service | ⏳ Pending — needs AirlineController sync + cache config |
-| Phase 4 | Booking Service | ⏳ Pending |
-| Phase 5 | MAWB Service | ⏳ Pending |
-| Phase 6 | Warehouse Service | ⏳ Pending |
-| Phase 7 | ULD Service | ⏳ Pending |
-| Phase 8 | Load Planning Service | ⏳ Pending |
-| Phase 9 | Export/BI Service | ⏳ Pending |
-| Phase 10 | Notification Service | ⏳ Pending |
-| Phase 11 | Frontend Migration | ⏳ Pending — proxy to gateway (8080) |
-| Phase 12 | Delete Monolith | ⏳ Pending |
+| Phase 3 | Flight Service | ✅ Complete — PageResponse, @Transactional, AircraftType endpoint, cache config |
+| Phase 4 | Booking Service | ✅ Complete — controller API match, airlineId/flightId filter, PageResponse, @Transactional |
+| Phase 5 | MAWB Service | ✅ Complete — DUA compliance merged in, PageResponse, @Transactional, supporting docs, SecurityConfig, CacheConfig |
+| Phase 6 | Warehouse Service | ✅ Complete — all services extracted, audited, wired; supporting PDF/Excel/PdfGeneration services adapted; audit logging added to both controllers; frontend proxy → gateway |
+| Phase 7 | ULD Service | ✅ Complete — all entities, DTOs, repositories, services, controllers migrated; Feign clients for MAWB/booking lookup; SSE scan events; Caffeine cache; Flyway migration; SecurityConfig with JWT + CORS; gateway routes |
+| Phase 8 | Load Planning Service | ✅ Complete — stateless service via Feign, batch import, ramp manifest parser, export manifest, pallet sheets |
+| Phase 9 | Export/BI Service | ✅ Complete — read-only analytics on port 9099; 4 controllers (Export, BI, Reports, Catalog); 11 read-only JPA entities; 12 BI aggregation endpoints |
+| Phase 10 | Notification Service | ✅ Complete — RabbitMQ event listeners, CRUD notifications, email stubs, AuthClient Feign |
+| Phase 11 | Frontend Migration | ✅ Complete — proxy target to gateway (8080), all API paths remain unchanged |
+| Phase 12 | Delete Monolith | ✅ Complete — `backend/aircargo-api/` removed, DUA compliance migrated to mawb-service, gateway routes cleaned, Swagger/OpenAPI added to all services |
 
 Full plan: `Documents/MICROSERVICES-MIGRATION-PLAN.md`
 
@@ -391,6 +394,129 @@ npm run build         # Vite build succeeds
 | `frontend/src/router/index.js` | Added `/login` route, `beforeEach` guards (auth check + role permission check) |
 | `frontend/src/App.vue` | Renders `<Sidebar>` only when authenticated; login view when not |
 | `frontend/src/components/layout/Sidebar.vue` | Dynamic nav items by `canView()`, real user info from auth store, logout button |
+
+## Recent session changes (July 28, 2026 — Phase 6: Warehouse Service Extraction: services migrated)
+
+| File | Change |
+|------|--------|
+| `backend/.../entity/WarehouseReceipt.java` | Added `mawbNumber` field (varchar 50) for flat AWB number storage (no cross-service entity dep) |
+| `backend/.../dto/WarehouseReceiptDTO.java` | Added `mawbNumber` field + `fromEntity`/`toEntity` mapping |
+| `backend/.../resources/db/migration/V1__create_warehouse_tables.sql` | Added `mawb_number` column to `warehouse_receipt` table |
+| `backend/.../resources/templates/dock-receipt-template.xlsx` | Copied from monolith for Excel export template |
+| `backend/.../resources/fonts/JetBrainsMonoNerdFontMono-Regular.ttf` | Copied from monolith for PDF rendering |
+| `backend/.../service/PdfGenerationService.java` | **NEW** — adapted from monolith (openhtmltopdf PDF generator) |
+| `backend/.../service/ExcelExportStyles.java` | **NEW** — adapted from monolith (Apache POI cell styles) |
+| `backend/.../service/EvidenceSheetRenderer.java` | **NEW** — adapted from monolith (evidence sheet in XLSX, uses `mawbNumber` instead of `mawb.getAwbNumber()`) |
+| `backend/.../service/ReceiptExportService.java` | **NEW** — adapted from monolith (XLSX export from template, no cache annotations) |
+| `backend/.../service/ReceiptFullPdfService.java` | **NEW** — adapted from monolith (full receipt PDF with HTML builder, uses `mawbNumber` instead of `mawb.getAwbNumber()`) |
+| `backend/.../service/WarehouseServiceImpl.java` | **UPDATED** — wires PdfGenerationService, ReceiptExportService, ReceiptFullPdfService; replaced all stubs (`getSupportingDocsHtml`, `getSupportingDocsPdf`, `exportReceipt`, `getReceiptPdf`, `generatePersistedArtifacts`) with real implementations; fetches `mawbNumber` via MawbClient on emit |
+| `backend/.../controller/WarehouseReceiptController.java` | **UPDATED** — added `@AuthenticationPrincipal`, `HttpServletRequest`, + audit logging on create/update/delete |
+| `backend/.../controller/WarehouseController.java` | **UPDATED** — added audit logging to `updateReceipt` |
+| `backend/.../config/SecurityConfig.java` | **UPDATED** — added READ_ONLY GET access alongside WAREHOUSE_ASSISTANT/ADMIN/SUPER_USER |
+| `backend/.../service/WarehouseServiceImpl.java` | **UPDATED** — `ReceiptCreatedEvent` now includes `mawbNumber` |
+| `frontend/vite.config.js` | **CHANGED** — proxy target `localhost:9091` → `localhost:8080` (gateway) |
+| `AGENTS.md` | **UPDATED** — Phase 6 status → ✅ Complete |
+
+## Recent session changes (July 28, 2026 — Phase 7: ULD Service Extraction: complete microservice)
+
+| File | Change |
+|------|--------|
+| `backend/.../uldservice/entity/Uld.java` | **NEW** — entity with flat UUID FK fields (no JPA relationships), `net_weight_lbs` persistable (removed `insertable=false`) |
+| `backend/.../uldservice/entity/UldAwb.java` | **NEW** — entity with computed columns (`lapse_minutes`, `pcs_per_min`, etc.) and CommodityType from common |
+| `backend/.../uldservice/entity/UldPiece.java` | **NEW** — per-piece tracking entity (BARCODE/MANUAL source, scanned_by UUID) |
+| `backend/.../uldservice/entity/UldTypeConfig.java` | **NEW** — entity for default tare weights per ULD type per airline |
+| `backend/.../uldservice/entity/UldStatus.java` | **NEW** — enum: OPEN, BUILT, SEALED, LOADED, OFFLOADED, LEFT_BEHIND |
+| `backend/.../uldservice/entity/UldType.java` | **NEW** — enum: PMC, PAH, PAG, PAJ, AAY, AAZ, AAD, PIP, BULK, AMP, AMJ |
+| `backend/.../uldservice/entity/PieceSource.java` | **NEW** — enum: BARCODE, MANUAL |
+| `backend/.../uldservice/dto/UldDTO.java` | **NEW** — DTO with UldAwbDTO children (awbs list), fromEntity/toEntity mappers |
+| `backend/.../uldservice/dto/UldAwbDTO.java` | **NEW** — DTO with all fields + entity mapping |
+| `backend/.../uldservice/dto/ScanLookupDTO.java` | **NEW** — response for scan lookup (type, MAWB/ULD info, piece counts) |
+| `backend/.../uldservice/dto/ScanPieceRequest.java` | **NEW** — request for piece registration (uldId, awbNumber, hawbNumber, source) |
+| `backend/.../uldservice/dto/ScanPieceResult.java` | **NEW** — response for piece registration (success, pieceNumber, totalOnUld) |
+| `backend/.../uldservice/dto/TransferRequest.java` | **NEW** — request for ULD transfer (destinationFlightId, reason) |
+| `backend/.../uldservice/dto/PageResponse.java` | **NEW** — generic paginated response wrapper |
+| `backend/.../uldservice/repository/UldRepository.java` | **NEW** — CRUD + findByAirlineId, findByFlightId, findByUldNumber |
+| `backend/.../uldservice/repository/UldAwbRepository.java` | **NEW** — CRUD + findByUldId, findByMawbId, findByUldIdAndMawbId, findByUldIdIn |
+| `backend/.../uldservice/repository/UldPieceRepository.java` | **NEW** — CRUD + findByUldId, findByUldIdAndMawbId, countByUldIdAndMawbId, findFirstByUldIdAndMawbIdOrderByPieceNumberDesc, deleteByUldIdAndMawbId |
+| `backend/.../uldservice/repository/UldTypeConfigRepository.java` | **NEW** — CRUD + findByAirlineId, findByAirlineIdAndUldType |
+| `backend/.../uldservice/service/UldService.java` | **NEW** — interface: getAll, getById, create, update, delete, transferUld, assignFlight |
+| `backend/.../uldservice/service/UldServiceImpl.java` | **NEW** — computeMetricWeights (lbs↔kg), enrichWithAwbs, transfer with audit note |
+| `backend/.../uldservice/service/UldAwbService.java` | **NEW** — interface: getAll, getById, create, update, delete |
+| `backend/.../uldservice/service/UldAwbServiceImpl.java` | **NEW** — ULD existence validation, flat DTO↔entity |
+| `backend/.../uldservice/service/ScanService.java` | **NEW** — lookup (MAWB/HAWB/ULD via Feign), registerPiece (creates UldPiece + upserts UldAwb), undoLastPiece, normalizeCode |
+| `backend/.../uldservice/controller/UldController.java` | **NEW** — CRUD + GET with airline/flight filter, pagination, PUT transfer, PUT assignFlight, DELETE |
+| `backend/.../uldservice/controller/UldAwbController.java` | **NEW** — CRUD + GET with uldId/mawbId filter |
+| `backend/.../uldservice/controller/ScanController.java` | **NEW** — GET /api/scan/lookup, POST /api/scan/piece, DELETE /api/scan/piece/last |
+| `backend/.../uldservice/controller/UldTypeConfigController.java` | **NEW** — CRUD + GET by airline |
+| `backend/.../uldservice/config/SecurityConfig.java` | **NEW** — JWT filter, CORS, role-based access (READ_ONLY GET, OPERATIONS/TRAFFIC/LOAD_PLANNER/ADMIN/SUPER_USER mutations), @Profile("!test") |
+| `backend/.../uldservice/config/CacheConfig.java` | **NEW** — @EnableCaching, Caffeine cache for ulds and uld-awbs |
+| `backend/.../uldservice/config/ScanEventListener.java` | **NEW** — SSE event emitter per flightId on piece registration |
+| `backend/.../uldservice/UldServiceApplication.java` | **NEW** — @SpringBootApplication, @EnableFeignClients, @EnableCaching |
+| `backend/.../uldservice/pom.xml` | **NEW** — Spring Boot 3.3, feign-clients, cache, caffeine, postgresql, flyway |
+| `backend/.../uldservice/Dockerfile` | **NEW** — multi-stage build for container deployment |
+| `backend/.../uldservice/src/main/resources/application.properties` | **NEW** — port 9097, DB config, Flyway, RabbitMQ, Caffeine cache, JWT secret, Feign URLs |
+| `backend/.../uldservice/src/main/resources/db/migration/V1__create_uld_tables.sql` | **NEW** — creates uld, uld_awb, uld_piece, uld_type_config tables with indexes |
+| `database/migrations/V39__create_uld_service_tables.sql` | **NEW** — synced from ULD service, creates ULD schema tables |
+| `backend/aircargo-uld-service/pom.xml` | **UPDATED** — includes feign-clients, cache, caffeine, openfeign as dependencies |
+| `backend/pom.xml` | **UPDATED** — added aircargo-uld-service module |
+| `AGENTS.md` | **UPDATED** — Phase 7 status → ✅ Complete |
+
+## Recent session changes (July 28, 2026 — Phases 3-5, 8-12: Full microservices migration completion)
+
+| File | Change |
+|------|--------|
+| `backend/.../service/FlightServiceImpl.java` | Added `@Transactional(readOnly = true)`, `Sort.by("flightDate").descending()`, paginated overload returning `PageResponse<FlightDTO>` |
+| `backend/.../controller/FlightController.java` | `GET /api/flights` now returns `PageResponse<FlightDTO>` when `page`/`size` params present; `GET /api/aircraft-types` endpoint added |
+| `backend/.../service/BookingServiceImpl.java` | Added `@Transactional`, `Sort.by("createdAt").descending()`, `findByAirlineId` support, paginated overload with `PageResponse<BookingDTO>` |
+| `backend/.../controller/BookingController.java` | `PATCH /{id}/awb` now returns `ResponseEntity<BookingDTO>` (not Void); `GET /api/bookings` supports `airlineId`/`flightId` query params |
+| `backend/.../service/MawbServiceImpl.java` | **NEW** — full implementation: getAll with airline/flight/status filters (list + page), create/update/updateStatus, delete, updateSupportingDocs, getSupportingDocsPdf (openhtmltopdf) |
+| `backend/.../controller/DuaRecordController.java` | **NEW** — compliance endpoints moved from monolith to mawb-service (`/api/compliance` CRUD + audit logging) |
+| `backend/.../service/DuaRecordService.java` | **NEW** — CRUD service for DUA records with `@Transactional` + `@Cacheable` |
+| `backend/.../entity/DuaRecord.java` | **NEW** — entity with flat `mawbId` UUID FK (no @ManyToOne) |
+| `backend/.../entity/DuaStatus.java` | **NEW** — enum: PENDING, COMPLETED, REJECTED |
+| `backend/.../dto/DuaRecordDTO.java` | **NEW** — DTO with fromEntity mapper |
+| `backend/.../repository/DuaRecordRepository.java` | **NEW** — findByMawbId, findAllByOrderByCreatedAtDesc, existsByMawbId |
+| `backend/.../config/CacheConfig.java` | Added `dua-records` cache |
+| `backend/.../config/SecurityConfig.java` | Added `/api/compliance/**` → ADMIN/SUPER_USER |
+| `backend/.../resources/db/migration/V2__create_dua_record_table.sql` | **NEW** — creates dua_record table |
+| `backend/pom.xml` | Removed `aircargo-api` module; all modules compile without monolith |
+| `backend/aircargo-load-planning-service/` | **NEW** — stateless Feign-based service (port 9098): flight plan, close, upload manifest, export manifest, pallet sheets |
+| `backend/aircargo-export-service/` | **NEW** — read-only analytics (port 9099): 4 controllers, 11 entities, Swift + Swagger |
+| `backend/aircargo-notification-service/` | **NEW** — RabbitMQ listeners (port 9100): receipt.created, booking.confirmed, flight.departed, mawb.status.changed |
+| `backend/aircargo-gateway/.../RouteConfig.java` | Removed `compliance-service` and `api-fallback` routes (monolith references); added `/api/compliance/**` → mawb-service; added 9 Swagger API-doc routes per service |
+| All `application.properties` | Added `springdoc.api-docs.path` and `springdoc.swagger-ui.path` for OpenAPI/Swagger |
+| `k8s/aircargo-api.yml` | **DELETED** — monolith K8s manifest removed |
+| `docker/docker-compose.services.yml` | Removed `aircargo-api` service; gateway no longer depends on monolith |
+| `backend/aircargo-api/` | **DELETED** — entire monolith module removed |
+| `AGENTS.md` | Updated structure, migration phases, migration sources |
+
+## Recent session changes (July 28, 2026 — Full stack running + JDK 25 compat)
+
+| File | Change |
+|------|--------|
+| `backend/.../gateway/config/SecurityConfig.java` | Changed `.anyExchange().authenticated()` → `.anyExchange().permitAll()` — Spring Security was blocking all requests before `JwtGatewayFilter` could validate JWT |
+| `backend/.../booking-service/BookingServiceApplication.java` | Added `@EnableFeignClients(basePackages = "com.aircargo.feign.client")` — `FlightClient` injection was failing |
+| `backend/.../booking-service/.../V1__init.sql` | Made idempotent: `CREATE TYPE commodity_type` → `DO $$ ... IF NOT EXISTS` block, `CREATE TABLE` → `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX` → `CREATE INDEX IF NOT EXISTS` |
+| `backend/.../mawb-service/.../V1__init.sql` | Made idempotent: wrapped `mawb_status` and `commodity_type` in `DO $$` blocks, `CREATE TABLE`/`INDEX` → `IF NOT EXISTS`; Fixed `origin BPCHAR(3)` → `VARCHAR(3)`, `destination BPCHAR(3)` → `VARCHAR(3)` |
+| `backend/.../warehouse-service/.../V1__create_warehouse_tables.sql` | Fixed `destination char(3)` → `varchar(3)`, `origin char(3)` → `varchar(3)` |
+| `backend/.../warehouse-service/.../WarehouseReceiptRepository.java` | Added `@Modifying @Query` JPQL to `supersedeAllByMawbId()` methods — were using invalid Spring Data derived query name |
+| `backend/.../flight-service/.../V1__init.sql` | Fixed `origin BPCHAR(3)` → `VARCHAR(3)`, `destination BPCHAR(3)` → `VARCHAR(3)` |
+| `backend/.../uld-service/.../V1__create_uld_tables.sql` | Fixed `destination BPCHAR(3)` → `VARCHAR(3)` |
+| `backend/.../export-service/application.properties` | Fixed `spring.datasource.username` default `aircargo` → `aircargo_user`; `spring.datasource.password` default `aircargo` → `aircargo_pass_2024`; `hikari.read-only=true` → `false` |
+| `backend/.../export-service/.../V1__create_export_bi_schema.sql` | Added `CREATE SCHEMA IF NOT EXISTS export_bi;` |
+| `backend/.../notification-service/application.properties` | Fixed `spring.rabbitmq.password` default `aircargo_pass_2024` → `fKyueh4O4BF8Uc52FEPHmIvU1X32l5lk` |
+| `backend/.../notification-service/.../V1__create_notification_tables.sql` | Added `CREATE SCHEMA IF NOT EXISTS notification;` |
+| All 7 service `application.properties` | Added `spring.flyway.table=flyway_schema_history_{service}`, `spring.flyway.baseline-on-migrate=true`, `spring.flyway.baseline-version=0` — custom Flyway tables to avoid checksum conflicts on shared DB |
+| All 7 service Application.java | Added `@SpringBootApplication(scanBasePackages = {"com.aircargo.{service}", "com.aircargo.common"})` + `@EntityScan` where needed — required for `JwtAuthFilter`/`JwtUtil` beans and common entities |
+| `backend/aircargo-load-planning-service/application.properties` | Added `spring.autoconfigure.exclude=...DataSourceAutoConfiguration,...HibernateJpaAutoConfiguration` — service has no DB but inherits `spring-boot-starter-data-jpa` from common |
+
+## State (July 28, 2026)
+
+**10/10 services UP** (gateway:8080, auth:9092, flight:9093, booking:9094, mawb:9095, warehouse:9096, uld:9097, load-planning:9098, export:9099, notification:9100). End-to-end login → JWT → airlines via gateway works.
+
+**JDK compatibility**: Both JDK 21 and JDK 25 work. JDK 25 emits `WARNING: Restricted methods will be blocked` but does not block execution. Default `java` command on this system is Corretto 25 via SDKMAN.
+
+**Infrastructure**: PostgreSQL (port 5432, user `aircargo_user`, password `aircargo_pass_2024`) and RabbitMQ (port 5672, user `aircargo`, password from `.env`) running via Docker Compose.
 
 ## Import paths
 

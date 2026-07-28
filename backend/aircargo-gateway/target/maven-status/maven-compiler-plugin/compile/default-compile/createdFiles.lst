@@ -2,8 +2,8 @@ com/aircargo/gateway/filter/JwtGatewayFilter.class
 com/aircargo/gateway/GatewayApplication.class
 com/aircargo/gateway/config/GatewayConfig.class
 com/aircargo/gateway/exception/GatewayAuthenticationException.class
+com/aircargo/gateway/config/SecurityConfig.class
 com/aircargo/gateway/config/RouteConfig.class
 com/aircargo/gateway/filter/RateLimitFilter.class
-com/aircargo/gateway/fallback/FallbackController.class
 com/aircargo/gateway/fallback/CircuitBreakerFallbackFilter.class
 com/aircargo/gateway/filter/AccessLogFilter.class
