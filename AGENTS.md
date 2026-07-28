@@ -9,6 +9,7 @@ Monorepo with three main directories + microservices scaffolding:
 | `frontend/` | Vue 3 + Vite + Pinia + Vue Router + Tailwind + JS | Vite dev on port 5173, proxy `/api` → `localhost:9091` |
 | `backend/aircargo-api/` | Spring Boot 3.3 + Java 21 + Maven + JPA + Flyway + PostgreSQL | `com.aircargo.AircargoApiApplication`, port 9091 |
 | `backend/aircargo-common/` | Shared entities, JWT, DTOs | Used by all backend modules |
+| `backend/aircargo-feign-clients/` | Shared Feign client interfaces + DTOs | AuthClient, FlightClient, MawbClient, BookingClient, UldClient |
 | `backend/aircargo-auth-service/` | Spring Boot (fully implemented) | Auth, User, Site, Audit, MFA, RolePermission |
 | `backend/aircargo-flight-service/` | Spring Boot (implemented) | Flight CRUD with SecurityConfig, AuditService |
 | `backend/aircargo-gateway/` | Spring Cloud Gateway (hardened) | JWT auth, rate limiting, circuit breaker, CORS, access logging. 10 routes with Resilience4j CB per service. |
@@ -49,6 +50,25 @@ Flyway migrations live in **two places** with **different content**:
 - **Root copy:** `database/migrations/` — differs from the backend copy (has full Postgres schema with functions, triggers, permissions; backend copy is Hibernate-compressed)
 
 The backend copy also seeds the UPS airline row; the root copy does not. Keep both in sync.
+
+## Microservices Migration Status
+
+| Phase | Service | Status |
+|-------|---------|--------|
+| Phase 1 | Gateway Hardening | ✅ Complete — JWT filter, rate limiting, circuit breaker, CORS |
+| Phase 2 | Auth Service | ✅ Complete — refresh tokens, lockout, Feign clients, schema migration |
+| Phase 3 | Flight Service | ⏳ Pending — needs AirlineController sync + cache config |
+| Phase 4 | Booking Service | ⏳ Pending |
+| Phase 5 | MAWB Service | ⏳ Pending |
+| Phase 6 | Warehouse Service | ⏳ Pending |
+| Phase 7 | ULD Service | ⏳ Pending |
+| Phase 8 | Load Planning Service | ⏳ Pending |
+| Phase 9 | Export/BI Service | ⏳ Pending |
+| Phase 10 | Notification Service | ⏳ Pending |
+| Phase 11 | Frontend Migration | ⏳ Pending — proxy to gateway (8080) |
+| Phase 12 | Delete Monolith | ⏳ Pending |
+
+Full plan: `Documents/MICROSERVICES-MIGRATION-PLAN.md`
 
 ## Recent session changes (July 26, 2026 — Receipt Correction Logic Fix)
 
