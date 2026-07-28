@@ -6,6 +6,9 @@ import com.aircargo.flightservice.entity.FlightStatus;
 import com.aircargo.flightservice.repository.FlightRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -44,6 +47,28 @@ public class FlightServiceImpl implements FlightService {
     }
 
     @Override
+    @Cacheable(value = "flights", key = "{#airlineId, #flightNumber, #flightDate, #status, #page, #size}")
+    public Page<FlightDTO> getAll(UUID airlineId, LocalDate flightDate, FlightStatus status, String flightNumber, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Flight> results;
+        
+        if (flightNumber != null && airlineId != null) {
+            results = flightRepository.findByAirlineIdAndFlightNumber(airlineId, flightNumber, pageable);
+        } else if (flightDate != null && airlineId != null) {
+            results = flightRepository.findByAirlineIdAndFlightDate(airlineId, flightDate, pageable);
+        } else if (status != null && airlineId != null) {
+            results = flightRepository.findByAirlineIdAndStatus(airlineId, status, pageable);
+        } else if (airlineId != null) {
+            results = flightRepository.findByAirlineId(airlineId, pageable);
+        } else {
+            results = flightRepository.findAll(pageable);
+        }
+        
+        return results.map(FlightDTO::fromEntity);
+    }
+
+    @Override
+    @Cacheable(value = "flights", key = "#id")
     public Optional<FlightDTO> getById(UUID id) {
         return flightRepository.findById(id).map(FlightDTO::fromEntity);
     }

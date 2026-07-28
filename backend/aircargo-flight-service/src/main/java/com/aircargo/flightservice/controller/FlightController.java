@@ -7,6 +7,7 @@ import com.aircargo.flightservice.service.FlightService;
 import com.aircargo.flightservice.service.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +38,18 @@ public class FlightController {
             @RequestParam(required = false) FlightStatus status,
             @RequestParam(required = false) String flightNumber) {
         return flightService.getAll(airlineId, date, status, flightNumber);
+    }
+
+    @GetMapping("/paged")
+    public Page<FlightDTO> getAllPaged(
+            @RequestParam(required = false) UUID airlineId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) FlightStatus status,
+            @RequestParam(required = false) String flightNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return flightService.getAll(airlineId, date, status, flightNumber, page, size);
     }
 
     @GetMapping("/{id}")
@@ -70,6 +83,23 @@ public class FlightController {
                         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                                 "UPDATE", "FLIGHT", id.toString(),
                                 "{\"flightNumber\":\"" + safe(updated.getFlightNumber()) + "\"}",
+                                request.getRemoteAddr());
+                    }
+                    return ResponseEntity.ok(updated);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<FlightDTO> updateStatus(@PathVariable UUID id, @RequestBody FlightStatus status,
+                                                     @AuthenticationPrincipal UserPrincipal principal,
+                                                     HttpServletRequest request) {
+        return flightService.updateStatus(id, status)
+                .map(updated -> {
+                    if (principal != null) {
+                        auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                                "UPDATE_STATUS", "FLIGHT", id.toString(),
+                                "{\"status\":\"" + status.name() + "\"}",
                                 request.getRemoteAddr());
                     }
                     return ResponseEntity.ok(updated);
