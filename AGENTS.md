@@ -504,7 +504,7 @@ npm run build         # Vite build succeeds
 | `backend/.../uld-service/.../V1__create_uld_tables.sql` | Fixed `destination BPCHAR(3)` → `VARCHAR(3)` |
 | `backend/.../export-service/application.properties` | Fixed `spring.datasource.username` default `aircargo` → `aircargo_user`; `spring.datasource.password` default `aircargo` → `aircargo_pass_2024`; `hikari.read-only=true` → `false` |
 | `backend/.../export-service/.../V1__create_export_bi_schema.sql` | Added `CREATE SCHEMA IF NOT EXISTS export_bi;` |
-| `backend/.../notification-service/application.properties` | Fixed `spring.rabbitmq.password` default `aircargo_pass_2024` → `fKyueh4O4BF8Uc52FEPHmIvU1X32l5lk` |
+| `backend/.../notification-service/application.properties` | Fixed `spring.rabbitmq.password` default → `RABBITMQ_PASSWORD` env var (value moved to gitignored `.env`) |
 | `backend/.../notification-service/.../V1__create_notification_tables.sql` | Added `CREATE SCHEMA IF NOT EXISTS notification;` |
 | All 7 service `application.properties` | Added `spring.flyway.table=flyway_schema_history_{service}`, `spring.flyway.baseline-on-migrate=true`, `spring.flyway.baseline-version=0` — custom Flyway tables to avoid checksum conflicts on shared DB |
 | All 7 service Application.java | Added `@SpringBootApplication(scanBasePackages = {"com.aircargo.{service}", "com.aircargo.common"})` + `@EntityScan` where needed — required for `JwtAuthFilter`/`JwtUtil` beans and common entities |

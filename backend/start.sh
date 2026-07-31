@@ -2,6 +2,9 @@
 set -e
 
 BACKEND="$(cd "$(dirname "$0")" && pwd)"
+# ── Load secrets from gitignored .env at repo root ──────────────
+. "$BACKEND/../aircargo-env.sh"
+
 MAX_CONNS="-Dspring.datasource.hikari.maximum-pool-size=3"
 JAVA_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
 

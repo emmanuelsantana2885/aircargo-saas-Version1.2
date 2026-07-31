@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ── Load secrets from gitignored .env ───────────────────────────
+AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$AIR_ROOT/aircargo-env.sh"
+
 echo "🛑 Deteniendo procesos existentes..."
 pkill -f "java -jar.*aircargo.*service" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
@@ -34,7 +38,7 @@ echo "🚀 Iniciando todos los servicios backend..."
 for dir in "${services[@]}"; do
     name=$(basename "$dir")
     echo "  → Iniciando $name"
-    (cd "$dir" && JWT_SECRET="my-personal-project-EmmanuelSantana2885" \
+    (cd "$dir" && \
          java -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1) &
     echo "    [PID $(pgrep -f "${name}.*jar" | head -1 || echo '??')] -> /tmp/${name}.log"
 done

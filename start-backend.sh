@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ── Load secrets from gitignored .env ───────────────────────────
+AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$AIR_ROOT/aircargo-env.sh"
+
 # =============================================================================
 # 🛑 STOP EVERYTHING RUNNING — force an exec clean slate
 # =============================================================================

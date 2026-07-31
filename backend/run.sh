@@ -1,3 +1,6 @@
+# ── Load secrets from gitignored .env at repo root ──────────────
+. "$(cd "$(dirname "$0")" && pwd)/../aircargo-env.sh"
+
 MAX_CONNS="-Dspring.datasource.hikari.maximum-pool-size=3"
 
 java $MAX_CONNS -jar aircargo-gateway/target/aircargo-gateway-1.2.0-SNAPSHOT.jar > /tmp/gateway.log 2>&1 &

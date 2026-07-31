@@ -30,7 +30,7 @@ public class JwtUtil {
     private volatile long lastCleanupMs = System.currentTimeMillis();
 
     public JwtUtil(
-            @Value("${app.jwt.secret:my-personal-project-EmmanuelSantana2885}") String secret,
+            @Value("${app.jwt.secret:dev-only-insecure-secret-do-not-use-in-production-please-change-me}") String secret,
             @Value("${app.jwt.expiration-ms:86400000}") long expirationMs) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
