@@ -15,7 +15,12 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
-        manager.setCacheNames(Arrays.asList("receipts", "receipt-pieces", "supporting-docs"));
+        manager.setCacheNames(Arrays.asList("warehouse-receipts", "receipts", "receipt-pieces", "supporting-docs"));
+        manager.registerCustomCache("warehouse-receipts",
+                Caffeine.newBuilder()
+                        .maximumSize(500)
+                        .expireAfterWrite(5, TimeUnit.MINUTES)
+                        .build());
         manager.registerCustomCache("receipts",
                 Caffeine.newBuilder()
                         .maximumSize(500)

@@ -21,10 +21,10 @@
     </div>
 
     <!-- Info for unsaved ULD -->
-    <div v-if="!uldId" class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
-      <span class="text-blue-600 text-sm">ℹ</span>
-      <span class="text-[12px] font-bold text-blue-700 uppercase tracking-wide">
-        Escanee el código del ULD para asignar el número. Las piezas de MAWB se habilitan después de guardar.
+    <div v-if="!uldId" class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+      <span class="text-amber-600 text-sm">⚡</span>
+      <span class="text-[12px] font-bold text-amber-800 uppercase tracking-wide">
+        Escanee un código ULD (PMC-XXXXX) para crearlo automáticamente, luego escanee piezas MAWB.
       </span>
     </div>
 
@@ -80,7 +80,15 @@
           <span class="text-[14px] font-black text-slate-900 uppercase">Escanear con Cámara</span>
           <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold">✕</button>
         </div>
-        <div id="qr-reader" class="w-full rounded-lg overflow-hidden border border-slate-200" style="min-height: 280px;"></div>
+        <div class="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-black" style="min-height: 280px;">
+          <video ref="cameraVideo" autoplay playsinline muted class="w-full h-full object-contain" style="min-height: 280px;"></video>
+          <div v-if="!cameraReady" class="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-[13px] font-bold z-10">
+            Iniciando cámara...
+          </div>
+          <div v-if="cameraReady && !lastDetect" class="absolute bottom-2 left-2 bg-black/60 text-white text-[11px] px-2 py-1 rounded z-10">
+            Enfrente el código de barras
+          </div>
+        </div>
         <p class="text-[12px] text-slate-400 mt-3 text-center">Apunte la cámara al código de barras de la pieza</p>
       </div>
     </div>
@@ -107,9 +115,14 @@ const lastResult = ref(null)
 const flashClass = ref('')
 const history = ref([])
 const showCamera = ref(false)
+const cameraVideo = ref(null)
+const cameraReady = ref(false)
+const lastDetect = ref(false)
 const canUndo = computed(() => history.value.length > 0 && history.value[0].success)
 
-let html5QrScanner = null
+let cameraStream = null
+let detectTimer = null
+let scanLoop = null
 
 // Auto-focus when activated
 watch(() => props.active, async (val) => {
@@ -134,14 +147,14 @@ async function processScan(codeOverride) {
   scanning.value = true
 
   try {
-    const isUld = /^(PMC|PAH|PAG|PAJ|AAY|AAZ|AAD|PIP|AMP|AMJ|PMH)-/i.test(code)
+    const isUld = /^(PMC|PAH|PAG|PAJ|AAY|AAZ|AAD|PIP|AMP|AMJ|PMH)[-\s]?[A-Z0-9]{4,}/i.test(code)
 
     if (isUld && !props.uldId) {
       lastResult.value = { success: true, message: `ULD ${code} asignado`, awbNumber: code }
       flash('emerald')
       emit('uld-number-scanned', code)
     } else if (!isUld && !props.uldId) {
-      lastResult.value = { success: false, error: 'Guarde el ULD primero para registrar piezas MAWB', awbNumber: code, time: 'ahora' }
+      lastResult.value = { success: false, error: 'Escanee un código ULD (PMC-XXXXX) antes de registrar piezas', awbNumber: code, time: 'ahora' }
       history.value.unshift(lastResult.value)
       flash('red')
     } else {
@@ -203,48 +216,90 @@ async function undoLast() {
 
 async function openCamera() {
   showCamera.value = true
+  cameraReady.value = false
+  lastDetect.value = false
   await nextTick()
 
-  try {
-    const { Html5Qrcode } = await import('html5-qrcode')
+  const video = cameraVideo.value
+  if (!video) { closeCamera(); return }
 
-    // Stop any existing scanner
-    if (html5QrScanner) {
-      try { await html5QrScanner.stop() } catch {}
-      html5QrScanner.clear()
-      html5QrScanner = null
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false,
+    })
+
+    video.srcObject = cameraStream
+    await video.play()
+    cameraReady.value = true
+
+    // BarcodeDetector (Chrome/Edge)
+    if ('BarcodeDetector' in window) {
+      try {
+        const formats = await BarcodeDetector.getSupportedFormats()
+        console.log('[Scan] Native BarcodeDetector, formats:', formats)
+        const bd = new BarcodeDetector({
+          formats: ['code_128', 'code_39', 'code_39_vin', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'codabar', 'i2of5'],
+        })
+        detectTimer = setInterval(async () => {
+          if (!cameraStream?.active || processing.value) return
+          try {
+            const codes = await bd.detect(video)
+            if (codes.length > 0) {
+              console.log('[Scan] DETECTED:', codes[0].rawValue)
+              lastDetect.value = true
+              processScan(codes[0].rawValue)
+            }
+          } catch {}
+        }, 250)
+        return
+      } catch {}
     }
 
-    html5QrScanner = new Html5Qrcode('qr-reader')
+    // ZBar fallback (Firefox etc.)
+    console.log('[Scan] Loading ZBar WASM...')
+    const { scanImageData } = await import('@undecaf/zbar-wasm')
 
-    await html5QrScanner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 10,
-        qrbox: { width: 280, height: 120 },
-        aspectRatio: 2.0,
-        showTorchButtonIfSupported: true,
-      },
-      (decodedText) => {
-        // On successful scan
-        processScan(decodedText)
-      },
-      () => {} // ignore scan errors (no barcode in frame)
-    )
+    const offscreen = document.createElement('canvas')
+    const ctx = offscreen.getContext('2d')
+
+    scanLoop = setInterval(async () => {
+      if (!cameraStream?.active || processing.value) return
+      try {
+        offscreen.width = video.videoWidth || 640
+        offscreen.height = video.videoHeight || 480
+        ctx.drawImage(video, 0, 0)
+        const id = ctx.getImageData(0, 0, offscreen.width, offscreen.height)
+        const symbols = await scanImageData(id)
+        if (symbols.length > 0) {
+          const code = symbols[0].decode()
+          console.log('[Scan] ZBar DETECTED:', symbols[0].typeName, code)
+          if (code && !processing.value) {
+            lastDetect.value = true
+            processScan(code)
+          }
+        }
+      } catch (e) {
+        console.warn('[Scan] ZBar error:', e)
+      }
+    }, 400)
   } catch (err) {
-    console.error('Camera error:', err)
-    lastResult.value = { success: false, error: 'No se pudo acceder a la cámara', awbNumber: '', time: 'ahora' }
+    console.error('[Scan] Camera error:', err)
+    lastResult.value = { success: false, error: 'Error de cámara: ' + (err.message || ''), awbNumber: '', time: 'ahora' }
     flash('red')
     closeCamera()
   }
 }
 
 async function closeCamera() {
-  if (html5QrScanner) {
-    try { await html5QrScanner.stop() } catch {}
-    try { html5QrScanner.clear() } catch {}
-    html5QrScanner = null
+  if (detectTimer) { clearInterval(detectTimer); detectTimer = null }
+  if (scanLoop) { clearInterval(scanLoop); scanLoop = null }
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop())
+    cameraStream = null
   }
+  cameraReady.value = false
+  lastDetect.value = false
   showCamera.value = false
 }
 

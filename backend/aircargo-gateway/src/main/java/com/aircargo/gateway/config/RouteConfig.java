@@ -53,8 +53,9 @@ public class RouteConfig {
                         .uri("http://localhost:9094"))
 
                 .route("mawb-service", r -> r
-                        .path("/api/cargo/mawbs/**", "/api/cargo/hawbs/**",
-                             "/api/tracking/**", "/api/mawbs/**", "/api/compliance/**")
+.path("/api/mawbs/**", "/api/hawbs/**",
+     "/api/cargo/mawbs/**", "/api/cargo/hawbs/**",
+     "/api/tracking/**", "/api/compliance/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("mawb-service")
@@ -63,21 +64,22 @@ public class RouteConfig {
                                         .setRetries(2)
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
+                                .rewritePath("/api/cargo/mawbs/(?<seg>.*)", "/api/mawbs/${seg}")
+                                .rewritePath("/api/cargo/mawbs$", "/api/mawbs")
+                                .rewritePath("/api/cargo/hawbs/(?<seg>.*)", "/api/hawbs/${seg}")
+                                .rewritePath("/api/cargo/hawbs$", "/api/hawbs")
                         )
                         .uri("http://localhost:9095"))
 
                 .route("warehouse-service", r -> r
-                        .path("/api/warehouse/**", "/api/receipts/**")
-                        .filters(f -> f
-                                .circuitBreaker(config -> config
-                                        .setName("warehouse-service")
-                                        .setFallbackUri("forward:/fallback/warehouse"))
-                                .retry(config -> config
-                                        .setRetries(2)
-                                        .setBackoff(java.time.Duration.ofMillis(500),
-                                                     java.time.Duration.ofSeconds(2), 2, true))
-                        )
-                        .uri("http://localhost:9096"))
+		     .path("/api/warehouse/**", "/api/receipts/**")
+		     .filters(f -> f
+			 .retry(config -> config
+			     .setRetries(2)
+			     .setBackoff(java.time.Duration.ofMillis(500),
+					  java.time.Duration.ofSeconds(2), 2, true))
+		     )
+		     .uri("http://localhost:9096"))
 
                 .route("uld-service", r -> r
                         .path("/api/ulds/**", "/api/uld-awbs/**",
@@ -107,7 +109,7 @@ public class RouteConfig {
                         .uri("http://localhost:9098"))
 
                 .route("export-service", r -> r
-                        .path("/api/exports/**", "/api/bi/**", "/api/reports/**")
+                        .path("/api/exports/**", "/api/bi/**", "/api/reports/**", "/api/catalog/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("export-service")

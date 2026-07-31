@@ -16,6 +16,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -60,16 +61,13 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "warehouse-receipts", allEntries = true)
     public WarehouseReceiptDTO emitReceipt(WarehouseReceiptDTO dto, UserPrincipal principal, jakarta.servlet.http.HttpServletRequest request) {
-        // Supersede existing receipts for this MAWB
-        if (dto.getMawbId() != null) {
-            receiptRepository.supersedeAllByMawbId(dto.getMawbId(), dto.getId());
-        }
-
         // Set audit fields
         dto.setCreatedByUserId(principal != null ? principal.getUserIdAsUuid() : null);
         dto.setCreatedByName(principal != null ? principal.fullName() : "system");
+        dto.setCreatedAt(OffsetDateTime.now());
         dto.setReceiptDate(OffsetDateTime.now());
         dto.setSuperseded(false);
 
@@ -88,14 +86,19 @@ public class WarehouseServiceImpl implements WarehouseService {
         // Process pieces
         List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
         dto.setPieces(pieces);
-        dto.setPieceCount(pieces.size());
+        dto.setPieceCount(pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum());
 
         // Calculate totals
         calculateTotals(dto);
 
-        // Save receipt
+        // Save receipt FIRST to get a real ID
         WarehouseReceipt entity = WarehouseReceiptDTO.toEntity(dto);
         WarehouseReceipt saved = receiptRepository.save(entity);
+
+        // Supersede existing receipts for this MAWB — must happen AFTER save so excludeId is not null
+        if (saved.getMawbId() != null) {
+            receiptRepository.supersedeAllByMawbId(saved.getMawbId(), saved.getId());
+        }
 
         // Save pieces
         List<ReceiptPiece> pieceEntities = pieces.stream()
@@ -174,10 +177,12 @@ public class WarehouseServiceImpl implements WarehouseService {
                     .toList();
             pieceRepository.saveAll(pieceEntities);
 
-            // Recalculate totals
-            WarehouseReceiptDTO dtoForCalc = WarehouseReceiptDTO.fromEntity(existing);
-            dtoForCalc.setPieces(dto.getPieces());
-            calculateTotals(dtoForCalc);
+            // Copy totals to entity before save
+            existing.setPieceCount(dto.getPieceCount());
+            existing.setActualWeightLbs(dto.getActualWeightLbs());
+            existing.setActualWeightKg(dto.getActualWeightKg());
+            existing.setChargeableWeightLbs(dto.getChargeableWeightLbs());
+            existing.setChargeableWeightKg(dto.getChargeableWeightKg());
 
             WarehouseReceipt saved = receiptRepository.save(existing);
 
@@ -417,7 +422,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             return;
         }
 
-        int pieceCount = dto.getPieces().size();
+        int pieceCount = dto.getPieces().stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
         BigDecimal totalScaleLbs = dto.getPieces().stream()
                 .map(p -> p.getScaleWeightLbs() != null ? p.getScaleWeightLbs() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/cargo/mawbs")
+@RequestMapping("/api/mawbs")
 public class MawbController {
 
     private final MawbService mawbService;

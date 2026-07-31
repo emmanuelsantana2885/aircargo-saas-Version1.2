@@ -129,7 +129,7 @@ public class BookingDTO {
         entity.setRealPositions(dto.getRealPositions());
         entity.setLastWeekKg(dto.getLastWeekKg());
         entity.setLastWeekPositions(dto.getLastWeekPositions());
-        entity.setIsConfirmed(dto.getIsConfirmed());
+        entity.setIsConfirmed(dto.getIsConfirmed() != null ? dto.getIsConfirmed() : false);
         entity.setNotes(dto.getNotes());
         return entity;
     }

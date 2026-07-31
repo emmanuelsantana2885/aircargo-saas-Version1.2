@@ -178,16 +178,19 @@ public class ReceiptExportService {
                 double height = p.getHeightIn() != null ? p.getHeightIn().doubleValue() : 0.0;
                 double scaleLbs = p.getScaleWeightLbs() != null ? p.getScaleWeightLbs().doubleValue() : 0.0;
 
-                // B: Pieces, C: Length, D: Width, E: Height
                 setNumericValue(sheet, rowIdx, COL_B, qty);
                 setNumericValue(sheet, rowIdx, COL_C, length);
                 setNumericValue(sheet, rowIdx, COL_D, width);
                 setNumericValue(sheet, rowIdx, COL_E, height);
-
-                // G: Scale Weight — each row gets the piece's scale weight
                 setNumericValue(sheet, rowIdx, COL_G, scaleLbs);
+            } else {
+                // Clear template default data for unused rows (prevents ghost pieces)
+                setNumericValue(sheet, rowIdx, COL_B, 0);
+                setNumericValue(sheet, rowIdx, COL_C, 0);
+                setNumericValue(sheet, rowIdx, COL_D, 0);
+                setNumericValue(sheet, rowIdx, COL_E, 0);
+                setNumericValue(sheet, rowIdx, COL_G, 0);
             }
-            // Empty rows: leave B-G as 0 (template defaults), formulas in F/H/I/J will compute =0
         }
     }
 

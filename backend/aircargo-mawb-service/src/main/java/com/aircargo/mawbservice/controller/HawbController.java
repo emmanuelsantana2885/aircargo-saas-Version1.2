@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/cargo/hawbs")
+@RequestMapping("/api/hawbs")
 public class HawbController {
 
     private final HawbService hawbService;

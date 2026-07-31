@@ -332,32 +332,32 @@ async function save() {
 
   try {
     const totalPcs = pieces.value.reduce((s, p) => s + (p.pieces || 1), 0)
+    const hId = hawbId.value || null
+    const validHawbId = hId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hId) ? hId : null
     const payload = {
       mawbId: mawbId.value,
-      receipt: {
-        gatewayCfs: form.value.gatewayCfs || 'SDQ',
-        shipperName: form.value.shipperName,
-        consigneeName: form.value.consigneeName,
-        origin: form.value.origin,
-        destination: form.value.destination,
-        awbReportedPieces: form.value.awbReportedPieces || totalPcs,
-        dimFactorIntl: form.value.dimFactorKg || 366,
-        dimFactorDom: form.value.dimFactorLbs || 194,
-        pieceCount: totalPcs,
-        cashOnly: form.value.cashOnly,
-        bookedInAcoms: form.value.bookedInAcoms,
-        docsProvided: form.value.docsProvided,
-        customsCompleted: form.value.customsCompleted,
-        preBuilt: form.value.preBuilt,
-        remarks: form.value.remarks || '',
-        hawbId: hawbId.value || null,
-        startDatetime: new Date().toISOString(),
-        receiptDate: new Date().toISOString(),
-      },
+      gatewayCfs: form.value.gatewayCfs || 'SDQ',
+      shipperName: form.value.shipperName,
+      consigneeName: form.value.consigneeName,
+      origin: form.value.origin,
+      destination: form.value.destination,
+      awbReportedPieces: form.value.awbReportedPieces || totalPcs,
+      dimFactorIntl: form.value.dimFactorKg || 366,
+      dimFactorDom: form.value.dimFactorLbs || 194,
+      pieceCount: totalPcs,
+      cashOnly: form.value.cashOnly,
+      bookedInAcoms: form.value.bookedInAcoms,
+      docsProvided: form.value.docsProvided,
+      customsCompleted: form.value.customsCompleted,
+      preBuilt: form.value.preBuilt,
+      remarks: form.value.remarks || '',
+      hawbId: validHawbId,
+      startDatetime: new Date().toISOString(),
+      receiptDate: new Date().toISOString(),
       pieces: pieces.value.map((p, i) => ({
         pieceNumber: i + 1,
         pieces: p.pieces || 1,
-        hawbId: p.hawbId || null,
+        hawbId: (p.hawbId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.hawbId)) ? p.hawbId : null,
         lengthIn: p.lengthIn || 0,
         widthIn: p.widthIn || 0,
         heightIn: p.heightIn || 0,
@@ -368,7 +368,7 @@ async function save() {
         chargeableLbs: p.chargeableLbs || 0,
         chargeableKg: p.chargeableKg || 0,
       })),
-      supportingDocs: [],
+      supportingDocs: '[]',
     }
 
     await receiptsApi.update(receiptId.value, payload)

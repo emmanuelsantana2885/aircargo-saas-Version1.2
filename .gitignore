@@ -16,3 +16,4 @@ yay/
 .cp.txt
 AnalyzeRef.java
 frontend/--force
+.bashrc

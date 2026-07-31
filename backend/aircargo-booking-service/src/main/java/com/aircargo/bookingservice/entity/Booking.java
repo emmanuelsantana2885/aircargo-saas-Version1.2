@@ -103,7 +103,8 @@ public class Booking {
     private Integer lastWeekPositions;
 
     @Column(name = "is_confirmed")
-    private Boolean isConfirmed;
+    @Builder.Default
+    private Boolean isConfirmed = false;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;

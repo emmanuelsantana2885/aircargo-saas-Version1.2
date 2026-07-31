@@ -581,8 +581,8 @@ async function confirmImport() {
       if (booking?.id) {
         const awbNumber = row.awbNumber || `406-${(Date.now() + idx).toString().slice(-8).padStart(8, '0')}`
         const mawb = await store.createMawb({
-          airline: { id: store.selectedFlight?.airlineId },
-          flight: { id: store.selectedFlightId },
+          airlineId: store.selectedFlight?.airlineId,
+          flightId: store.selectedFlightId,
           awbNumber: awbNumber,
           shipperName: row.shipperName || row.clientName,
           consigneeName: row.cnee || row.clientName,

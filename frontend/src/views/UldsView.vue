@@ -96,8 +96,13 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
                   <div>
-                    <label class="ds-label block mb-1">Código ULD *</label>
-                    <input v-model="uld.uldNumber" type="text" placeholder="PMC-XXXXX" class="ds-input uppercase" />
+                    <label class="ds-label block mb-1 flex items-center gap-1.5">
+                      Código ULD *
+                      <span v-if="creationStep === 2" class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-px rounded font-black">Escanee o escriba</span>
+                    </label>
+                    <input v-model="uld.uldNumber" type="text" placeholder="PMC-XXXXX"
+                      class="ds-input uppercase transition-all duration-300"
+                      :class="creationStep === 2 ? 'ring-2 ring-emerald-400 bg-emerald-50 border-emerald-400' : ''" />
                   </div>
                   <div>
                     <label class="ds-label block mb-1">Config / Tipo</label>
@@ -260,12 +265,44 @@
                 </div>
 
 
+                <!-- Step guide for new ULD creation -->
+                <div v-if="!uld.backendId && creationStep > 0" class="flex items-center gap-3 mb-4 px-3 py-2 rounded-lg"
+                  :class="creationStep === 1 ? 'bg-amber-50 ring-2 ring-amber-300' : creationStep === 2 ? 'bg-emerald-50 ring-2 ring-emerald-300' : 'bg-slate-50'">
+                  <div class="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider"
+                    :class="creationStep >= 1 ? 'text-amber-700' : 'text-slate-300'">
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+                      :class="creationStep > 1 ? 'bg-emerald-500 text-white' : creationStep === 1 ? 'bg-amber-400 text-white' : 'bg-slate-200'">1</span>
+                    Vuelo
+                    <span v-if="creationStep > 1" class="text-emerald-600 ml-1">✓</span>
+                  </div>
+                  <span class="text-slate-300 text-[10px]">▸</span>
+                  <div class="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider"
+                    :class="creationStep >= 2 ? 'text-emerald-700' : 'text-slate-300'">
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+                      :class="creationStep > 2 ? 'bg-emerald-500 text-white' : creationStep === 2 ? 'bg-emerald-400 text-white' : 'bg-slate-200'">2</span>
+                    Escanear ULD
+                    <span v-if="creationStep > 2" class="text-emerald-600 ml-1">✓</span>
+                  </div>
+                  <span class="text-slate-300 text-[10px]">▸</span>
+                  <div class="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider"
+                    :class="creationStep >= 3 ? 'text-slate-900' : 'text-slate-300'">
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+                      :class="creationStep >= 3 ? 'bg-slate-900 text-white' : 'bg-slate-200'">3</span>
+                    Registrar Piezas
+                  </div>
+                </div>
+
                 <div class="border-t border-slate-200 pt-5 flex flex-wrap justify-end gap-2 bg-slate-50/50 -mx-2 md:-mx-6 -mb-6 p-3 md:p-6 rounded-b">
                   <div class="flex items-center gap-4 mr-auto">
                     <div class="flex flex-col">
-                      <span class="text-[12px] font-black text-slate-400 uppercase tracking-widest">Vuelo</span>
+                      <span class="text-[12px] font-black uppercase tracking-widest flex items-center gap-1.5"
+                        :class="creationStep === 1 ? 'text-amber-700' : 'text-slate-400'">
+                        Vuelo
+                        <span v-if="creationStep === 1" class="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-px rounded">Paso 1</span>
+                      </span>
                       <select v-model="uld.saveFlightId"
-                        class="ds-input uppercase text-[12px] min-w-[160px]">
+                        class="ds-input uppercase text-[12px] min-w-[160px] transition-all duration-300"
+                        :class="creationStep === 1 ? 'ring-2 ring-amber-400 bg-amber-50 border-amber-400' : ''">
                         <option value="" disabled>Seleccionar vuelo</option>
                         <option v-for="f in appStore.flights" :key="f.id" :value="f.id">
                           {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }} ({{ f.origin }}&#8594;{{ f.destination }}) {{ f.flightDate }}
@@ -280,8 +317,10 @@
                   <div class="flex items-center gap-2">
                     <button @click="toggleScanMode(uld)"
                       class="font-mono font-black uppercase text-[12px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
-                      :class="scanMode ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
-                      {{ scanMode ? '🔍 Scanando...' : '📷 Modo Scan' }}
+                      :class="creationStep === 2 ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300 animate-pulse' : scanMode ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
+                      <template v-if="creationStep === 2">📷 Escanear ULD ahora</template>
+                      <template v-else-if="scanMode">🔍 Scanando...</template>
+                      <template v-else>📷 Modo Scan</template>
                     </button>
                     <button @click="deleteUld(uld)"
                       class="ds-btn-secondary text-slate-400 hover:text-slate-700"
@@ -370,6 +409,9 @@ const localUlds = ref([])
 const scanMode = ref(false)
 const scanUldUid = ref(null)
 
+// Guided creation steps: 0=idle, 1=select flight, 2=scan ULD, 3=done
+const creationStep = ref(0)
+
 function toggleScanMode(uld) {
   scanMode.value = !scanMode.value
   if (scanMode.value && uld) {
@@ -378,6 +420,33 @@ function toggleScanMode(uld) {
     scanUldUid.value = null
   }
 }
+
+// Auto-advance: after flight selected → step 2 → activate scan mode
+watch(expandedUldId, () => { creationStep.value = 0 })
+
+watch(() => {
+  const uld = localUlds.value.find(u => u.uid === expandedUldId.value)
+  return uld?.saveFlightId
+}, (flightId) => {
+  if (flightId && creationStep.value === 1) {
+    creationStep.value = 2
+    const uld = localUlds.value.find(u => u.uid === expandedUldId.value)
+    if (uld && !uld.backendId) {
+      scanUldUid.value = uld.uid
+      scanMode.value = true
+    }
+  }
+})
+
+// After ULD number is set → step 3 done
+watch(() => {
+  const uld = localUlds.value.find(u => u.uid === expandedUldId.value)
+  return uld?.uldNumber
+}, (num) => {
+  if (num && creationStep.value === 2) {
+    creationStep.value = 3
+  }
+})
 
 function onScanPieceAdded(result) {
   const uid = scanUldUid.value
@@ -421,15 +490,29 @@ function onScanPieceRemoved(data) {
   }
 }
 
-function onUldNumberScanned(code) {
+async function onUldNumberScanned(code) {
   const uid = scanUldUid.value
   if (!uid) return
   const uld = localUlds.value.find(u => u.uid === uid)
   if (!uld) return
-  uld.uldNumber = code.toUpperCase()
-  const detectedType = code.split('-')[0]?.toUpperCase()
-  if (detectedType && uldTypes.includes(detectedType)) {
-    uld.uldType = detectedType
+  const upper = code.toUpperCase()
+  uld.uldNumber = upper
+  const prefix = upper.slice(0, 3)
+  if (uldTypes.includes(prefix)) {
+    uld.uldType = prefix
+  }
+
+  // Auto-save ULD so backendId is available for MAWB piece registration
+  if (!uld.backendId && appStore.selectedFlight?.id) {
+    try {
+      uld.airlineId = uld.airlineId || appStore.selectedFlight?.airlineId
+      uld.flightId = appStore.selectedFlight.id
+      const result = await uldsStore.dispatchUld(uld, appStore.selectedFlight.id)
+      uld.backendId = result?.id
+      await appStore.loadUlds()
+    } catch (e) {
+      console.warn('[ULD Scan] Auto-save failed:', e)
+    }
   }
 }
 
@@ -583,6 +666,9 @@ function createNewBlankUld() {
     mawbs: [],
   })
   expandedUldId.value = localUlds.value[0].uid
+  creationStep.value = 1
+  scanMode.value = false
+  scanUldUid.value = null
 }
 
 async function dismountUld(uld) {

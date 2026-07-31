@@ -1,0 +1,1 @@
+ALTER TABLE booking ALTER COLUMN commodity_type TYPE VARCHAR(30);

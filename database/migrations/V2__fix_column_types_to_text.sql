@@ -1,0 +1,9 @@
+ALTER TABLE warehouse_receipt ALTER COLUMN shipper_comment TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN observations TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN delivered_by_id_doc_url TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN delivered_by_sig_url TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN received_by_id_doc_url TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN received_by_sig_url TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN broker_id_doc_url TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN broker_sig_url TYPE TEXT;
+ALTER TABLE warehouse_receipt ALTER COLUMN receipt_doc_url TYPE TEXT;
