@@ -88,7 +88,7 @@
             class="cursor-pointer select-none transition-all duration-150 inline-flex items-center gap-1"
             :class="columnFilters.status ? 'text-slate-300' : 'hover:text-white/80'">
             <span v-if="columnFilters.status" class="w-1.5 h-1.5 rounded-full inline-block"
-              :class="columnFilters.status === 'BOOKED' ? 'bg-slate-400' : columnFilters.status === 'PENDING' ? 'bg-slate-500' : 'bg-slate-600'"></span>
+              :class="statusDotClass[columnFilters.status] || 'bg-slate-400'"></span>
             Estado <span class="text-[10px]" :class="columnFilters.status ? 'opacity-100' : 'opacity-40'">&#9660;</span>
           </span>
           <div v-if="headerFilterOpen === 'status'"
@@ -1158,9 +1158,17 @@ const uniqueValues = computed(() => {
 
 const statusOptions = [
   { key: 'BOOKED', label: 'Pendientes', dotClass: 'bg-slate-400' },
-  { key: 'PENDING', label: 'En Proceso', dotClass: 'bg-slate-500' },
-  { key: 'RECEIVED', label: 'Recibidos', dotClass: 'bg-slate-600' },
+  { key: 'RECEIVED', label: 'Recibidos', dotClass: 'bg-blue-500' },
+  { key: 'MANIFESTED', label: 'Manifestados', dotClass: 'bg-amber-500' },
+  { key: 'DEPARTED', label: 'Despachados', dotClass: 'bg-emerald-500' },
 ]
+
+const statusDotClass = {
+  BOOKED: 'bg-slate-400',
+  RECEIVED: 'bg-blue-500',
+  MANIFESTED: 'bg-amber-500',
+  DEPARTED: 'bg-emerald-500',
+}
 
 function toggleHeaderFilter(col) {
   headerFilterOpen.value = headerFilterOpen.value === col ? null : col
@@ -1212,16 +1220,16 @@ watch(filterTextRaw, (val) => {
   filterDebounce = setTimeout(() => { filterText.value = val }, 200)
 })
 
-const statusPriority = { BOOKED: 0, PENDING: 1, RECEIVED: 2 }
+const statusPriority = { BOOKED: 0, RECEIVED: 1, MANIFESTED: 2, DEPARTED: 3 }
 
 const filteredMawbs = computed(() => {
   let list = store.mawbs
-  if (columnFilters.status === 'BOOKED') {
-    list = list.filter(m => !m.status || m.status === 'BOOKED')
-  } else if (columnFilters.status === 'PENDING') {
-    list = list.filter(m => m.status === 'PENDING')
-  } else if (columnFilters.status === 'RECEIVED') {
-    list = list.filter(m => m.status === 'RECEIVED')
+  if (columnFilters.status) {
+    if (columnFilters.status === 'BOOKED') {
+      list = list.filter(m => !m.status || m.status === 'BOOKED')
+    } else {
+      list = list.filter(m => m.status === columnFilters.status)
+    }
   }
   if (columnFilters.mawb) {
     list = list.filter(m => m.awbNumber === columnFilters.mawb)
@@ -1296,11 +1304,12 @@ function matchAnyField(m, fn) {
 
 const steps = ['HEADER', 'PIECES', 'REMARKS', 'EVIDENCE', 'SIGNATURES']
 const statusSteps = [
-  { key: 'BOOKED',   color: 'bg-slate-500 border-slate-600', label: 'Pendiente',  tone: 'slate' },
-  { key: 'PENDING',  color: 'bg-slate-600 border-slate-700',   label: 'En Proceso', tone: 'slate' },
-  { key: 'RECEIVED', color: 'bg-slate-700 border-slate-800', label: 'Recibido', tone: 'slate' },
+  { key: 'BOOKED',     color: 'bg-slate-500 border-slate-600',  label: 'Pendiente',  tone: 'slate' },
+  { key: 'RECEIVED',   color: 'bg-blue-500 border-blue-600',    label: 'Recibido',   tone: 'blue' },
+  { key: 'MANIFESTED', color: 'bg-amber-500 border-amber-600',  label: 'Manifestado', tone: 'amber' },
+  { key: 'DEPARTED',   color: 'bg-emerald-500 border-emerald-600', label: 'Despachado', tone: 'emerald' },
 ]
-const statusOrder = ['BOOKED', 'PENDING', 'RECEIVED']
+const statusOrder = ['BOOKED', 'RECEIVED', 'MANIFESTED', 'DEPARTED']
 
 function getStatusDot(m, s) {
   const cur = m.status || 'BOOKED'
@@ -1312,18 +1321,30 @@ function getStatusDot(m, s) {
   return 'bg-slate-200 border-slate-300'
 }
 
+const statusLabels = {
+  BOOKED: 'Pendiente',
+  RECEIVED: 'Recibido',
+  MANIFESTED: 'Manifestado',
+  DEPARTED: 'Despachado',
+  ARRIVED: 'Llegado',
+  CANCELLED: 'Cancelado',
+}
+
 function statusLabel(m) {
-  const labels = { BOOKED: 'Pendiente', PENDING: 'En Proceso', RECEIVED: 'Recibido' }
-  return labels[m.status] || 'Pendiente'
+  return statusLabels[m.status] || m.status || 'Pendiente'
+}
+
+const statusLabelCls = {
+  BOOKED: 'text-slate-500',
+  RECEIVED: 'text-blue-700',
+  MANIFESTED: 'text-amber-700',
+  DEPARTED: 'text-emerald-700',
+  ARRIVED: 'text-slate-700',
+  CANCELLED: 'text-red-600',
 }
 
 function statusLabelClass(m) {
-  const cls = {
-    BOOKED: 'text-slate-500',
-    PENDING: 'text-slate-600',
-    RECEIVED: 'text-slate-700',
-  }
-  return cls[m.status] || 'text-slate-500'
+  return statusLabelCls[m.status] || 'text-slate-500'
 }
 
 function editOrExpandReceipt(m) {
@@ -1654,8 +1675,7 @@ async function syncMawbName(m, field) {
 async function changeMawbStatus(m, newStatus) {
   const cur = m.status || 'BOOKED'
   if (cur === newStatus) return
-  const labels = { BOOKED: 'Pendiente', PENDING: 'En Proceso', RECEIVED: 'Recibido' }
-  if (!confirm(`¿Cambiar estado de ${m.awbNumber || m.id.slice(0, 8)} de "${labels[cur] ?? cur}" a "${labels[newStatus] ?? newStatus}"?`)) return
+  if (!confirm(`¿Cambiar estado de ${m.awbNumber || m.id.slice(0, 8)} de "${statusLabels[cur] ?? cur}" a "${statusLabels[newStatus] ?? newStatus}"?`)) return
   m.status = newStatus
   try {
     await mawbsApi.updateStatus(m.id, newStatus)

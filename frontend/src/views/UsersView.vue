@@ -112,7 +112,7 @@
         <!-- Users by role -->
         <div class="ds-table-section">
           <div class="ds-section-header px-4 py-2">
-            <span class="ds-label">Connected users with role {{ roleLabel(selectedRole) }}</span>
+            <span class="ds-label">{{ showConnectedOnly ? 'Connected users with role' : 'All users with role' }} {{ roleLabel(selectedRole) }}</span>
           </div>
           <table class="w-full text-sm">
             <thead>
@@ -124,20 +124,20 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="u in roleUsers" :key="u.userId"
+              <tr v-for="u in roleUsers" :key="userIdOf(u)"
                 class="border-t transition-all cursor-pointer"
-                :class="selectedUserId === u.userId
+                :class="selectedUserId === userIdOf(u)
                   ? 'bg-blue-50 border-l-4 border-l-blue-600 font-semibold'
                   : 'border-slate-100 hover:bg-slate-50'"
                 @click="selectUser(u)">
-                <td :class="selectedUserId === u.userId ? 'text-blue-700' : 'text-slate-900'">
-                  <span class="w-1.5 h-1.5 rounded-full inline-block mr-1.5 bg-green-500"></span>
+                <td :class="selectedUserId === userIdOf(u) ? 'text-blue-700' : 'text-slate-900'">
+                  <span class="w-1.5 h-1.5 rounded-full inline-block mr-1.5" :class="u.userId ? 'bg-green-500' : 'bg-slate-300'"></span>
                   {{ u.fullName || '—' }}
                 </td>
-                <td :class="selectedUserId === u.userId ? 'text-blue-700' : 'text-slate-500'">{{ u.email }}</td>
-                <td class="text-[12px]" :class="selectedUserId === u.userId ? 'text-blue-700' : 'text-slate-500'">{{ formatDate(u.lastHeartbeat) }}</td>
+                <td :class="selectedUserId === userIdOf(u) ? 'text-blue-700' : 'text-slate-500'">{{ u.email }}</td>
+                <td class="text-[12px]" :class="selectedUserId === userIdOf(u) ? 'text-blue-700' : 'text-slate-500'">{{ formatDate(u.lastLogin || u.lastHeartbeat) }}</td>
                 <td class="text-center">
-                  <span v-if="selectedUserId === u.userId" class="text-[12px] font-medium px-2 py-0.5 rounded bg-blue-600 text-white">
+                  <span v-if="selectedUserId === userIdOf(u)" class="text-[12px] font-medium px-2 py-0.5 rounded bg-blue-600 text-white">
                     {{ userAuditLogs.length }} eventos
                   </span>
                   <span v-else class="text-[12px] hover:text-blue-600 transition-colors text-slate-400">Ver</span>
@@ -333,7 +333,7 @@ const tabs = computed(() => {
     { key: 'connected', label: 'Conectados' },
     { key: 'audit', label: 'Auditoría' },
   ]
-  if (auth.role === 'SUPER_USER') {
+  if (auth.role === 'SUPER_USER' || auth.role === 'ADMIN') {
     t.push({ key: 'roles', label: 'Roles y Permisos' })
   }
   return t
@@ -360,6 +360,7 @@ const showConnectedOnly = ref(true)
 const selectedUserFullName = computed(() => {
   if (!selectedUserId.value) return ''
   const u = connected.value.find(u => u.userId === selectedUserId.value)
+    || allUsers.value.find(u => u.id === selectedUserId.value)
   return u ? (u.fullName || u.email) : ''
 })
 
@@ -506,10 +507,15 @@ function onRoleChange() {
   }
 }
 
+function userIdOf(u) {
+  return u ? (u.userId || u.id) : null
+}
+
 async function selectUser(u) {
-  selectedUserId.value = u.userId
+  selectedUserId.value = userIdOf(u)
+  if (!selectedUserId.value) return
   try {
-    const res = await usersApi.getAuditLogs(u.userId)
+    const res = await usersApi.getAuditLogs(selectedUserId.value)
     userAuditLogs.value = res.data
   } catch (e) {
     toast.error(extractError(e))
@@ -592,7 +598,7 @@ watch(activeTab, (tab) => {
     loadLogs()
     loadUserOptions()
   }
-  if (tab === 'roles' && !tabsLoaded.roles && auth.role === 'SUPER_USER') {
+  if (tab === 'roles' && !tabsLoaded.roles && (auth.role === 'SUPER_USER' || auth.role === 'ADMIN')) {
     tabsLoaded.roles = true
     Promise.all([loadRoles(), loadViews(), loadAllUsers()])
   }

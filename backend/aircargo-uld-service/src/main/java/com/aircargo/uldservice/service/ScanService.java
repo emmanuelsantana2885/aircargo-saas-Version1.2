@@ -113,6 +113,7 @@ public class ScanService {
         result.setMessage("Pieza #" + nextPieceNumber + " registrada");
         result.setPieceNumber(nextPieceNumber);
         result.setAwbNumber(mawb.getAwbNumber());
+        result.setMawbId(mawb.getId().toString());
         result.setTotalOnUld((int) existingCount + 1);
         result.setAvailablePieces(Math.max(0, maxAllowed - (int) existingCount - 1));
         return result;

@@ -744,8 +744,10 @@ function onScroll() {
 async function buildMatrix() {
   loadingMatrix.value = true
   try {
+    const params = {}
+    if (store.selectedFlight?.airlineId) params.airlineId = store.selectedFlight.airlineId
     const [uldRes, linkRes] = await Promise.all([
-      api.get('/ulds', { params: { airlineId: store.selectedFlight?.airlineId || '' } }),
+      api.get('/ulds', { params }),
       api.get('/uld-awbs'),
     ])
     const ulds = uldRes.data

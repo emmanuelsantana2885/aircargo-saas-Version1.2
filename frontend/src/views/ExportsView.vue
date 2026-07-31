@@ -11,10 +11,6 @@
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="showImport = !showImport" class="ds-btn-secondary">
-          <IconUpload :size="14" />
-          Importar
-        </button>
         <button @click="handleExport" :disabled="!rows.length"
           class="ds-btn-secondary disabled:opacity-40 disabled:cursor-not-allowed">
           <IconDownload :size="14" />
@@ -58,78 +54,6 @@
         </button>
       </div>
     </div>
-
-    <!-- ═══ IMPORT PANEL (collapsible) ═══ -->
-    <transition name="slide">
-      <div v-if="showImport" class="mb-4 shrink-0 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-        <div class="ds-section-header px-4 py-2.5 bg-white">
-          <div class="flex items-center gap-2">
-            <IconUpload :size="14" class="text-slate-500" />
-            <span class="text-[13px] font-bold font-mono uppercase tracking-wider text-slate-700">Importar Load Planning</span>
-          </div>
-          <button @click="showImport = false" class="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
-        </div>
-        <div class="p-4 flex items-center gap-4">
-          <div class="border-2 border-dashed rounded-lg px-6 py-4 text-center transition-colors flex-1"
-            :class="dragOver
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-slate-300 bg-white'"
-            @dragover.prevent="dragOver = true"
-            @dragleave="dragOver = false"
-            @drop.prevent="handleDrop">
-            <IconUpload :size="24" class="mx-auto mb-1.5 text-slate-400" />
-            <p class="text-[13px] font-mono text-slate-500 mb-2">
-              {{ selectedFile ? selectedFile.name : 'Arrastra el archivo .xlsx aquí' }}
-            </p>
-            <input ref="fileInput" type="file" accept=".xlsx,.xls" @change="handleFileSelect" class="hidden">
-            <button @click="$refs.fileInput.click()"
-              class="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-900 underline underline-offset-2 hover:text-slate-600 transition">
-              Seleccionar archivo
-            </button>
-          </div>
-          <button @click="handleImport" :disabled="!selectedFile || importing"
-            class="ds-btn-primary shrink-0"
-            :class="!selectedFile || importing ? '!bg-slate-300 !border-slate-300 cursor-not-allowed' : ''">
-            <span class="flex items-center gap-1.5">
-              <IconUpload :size="14" />
-              {{ importing ? 'Importando...' : 'Importar' }}
-            </span>
-          </button>
-        </div>
-
-        <!-- Import result -->
-        <div v-if="result" class="mx-4 mb-4 rounded-lg p-3 text-[13px] font-mono space-y-2"
-          :class="result.failedSheets === 0
-            ? 'bg-green-50 text-green-800 border border-green-200'
-            : 'bg-amber-50 text-amber-800 border border-amber-200'">
-          <div class="font-bold flex items-center gap-2">
-            <IconCheck v-if="result.failedSheets === 0" :size="14" />
-            <IconAlertCircle v-else :size="14" />
-            {{ result.successSheets }} de {{ result.totalSheets }} hojas importadas
-          </div>
-          <div class="grid grid-cols-5 gap-3 text-[12px]">
-            <div><span class="font-bold">ULDs:</span> {{ result.totalUldsCreated }} / {{ result.totalUldsUpdated }}</div>
-            <div><span class="font-bold">MAWBs:</span> {{ result.totalMawbsCreated }}</div>
-            <div><span class="font-bold">Bookings:</span> {{ result.totalBookingsCreated }}</div>
-            <div><span class="font-bold">Links:</span> {{ result.totalUldAwbsCreated }}</div>
-          </div>
-          <div v-for="sr in result.sheetResults" :key="sr.sheetName" class="pt-2 border-t border-current/20">
-            <div class="font-semibold flex items-center gap-1.5">
-              <IconCircleCheck v-if="sr.success" :size="12" class="text-green-600" />
-              <IconCircleX v-else :size="12" class="text-red-600" />
-              {{ sr.sheetName }} — {{ sr.flightNumber || 'N/A' }}
-            </div>
-            <div v-if="sr.error" class="mt-1" style="color: #dc2626">{{ sr.error }}</div>
-            <div v-if="sr.warnings?.length" class="mt-1 space-y-0.5 opacity-75">
-              <div v-for="(w, i) in sr.warnings" :key="i">⚠ {{ w }}</div>
-            </div>
-          </div>
-        </div>
-        <div v-if="importError" class="mx-4 mb-4 rounded-lg p-3 text-[13px] font-mono bg-red-50 text-red-800 border border-red-200">
-          {{ importError }}
-        </div>
-      </div>
-    </transition>
 
     <!-- ═══ TABLE ═══ -->
     <div class="ds-table-section">
@@ -211,15 +135,11 @@
 
 <script setup>
 import { ref, computed, reactive } from 'vue'
-import { exportData, importLoadPlanning } from '../api/exports'
+import { exportData } from '../api/exports'
 import {
   IconSearch,
   IconDownload,
-  IconUpload,
-  IconCheck,
   IconAlertCircle,
-  IconCircleCheck,
-  IconCircleX,
 } from '@tabler/icons-vue'
 
 const types = [
@@ -239,15 +159,6 @@ const rows = ref([])
 const cols = ref([])
 const loading = ref(false)
 const tableError = ref('')
-
-// Import state
-const fileInput = ref(null)
-const selectedFile = ref(null)
-const dragOver = ref(false)
-const importing = ref(false)
-const result = ref(null)
-const importError = ref('')
-const showImport = ref(false)
 
 const typeLabel = computed(() => types.find(t => t.value === exportType.value)?.label || exportType.value)
 
@@ -381,56 +292,4 @@ function handleExport() {
       tableError.value = 'Error al exportar CSV'
     })
 }
-
-// Import handlers
-function handleFileSelect(e) {
-  selectedFile.value = e.target.files[0] || null
-  result.value = null
-  importError.value = ''
-}
-
-function handleDrop(e) {
-  dragOver.value = false
-  const f = e.dataTransfer?.files?.[0]
-  if (f && (f.name.endsWith('.xlsx') || f.name.endsWith('.xls'))) {
-    selectedFile.value = f
-    result.value = null
-    importError.value = ''
-  }
-}
-
-function handleImport() {
-  if (!selectedFile.value || importing.value) return
-  importing.value = true
-  result.value = null
-  importError.value = ''
-  ;(async () => {
-    try {
-      const res = await importLoadPlanning(selectedFile.value)
-      result.value = res.data
-    } catch (err) {
-      importError.value = err.response?.data?.error || err.message || 'Error al importar'
-    } finally {
-      importing.value = false
-    }
-  })()
-}
 </script>
-
-<style scoped>
-.slide-enter-active, .slide-leave-active {
-  transition: all 0.2s ease;
-}
-.slide-enter-from, .slide-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-  max-height: 0;
-  margin-bottom: 0;
-  padding: 0;
-}
-.slide-enter-to, .slide-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-  max-height: 500px;
-}
-</style>

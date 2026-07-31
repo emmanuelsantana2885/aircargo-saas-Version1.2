@@ -170,6 +170,7 @@ async function processScan(codeOverride) {
           success: true,
           message: `Pieza #${res.data.pieceNumber} — ${res.data.awbNumber}`,
           pieceNumber: res.data.pieceNumber,
+          mawbId: res.data.mawbId,
           totalOnUld: res.data.totalOnUld,
           maxAllowed: res.data.totalOnUld + res.data.availablePieces,
           warning: res.data.warning || null,

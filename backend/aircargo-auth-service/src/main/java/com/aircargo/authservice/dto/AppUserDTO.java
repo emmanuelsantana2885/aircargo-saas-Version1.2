@@ -33,6 +33,7 @@ public class AppUserDTO {
     private Boolean mfaEnabled;
     private Boolean mfaLocked;
     private Boolean mustChangePassword;
+    private Boolean passwordSet;
 
     public static AppUserDTO fromEntity(AppUser entity){
         if(entity == null) return null;
@@ -51,6 +52,7 @@ public class AppUserDTO {
                 .mfaEnabled(entity.getMfaEnabled())
                 .mfaLocked(entity.getMfaLocked())
                 .mustChangePassword(entity.getMustChangePassword())
+                .passwordSet(entity.getPasswordHash() != null)
                 .build();
     }
 
@@ -67,7 +69,7 @@ public class AppUserDTO {
         entity.setEmail(dto.getEmail());
         entity.setFullName(dto.getFullName());
         entity.setRole(dto.getRole());
-        entity.setIsActive(dto.getIsActive());
+        entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
         entity.setLastLogin(dto.getLastLogin());
         return entity;
     }

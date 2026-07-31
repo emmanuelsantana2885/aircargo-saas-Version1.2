@@ -43,7 +43,7 @@ export const useUldsStore = defineStore('ulds', () => {
       const params = {}
       if (appStore.selectedFlight?.airlineId) params.airlineId = appStore.selectedFlight.airlineId
       const res = await api.get('/flights', { params })
-      flights.value = res.data
+      flights.value = res.data.content || res.data
       if (flights.value.length && !selectedFlightId.value) {
         const first = flights.value[0]
         if (first) await selectFlight(first.id)
@@ -105,12 +105,12 @@ export const useUldsStore = defineStore('ulds', () => {
       uldNumber: uld.id || uld.uldNumber,
       uldType: uld.uldType || inferUldType(uld.id || uld.uldNumber),
       config: uld.config || null,
-      position: uld.pos || uld.position || null,
-      sealNumber: uld.sealNumber || null,
+      position: uld.pos ?? uld.position ?? null,
+      sealNumber: uld.sealNumber ?? null,
       grossWeightLbs: uld.grossWeightLbs || uld.grossWeight || 0,
       tareLbs: uld.tareLbs || uld.tareWeight || 0,
       status: uld.status || 'BUILT',
-      notes: uld.filledBy ? `Llenado por: ${uld.filledBy}` : null,
+      notes: uld.notes ?? (uld.filledBy ? `Llenado por: ${uld.filledBy}` : null),
     }
 
     let res

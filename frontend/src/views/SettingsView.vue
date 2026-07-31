@@ -73,8 +73,8 @@
               </td>
               <td class="text-center">
                 <span class="text-[12px] font-medium"
-                  :class="user.mustChangePassword ? 'text-red-600' : (user.passwordHash ? 'text-slate-900' : 'text-slate-400')">
-                  {{ user.mustChangePassword ? 'Pendiente' : (user.passwordHash ? 'Establecida' : 'Sin contraseña') }}
+                  :class="user.mustChangePassword ? 'text-red-600' : (user.passwordSet ? 'text-slate-900' : 'text-slate-400')">
+                  {{ user.mustChangePassword ? 'Pendiente' : (user.passwordSet ? 'Establecida' : 'Sin contraseña') }}
                 </span>
               </td>
               <td class="text-center">

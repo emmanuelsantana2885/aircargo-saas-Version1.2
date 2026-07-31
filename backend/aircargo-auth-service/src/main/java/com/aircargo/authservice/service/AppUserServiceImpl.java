@@ -60,7 +60,7 @@ public class AppUserServiceImpl implements AppUserService {
                     existing.setEmail(dto.getEmail());
                     existing.setFullName(dto.getFullName());
                     existing.setRole(dto.getRole());
-                    existing.setIsActive(dto.getIsActive());
+                    existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
                     if (dto.getAirlineId() != null) {
                         com.aircargo.common.entity.Airline airline = new com.aircargo.common.entity.Airline();
                         airline.setId(dto.getAirlineId());

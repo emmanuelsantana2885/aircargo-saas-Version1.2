@@ -63,6 +63,7 @@ public class AppUserController {
         if (dto.getSiteIds() == null || dto.getSiteIds().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
+        if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         AppUserDTO created = appUserService.create(dto);
         auditService.logUserCreate(
                 principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
@@ -74,6 +75,7 @@ public class AppUserController {
     public ResponseEntity<AppUserDTO> update(@PathVariable UUID id, @Valid @RequestBody AppUserDTO dto,
                                               @AuthenticationPrincipal UserPrincipal principal,
                                               HttpServletRequest request) {
+        if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         return appUserService.update(id, dto)
                 .map(updated -> {
                     auditService.logUserUpdate(

@@ -372,14 +372,21 @@ function airlineCodeById(airlineId) {
 const uldTypes = ['PMC','PAH','PAG','PAJ','AAY','AAZ','AAD','PIP','BULK','AMP','AMJ']
 
 const specialItems = [
-  { id: 'spc-sdq-sdf', awbNumber: 'SDQ/SDF', shipperName: 'Ruta Doméstica SDQ→SDF', consigneeName: 'Ruta Doméstica SDQ→SDF', commodityType: 'DOMESTIC', pieces: 0, destination: 'SDF', isSpecial: true },
-  { id: 'spc-sdq-mia', awbNumber: 'SDQ/MIA', shipperName: 'Ruta Doméstica SDQ→MIA', consigneeName: 'Ruta Doméstica SDQ→MIA', commodityType: 'DOMESTIC', pieces: 0, destination: 'MIA', isSpecial: true },
-  { id: 'spc-wwef', awbNumber: 'WWEF', shipperName: 'Worldwide Express Freight', consigneeName: 'WWEF', commodityType: 'EXPRESS', pieces: 0, destination: 'MIA', isSpecial: true },
-  { id: 'spc-fcc', awbNumber: 'FCC', shipperName: 'Full Container Load', consigneeName: 'FCC Equipment', commodityType: 'EQUIPMENT', pieces: 0, destination: '', isSpecial: true },
-  { id: 'spc-empty-uld', awbNumber: 'EMPTY ULD', shipperName: 'Empty ULD', consigneeName: 'Empty ULD Equipment', commodityType: 'EQUIPMENT', pieces: 0, destination: '', isSpecial: true },
-  { id: 'spc-empty-bags', awbNumber: 'EMPTY BAGS', shipperName: 'Empty Bags', consigneeName: 'Empty Bags Equipment', commodityType: 'EQUIPMENT', pieces: 0, destination: '', isSpecial: true },
-  { id: 'spc-nets', awbNumber: 'NETS', shipperName: 'Cargo Nets', consigneeName: 'Cargo Nets Equipment', commodityType: 'EQUIPMENT', pieces: 0, destination: '', isSpecial: true },
+  { id: 'spc-sdq-sdf', awbNumber: 'SDQ/SDF', shipperName: 'Ruta Doméstica SDQ→SDF', consigneeName: 'Ruta Doméstica SDQ→SDF', commodityType: 'SDQ_SDF', pieces: 0, destination: 'SDF', isSpecial: true },
+  { id: 'spc-sdq-mia', awbNumber: 'SDQ/MIA', shipperName: 'Ruta Doméstica SDQ→MIA', consigneeName: 'Ruta Doméstica SDQ→MIA', commodityType: 'SDQ_MIA', pieces: 0, destination: 'MIA', isSpecial: true },
+  { id: 'spc-wwef', awbNumber: 'WWEF', shipperName: 'Worldwide Express Freight', consigneeName: 'WWEF', commodityType: 'WWEF', pieces: 0, destination: 'MIA', isSpecial: true },
+  { id: 'spc-fcc', awbNumber: 'FCC', shipperName: 'Full Container Load', consigneeName: 'FCC Equipment', commodityType: 'FCC', pieces: 0, destination: '', isSpecial: true },
+  { id: 'spc-empty-uld', awbNumber: 'EMPTY ULD', shipperName: 'Empty ULD', consigneeName: 'Empty ULD Equipment', commodityType: 'EMPTY_ULD', pieces: 0, destination: '', isSpecial: true },
+  { id: 'spc-empty-bags', awbNumber: 'EMPTY BAGS', shipperName: 'Empty Bags', consigneeName: 'Empty Bags Equipment', commodityType: 'EMPTY_BAGS', pieces: 0, destination: '', isSpecial: true },
+  { id: 'spc-nets', awbNumber: 'NETS', shipperName: 'Cargo Nets', consigneeName: 'Cargo Nets Equipment', commodityType: 'NETS', pieces: 0, destination: '', isSpecial: true },
 ]
+
+const VALID_COMMODITIES = new Set(['DRY_CARGO','ELECTRONICS','PERISHABLE','HIGH_VALUES','CIGARETTES','SMALL_PACKAGES','WWEF','LIVE_PLANTS','GENERAL','COMAT','FCC','EMPTY_ULD','EMPTY_PALLET','RED_TAG','EMPTY_BAGS','NETS','SDQ_SDF','SDQ_MIA'])
+
+function normalizeCommodity(val) {
+  const v = String(val || '').trim().toUpperCase()
+  return VALID_COMMODITIES.has(v) ? v : 'GENERAL'
+}
 
 const expandedUldId = ref(null)
 
@@ -460,7 +467,7 @@ function onScanPieceAdded(result) {
     mawbRow = {
       _rowId: Math.random().toString(36).slice(2),
       awbNumber: result.awbNumber,
-      commodityType: mawbData?.commodityType || 'DRY_CARGO',
+      commodityType: normalizeCommodity(mawbData?.commodityType),
       commodityHint: mawbData?.commodityType || '',
       pieces: 0,
       piecesPct: 0,
@@ -503,11 +510,13 @@ async function onUldNumberScanned(code) {
   }
 
   // Auto-save ULD so backendId is available for MAWB piece registration
-  if (!uld.backendId && appStore.selectedFlight?.id) {
+  const flightId = uld.saveFlightId || appStore.selectedFlight?.id
+  if (!uld.backendId && flightId) {
     try {
-      uld.airlineId = uld.airlineId || appStore.selectedFlight?.airlineId
-      uld.flightId = appStore.selectedFlight.id
-      const result = await uldsStore.dispatchUld(uld, appStore.selectedFlight.id)
+      const flight = appStore.flights.find(f => f.id === flightId)
+      uld.airlineId = uld.airlineId || flight?.airlineId || appStore.selectedFlight?.airlineId
+      uld.flightId = flightId
+      const result = await uldsStore.dispatchUld(uld, flightId)
       uld.backendId = result?.id
       await appStore.loadUlds()
     } catch (e) {
@@ -722,12 +731,12 @@ async function deleteUld(uld) {
       await uldsApi.update(uld.backendId, {
         airlineId: uld.airlineId || appStore.selectedFlight?.airlineId || null,
         uldNumber: uld.uldNumber,
-        position: null,
-        sealNumber: null,
+        position: '',
+        sealNumber: '',
         tareLbs: 0,
         grossWeightLbs: 0,
         status: 'OPEN',
-        notes: null,
+        notes: '',
       })
       uld.tareLbs = 0
       await uldsApi.assignFlight(uld.backendId, null)
@@ -771,12 +780,12 @@ async function saveUld(uld) {
         uldNumber: uld.uldNumber,
         uldType: uld.uldType,
         config: uld.config || null,
-        position: uld.position || null,
-        sealNumber: uld.sealNumber || null,
+        position: uld.position ?? null,
+        sealNumber: uld.sealNumber ?? null,
         tareLbs: uld.tareLbs || 0,
         grossWeightLbs: uld.grossWeightLbs || 0,
         status: uld.status || 'OPEN',
-        notes: uld.notes || null,
+        notes: uld.notes ?? null,
       })
       // Recreate ULD-AWB links
       if (uld.backendId) {
@@ -792,7 +801,7 @@ async function saveUld(uld) {
             uldId: uld.backendId,
             mawbId: matchingMawb?.id || null,
             mawbLabel: m.awbNumber,
-            description: m.commodityType || 'DRY_CARGO',
+            description: normalizeCommodity(m.commodityType),
             destination: m.destination || 'MIA',
             pieces: m.pieces || 0,
             piecesPct: m.piecesPct || 0,
@@ -830,7 +839,7 @@ async function saveUld(uld) {
           uldId: result.id,
           mawbId: matchingMawb?.id || null,
           mawbLabel: m.awbNumber,
-          description: m.commodityType || 'DRY_CARGO',
+          description: normalizeCommodity(m.commodityType),
           destination: m.destination || 'MIA',
           pieces: m.pieces || 0,
           piecesPct: m.piecesPct || 0,
@@ -877,7 +886,7 @@ function removeMawbRow(uld, index) {
 function onMawbSelect(uld, mIdx) {
   const selected = availableMawbs.value.find(m => m.awbNumber === uld.mawbs[mIdx].awbNumber)
   if (selected) {
-    uld.mawbs[mIdx].commodityType = selected.commodityType || 'DRY_CARGO'
+    uld.mawbs[mIdx].commodityType = normalizeCommodity(selected.commodityType)
     uld.mawbs[mIdx].commodityHint = selected.commodityType || ''
     uld.mawbs[mIdx].destination = selected.destination || 'MIA'
     uld.mawbs[mIdx].mawbId = selected.isSpecial ? null : selected.id

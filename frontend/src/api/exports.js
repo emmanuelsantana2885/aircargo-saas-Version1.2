@@ -13,9 +13,3 @@ export function getExportJson(type, dateFrom = null, dateTo = null, audit = fals
   if (dateTo) params.dateTo = dateTo
   return api.get(`/exports/${type}`, { params })
 }
-
-export function importLoadPlanning(file) {
-  const form = new FormData()
-  form.append('file', file)
-  return api.post('/exports/import/load-planning', form)
-}
