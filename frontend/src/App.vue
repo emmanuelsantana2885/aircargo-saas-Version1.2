@@ -22,6 +22,10 @@ import Header from './components/layout/Header.vue'
 import ToastNotifications from './components/ToastNotifications.vue'
 import { usersApi } from './api/users'
 import api from './api/client'
+import { initTheme } from './utils/theme'
+
+initTheme()
+
 
 const auth = useAuthStore()
 const toast = useToastStore()

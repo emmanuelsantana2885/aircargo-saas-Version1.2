@@ -16,6 +16,11 @@
 
     <div class="flex items-center gap-2 md:gap-4 relative z-10">
       <span class="text-[12px] md:text-xs text-slate-300">{{ date }}</span>
+      <button @click="toggleTheme" :title="theme === 'tokyo' ? 'Cambiar a tema claro' : 'Cambiar a tema Tokyo Night'"
+        class="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 transition">
+        <IconMoon v-if="theme === 'light'" :size="17" style="color: white" :stroke-width="1.8" />
+        <IconSun v-else :size="17" style="color: #ff9e64" :stroke-width="1.8" />
+      </button>
     </div>
   </header>
 </template>
@@ -23,12 +28,18 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { IconChevronRight, IconMenu } from '@tabler/icons-vue'
+import { IconChevronRight, IconMenu, IconMoon, IconSun } from '@tabler/icons-vue'
+import { getTheme, setTheme } from '../../utils/theme'
 
 defineEmits(['toggleSidebar'])
 
 const route = useRoute()
 const isMobile = ref(false)
+const theme = ref(getTheme())
+
+function toggleTheme() {
+  theme.value = setTheme(theme.value === 'tokyo' ? 'light' : 'tokyo')
+}
 
 function checkViewport() {
   isMobile.value = window.innerWidth < 768
