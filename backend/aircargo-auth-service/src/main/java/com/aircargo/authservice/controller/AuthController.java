@@ -343,6 +343,27 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@AuthenticationPrincipal UserPrincipal principal,
+                                    @RequestBody(required = false) Map<String, String> body,
+                                    HttpServletRequest servletRequest) {
+        String authHeader = servletRequest.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwtUtil.revokeToken(authHeader.substring(7));
+        }
+        String refreshToken = body != null ? body.get("refreshToken") : null;
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            jwtUtil.revokeToken(refreshToken);
+        }
+        if (principal != null) {
+            sessionTracker.removeSession(principal.getUserIdAsUuid());
+            auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                    "LOGOUT", "USER", principal.getUserIdAsUuid().toString(), null,
+                    servletRequest.getRemoteAddr());
+        }
+        return ResponseEntity.ok(Map.of("message", "Sesión cerrada correctamente"));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<LoginResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) {

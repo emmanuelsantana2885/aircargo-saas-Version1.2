@@ -114,6 +114,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    const tk = token.value
+    const rt = refreshToken.value
+    if (tk) {
+      authApi.logout(rt).catch(() => {})
+    }
     token.value = ''
     refreshToken.value = ''
     userId.value = null

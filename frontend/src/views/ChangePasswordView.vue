@@ -73,12 +73,23 @@
             v-model="newPassword"
             type="password"
             required
-            minlength="6"
-            placeholder="Mínimo 6 caracteres"
+            minlength="12"
+            placeholder="Mínimo 12 caracteres"
             class="w-full px-3 py-2.5 rounded text-base md:text-sm outline-none transition-all border-slate-300"
             style="background: var(--bg); color: var(--text)"
             :disabled="saving"
           />
+          <ul v-if="newPassword" class="mt-2 space-y-1">
+            <li
+              v-for="rule in passwordRules"
+              :key="rule.key"
+              class="flex items-center gap-1.5 text-[11px]"
+              :style="{ color: rule.met ? '#16a34a' : 'var(--muted)' }"
+            >
+              <span>{{ rule.met ? '✓' : '○' }}</span>
+              <span>{{ rule.label }}</span>
+            </li>
+          </ul>
         </div>
 
         <!-- Confirm password -->
@@ -88,7 +99,7 @@
             v-model="confirmPassword"
             type="password"
             required
-            minlength="6"
+            minlength="12"
             placeholder="Repite la contraseña"
             class="w-full px-3 py-2.5 rounded text-base md:text-sm outline-none transition-all border-slate-300"
             style="background: var(--bg); color: var(--text)"
@@ -134,6 +145,7 @@ import { usersApi } from '../api/users'
 import { IconLock } from '@tabler/icons-vue'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
+import { checkPasswordStrength, isStrongPassword, passwordRuleLabels } from '../utils/password'
 
 const router = useRouter()
 const toast = useToastStore()
@@ -150,11 +162,16 @@ const mustChange = computed(() => auth.mustChangePassword)
 const hasMfaSetup = ref(false)
 
 const canSubmit = computed(() => {
-  if (!newPassword.value || newPassword.value.length < 6) return false
+  if (!isStrongPassword(newPassword.value)) return false
   if (newPassword.value !== confirmPassword.value) return false
   if (totpCode.value.length !== 6) return false
   if (!mustChange.value && !currentPassword.value) return false
   return true
+})
+
+const passwordRules = computed(() => {
+  const strength = checkPasswordStrength(newPassword.value)
+  return passwordRuleLabels.map(r => ({ key: r.key, label: r.label, met: strength[r.key] }))
 })
 
 onMounted(async () => {
@@ -173,6 +190,11 @@ async function handleChangePassword() {
 
   if (newPassword.value !== confirmPassword.value) {
     errorMsg.value = 'Las contraseñas no coinciden'
+    return
+  }
+
+  if (!isStrongPassword(newPassword.value)) {
+    errorMsg.value = 'La contraseña debe tener al menos 12 caracteres e incluir mayúsculas, minúsculas, números y caracteres especiales.'
     return
   }
 
