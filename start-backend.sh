@@ -14,26 +14,14 @@ pkill -f "vite" 2>/dev/null || true
 sleep 2
 
 # =============================================================================
-# 🚀 BUILD every backend module
+# 🚀 BUILD every backend module (from the backend aggregator POM)
 # =============================================================================
 echo "[🏗️  Building all backend modules ...]"
 
-for dir in backend/aircargo-gateway \
-           backend/aircargo-auth-service \
-           backend/aircargo-flight-service \
-           backend/aircargo-booking-service \
-           backend/aircargo-mawb-service \
-           backend/aircargo-warehouse-service \
-           backend/aircargo-uld-service \
-           backend/aircargo-load-planning-service \
-           backend/aircargo-export-service \
-           backend/aircargo-notification-service; do
-    echo "  → $dir"
-    (cd "$dir" && mvn clean compile -DskipTests -q) || {
-        echo "❌ Maven build failed in $dir. Aborting."
-        exit 1
-    }
-done
+(cd "$AIR_ROOT/backend" && mvn clean package -DskipTests -q) || {
+    echo "❌ Maven build failed. Aborting."
+    exit 1
+}
 
 # =============================================================================
 # 🎮 START all backend services in background
@@ -53,8 +41,8 @@ for dir in backend/aircargo-gateway \
 
     name=$(basename "$dir")
     echo "  → Starting $name"
-    cd "$dir" && java -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1 &
-    echo "    [PID $(pgrep -f "${name}.*jar" | head -1 || echo '??')] -> /tmp/${name}.log"
+    (cd "$AIR_ROOT/$dir" && java -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1 &)
+    echo "    -> /tmp/${name}.log"
 done
 
 # =============================================================================
