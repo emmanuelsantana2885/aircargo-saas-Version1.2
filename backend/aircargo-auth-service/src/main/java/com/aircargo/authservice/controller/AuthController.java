@@ -104,24 +104,22 @@ public class AuthController {
             user.setLockedUntil(null);
         }
 
-        // MFA check — SuperUser can bypass MFA if not configured
+        // MFA check — all roles with MFA enabled must verify (no role bypass)
         if (mfaService.isMfaRequired(user)) {
-            if (user.getRole() != UserRole.SUPER_USER) {
-                if (request.totpCode() == null || request.totpCode().isBlank()) {
-                    return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED)
-                            .body(Map.of(
-                                    "mfaRequired", true,
-                                    "message", "Se requiere código de autenticación de dos factores"
-                            ));
-                }
-                if (Boolean.TRUE.equals(user.getMfaLocked())) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "Cuenta bloqueada por intentos fallidos de MFA. Contacte al administrador."));
-                }
-                if (!mfaService.verifyCode(user.getMfaSecret(), request.totpCode())) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(Map.of("error", "Código de autenticación inválido"));
-                }
+            if (Boolean.TRUE.equals(user.getMfaLocked())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Cuenta bloqueada por intentos fallidos de MFA. Contacte al administrador."));
+            }
+            if (request.totpCode() == null || request.totpCode().isBlank()) {
+                return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED)
+                        .body(Map.of(
+                                "mfaRequired", true,
+                                "message", "Se requiere código de autenticación de dos factores"
+                        ));
+            }
+            if (!mfaService.verifyCode(user.getMfaSecret(), request.totpCode())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Código de autenticación inválido"));
             }
         }
 
@@ -284,13 +282,16 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        // Always require MFA verification (SuperUser bypasses this)
+        // MFA verification — mandatory for non-SuperUser; SuperUser verifies only if MFA is enabled
+        boolean mfaEnabled = Boolean.TRUE.equals(user.getMfaEnabled());
         if (user.getRole() != UserRole.SUPER_USER) {
-            if (!Boolean.TRUE.equals(user.getMfaEnabled()) || user.getMfaSecret() == null) {
+            if (!mfaEnabled || user.getMfaSecret() == null) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "error", "Debes configurar autenticación de dos factores antes de cambiar tu contraseña"
                 ));
             }
+        }
+        if (mfaEnabled) {
             if (Boolean.TRUE.equals(user.getMfaLocked())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Cuenta bloqueada por intentos fallidos de MFA"));

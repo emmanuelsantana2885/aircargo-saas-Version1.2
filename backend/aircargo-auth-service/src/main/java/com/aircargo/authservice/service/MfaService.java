@@ -21,7 +21,7 @@ public class MfaService {
     private final SecretGenerator secretGenerator;
     private final TimeProvider timeProvider;
     private final CodeGenerator codeGenerator;
-    private final CodeVerifier codeVerifier;
+    private final DefaultCodeVerifier codeVerifier;
 
     public MfaService(AppUserRepository userRepository) {
         this.userRepository = userRepository;
@@ -29,6 +29,8 @@ public class MfaService {
         this.timeProvider = new SystemTimeProvider();
         this.codeGenerator = new DefaultCodeGenerator();
         this.codeVerifier = new DefaultCodeVerifier(codeGenerator, timeProvider);
+        this.codeVerifier.setTimePeriod(30);
+        this.codeVerifier.setAllowedTimePeriodDiscrepancy(1);
     }
 
     public String generateSecret() {
@@ -82,6 +84,6 @@ public class MfaService {
     }
 
     public boolean isMfaRequired(AppUser user) {
-        return user.getMfaEnabled() && !user.getMfaLocked();
+        return Boolean.TRUE.equals(user.getMfaEnabled());
     }
 }
