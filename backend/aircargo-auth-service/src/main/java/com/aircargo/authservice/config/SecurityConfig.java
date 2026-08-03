@@ -29,6 +29,7 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/api/users/**").hasAnyAuthority("ADMIN", "SUPER_USER")
                 .requestMatchers("/api/role-permissions/**").hasAnyAuthority("ADMIN", "SUPER_USER")
                 .requestMatchers("/api/audit-logs/**").hasAnyAuthority("ADMIN", "SUPER_USER")
