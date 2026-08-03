@@ -11,57 +11,77 @@ AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "[🛑 Stopping any existing Java/Vite processes...]"
 pkill -f "java -jar.*aircargo.*service" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
-sleep 2
+sleep 3
 
 # =============================================================================
 # 🚀 BUILD every backend module (from the backend aggregator POM)
+#    Heap-bounded so t3.small (1.9GB) doesn't swap-death during the build.
 # =============================================================================
 echo "[🏗️  Building all backend modules ...]"
 
-(cd "$AIR_ROOT/backend" && mvn clean package -DskipTests -q) || {
+MAVEN_OPTS="${MAVEN_OPTS:--Xmx512m -XX:MaxMetaspaceSize=256m}"
+
+(cd "$AIR_ROOT/backend" && MAVEN_OPTS="$MAVEN_OPTS" mvn clean package -DskipTests -q) || {
     echo "❌ Maven build failed. Aborting."
     exit 1
 }
 
-# =============================================================================
-# 🎮 START all backend services in background
-# =============================================================================
-echo "[▶️  Launching all backend services ...]"
+echo "[✅ Build finished.]"
 
-# Constrained VMs (t3.small): cap Hikari connections + honor JAVA_OPTS heap
+# =============================================================================
+# 🎮 START services ONE AT A TIME, waiting for each health endpoint.
+#    Staggered boot prevents the JVM boot-storm that froze the t3.small.
+# =============================================================================
+echo "[▶️  Launching all backend services (staggered) ...]"
+
 MAX_CONNS="-Dspring.datasource.hikari.maximum-pool-size=3"
 JAVA_OPTS="${JAVA_OPTS:-}"
 
-for dir in backend/aircargo-gateway \
-           backend/aircargo-auth-service \
-           backend/aircargo-flight-service \
-           backend/aircargo-booking-service \
-           backend/aircargo-mawb-service \
-           backend/aircargo-warehouse-service \
-           backend/aircargo-uld-service \
-           backend/aircargo-load-planning-service \
-           backend/aircargo-export-service \
-           backend/aircargo-notification-service; do
+wait_health() {
+    local name="$1" port="$2" timeout="${3:-240}"
+    echo "  ⏳ $name → http://localhost:${port}/actuator/health (timeout ${timeout}s)"
+    local start_time=$(date +%s)
+    while ! curl -s "http://localhost:${port}/actuator/health" | grep -q '"status":"UP"'; do
+        local elapsed=$(( $(date +%s) - start_time ))
+        if [ $elapsed -gt "$timeout" ]; then
+            echo "    ❌ $name not healthy after ${timeout}s."
+            return 1
+        fi
+        sleep 3
+    done
+    echo "    ✅ $name UP (${elapsed}s)"
+}
 
-    name=$(basename "$dir")
-    echo "  → Starting $name"
-    (cd "$AIR_ROOT/$dir" && java $MAX_CONNS $JAVA_OPTS -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1 &)
-    echo "    -> /tmp/${name}.log"
+# 1) Gateway — everything routes through it
+(
+    cd "$AIR_ROOT/backend/aircargo-gateway"
+    java $MAX_CONNS $JAVA_OPTS -jar "target/aircargo-gateway-1.2.0-SNAPSHOT.jar" >> "/tmp/aircargo-gateway.log" 2>&1 &
+)
+wait_health aircargo-gateway 8080 300 || exit 1
+
+# 2) Auth — needed for JWT issuance used by everyone downstream
+(
+    cd "$AIR_ROOT/backend/aircargo-auth-service"
+    java $MAX_CONNS $JAVA_OPTS -jar "target/aircargo-auth-service-1.2.0-SNAPSHOT.jar" >> "/tmp/aircargo-auth-service.log" 2>&1 &
+)
+wait_health aircargo-auth-service 9092 240 || exit 1
+
+# 3) The remaining 8 — booted sequentially so they don't collide on CPU/mem
+for entry in "aircargo-flight-service 9093" \
+             "aircargo-booking-service 9094" \
+             "aircargo-mawb-service 9095" \
+             "aircargo-warehouse-service 9096" \
+             "aircargo-uld-service 9097" \
+             "aircargo-load-planning-service 9098" \
+             "aircargo-export-service 9099" \
+             "aircargo-notification-service 9100"; do
+    name="${entry%% *}"
+    port="${entry##* }"
+    (
+        cd "$AIR_ROOT/backend/$name"
+        java $MAX_CONNS $JAVA_OPTS -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1 &
+    )
+    wait_health "$name" "$port" 240 || exit 1
 done
 
-# =============================================================================
-# ⌛ WAIT for Gateway actuator to report UP
-# =============================================================================
-echo "[⏳ Waiting for Gateway actuator /actuator/health (timeout 120s) ...]"
-
-start_time=$(date +%s)
-while ! curl -s http://localhost:8080/actuator/health | grep -q '"status":"UP"'; do
-    elapsed=$(( $(date +%s) - start_time ))
-    if [ $elapsed -gt 120 ]; then
-        echo "❌ ERROR: Gateway did not become healthy after 120s."
-        exit 1
-    fi
-    sleep 1
-done
-
-echo "✅ All backend services are healthy (Gateway took ${elapsed}s)."
+echo "✅ All 10 backend services healthy. (logs in /tmp/<service>.log)"
