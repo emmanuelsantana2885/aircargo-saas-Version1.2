@@ -9,9 +9,11 @@ AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 🛑 STOP EVERYTHING RUNNING — force an exec clean slate
 # =============================================================================
 echo "[🛑 Stopping any existing Java/Vite processes...]"
-pkill -f "java -jar.*aircargo.*service" 2>/dev/null || true
+pkill -f "aircargo.*SNAPSHOT.jar" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
 sleep 3
+pkill -9 -f "aircargo.*SNAPSHOT.jar" 2>/dev/null || true
+sleep 2
 
 # =============================================================================
 # 🚀 BUILD every backend module (from the backend aggregator POM)
@@ -41,14 +43,18 @@ wait_health() {
     local name="$1" port="$2" timeout="${3:-240}"
     echo "  ⏳ $name → http://localhost:${port}/actuator/health (timeout ${timeout}s)"
     local start_time=$(date +%s)
+    local elapsed=0
     while ! curl -s "http://localhost:${port}/actuator/health" | grep -q '"status":"UP"'; do
-        local elapsed=$(( $(date +%s) - start_time ))
-        if [ $elapsed -gt "$timeout" ]; then
+        elapsed=$(( $(date +%s) - start_time ))
+        if [ "$elapsed" -gt "$timeout" ]; then
             echo "    ❌ $name not healthy after ${timeout}s."
             return 1
         fi
         sleep 3
     done
+    if [ "$elapsed" -eq 0 ]; then
+        elapsed=$(( $(date +%s) - start_time ))
+    fi
     echo "    ✅ $name UP (${elapsed}s)"
 }
 
