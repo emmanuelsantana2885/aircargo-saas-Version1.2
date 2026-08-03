@@ -28,6 +28,10 @@ echo "[🏗️  Building all backend modules ...]"
 # =============================================================================
 echo "[▶️  Launching all backend services ...]"
 
+# Constrained VMs (t3.small): cap Hikari connections + honor JAVA_OPTS heap
+MAX_CONNS="-Dspring.datasource.hikari.maximum-pool-size=3"
+JAVA_OPTS="${JAVA_OPTS:-}"
+
 for dir in backend/aircargo-gateway \
            backend/aircargo-auth-service \
            backend/aircargo-flight-service \
@@ -41,7 +45,7 @@ for dir in backend/aircargo-gateway \
 
     name=$(basename "$dir")
     echo "  → Starting $name"
-    (cd "$AIR_ROOT/$dir" && java -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1 &)
+    (cd "$AIR_ROOT/$dir" && java $MAX_CONNS $JAVA_OPTS -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1 &)
     echo "    -> /tmp/${name}.log"
 done
 
