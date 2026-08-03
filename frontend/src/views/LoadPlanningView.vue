@@ -535,10 +535,12 @@ async function fetchLoadPlan(flightId) {
     loadPlan.value = res.data
   } catch (e) {
     loadPlan.value = null
-    toast.error(extractError(e))
-    if (e.response?.status !== 404) {
-      console.error('Error fetching load plan:', e)
+    if (e.response?.status === 404) {
+      // Aún no hay plan de carga para este vuelo — estado normal, no es un error.
+      return
     }
+    toast.error(extractError(e))
+    console.error('Error fetching load plan:', e)
   }
 }
 

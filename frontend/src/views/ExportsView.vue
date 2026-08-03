@@ -167,15 +167,15 @@ function isNumCol(col) {
 }
 
 function cellStyle(col, val) {
-  if (!val || val === '') return { color: '#94a3b8' }
+  if (!val || val === '') return { color: 'var(--muted, #94a3b8)' }
   if (col === 'transaction type') {
-    const colors = { CREATE: '#059669', UPDATE: '#d97706', READ: '#6366f1', DELETE: '#dc2626' }
-    return { color: colors[val] || '#1e293b', fontWeight: '700' }
+    const colors = { CREATE: '#34d399', UPDATE: '#fbbf24', READ: '#818cf8', DELETE: '#f87171' }
+    return { color: colors[val] || 'var(--text, #1e293b)', fontWeight: '700' }
   }
   if (col === 'user role') {
-    return { color: '#7c3aed', fontWeight: '600' }
+    return { color: '#c084fc', fontWeight: '600' }
   }
-  return { color: '#1e293b' }
+  return { color: 'var(--text, #1e293b)' }
 }
 
 function clearFilters() {

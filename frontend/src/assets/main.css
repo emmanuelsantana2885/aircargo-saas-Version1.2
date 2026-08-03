@@ -326,6 +326,7 @@ input:focus, select:focus, textarea:focus {
 /* ── Hover variants ───────────────────────────────────── */
 :root[data-theme='tokyo'] .hover\:bg-slate-100:hover { background-color: #334155; }
 :root[data-theme='tokyo'] .hover\:bg-slate-200:hover { background-color: #475569; }
+:root[data-theme='tokyo'] .hover\:bg-blue-50:hover { background-color: rgb(51 65 85 / 0.45); }
 :root[data-theme='tokyo'] .hover\:text-slate-950:hover { color: #f8fafc; }
 
 /* ── Opacity-modifier surfaces ────────────────────────── */
