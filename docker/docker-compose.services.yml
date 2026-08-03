@@ -17,6 +17,8 @@ services:
       dockerfile: aircargo-gateway/Dockerfile
     container_name: aircargo-gateway
     restart: unless-stopped
+    environment:
+      <<: *common-env
     ports:
       - "8080:8080"
 
@@ -141,10 +143,11 @@ services:
     container_name: aircargo-notification-service
     restart: unless-stopped
     environment:
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
+      <<: *common-env
     ports:
       - "9100:9100"
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy

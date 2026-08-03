@@ -652,8 +652,8 @@ async function saveBooking() {
       const awbNumber = form.value.awbNumber || `406-${Date.now().toString().slice(-8).padStart(8, '0')}`
       try {
         const mawb = await store.createMawb({
-          airline: { id: store.selectedFlight?.airlineId },
-          flight: { id: store.selectedFlightId },
+          airlineId: store.selectedFlight?.airlineId,
+          flightId: store.selectedFlightId,
           awbNumber: awbNumber,
           shipperName: form.value.shipperName || form.value.clientName,
           consigneeName: form.value.cnee || form.value.clientName,

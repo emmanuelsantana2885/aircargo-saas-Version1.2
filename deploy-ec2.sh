@@ -53,6 +53,7 @@ if [ ! -f "$APP_DIR/.env" ] || grep -q "CHANGE_ME" "$APP_DIR/.env" 2>/dev/null; 
 
   DB_PASS=$(openssl rand -hex 16)
   JWT_SECRET=$(openssl rand -hex 32)
+  RMQ_PASS=$(openssl rand -hex 16)
 
   cat > "$APP_DIR/.env" <<EOF
 # ── PostgreSQL ─────────────────────────────────────
@@ -61,12 +62,15 @@ POSTGRES_USER=aircargo_user
 POSTGRES_PASSWORD=${DB_PASS}
 POSTGRES_PORT=5432
 
+# ── RabbitMQ ──────────────────────────────────────
+RABBITMQ_USER=aircargo
+RABBITMQ_PASSWORD=${RMQ_PASS}
+
 # ── JWT (min 32 chars) ────────────────────────────
 JWT_SECRET=${JWT_SECRET}
 
 # ── Ports (host) ──────────────────────────────────
 FRONTEND_PORT=80
-BACKEND_PORT=9091
 
 # ── CORS ──────────────────────────────────────────
 CORS_ORIGINS=http://${PUBLIC_IP},http://localhost,http://localhost:80
@@ -79,8 +83,9 @@ EOF
   echo "✓ .env created (public IP: ${PUBLIC_IP})"
   echo ""
   echo "  ⚠  Save these credentials:"
-  echo "     DB password:    ${DB_PASS}"
-  echo "     JWT secret:     ${JWT_SECRET}"
+  echo "     DB password:       ${DB_PASS}"
+  echo "     RabbitMQ password: ${RMQ_PASS}"
+  echo "     JWT secret:        ${JWT_SECRET}"
   echo ""
 else
   echo "▸ .env already exists, keeping it"
@@ -95,8 +100,9 @@ docker compose up -d --build
 # ── 5. Wait for health ─────────────────────────
 echo "▸ Waiting for services to be healthy..."
 for i in {1..60}; do
-  if docker compose ps --format json 2>/dev/null | grep -q '"Health":"healthy"' || \
-     curl -sf http://localhost/api/ > /dev/null 2>&1; then
+  if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1 && \
+     curl -sf http://localhost/ > /dev/null 2>&1; then
+    echo "  ✓ Gateway and frontend are up after $((i*5))s"
     break
   fi
   sleep 5
@@ -112,7 +118,7 @@ echo "  ✓ Deployment complete!"
 echo "═══════════════════════════════════════════════"
 echo ""
 echo "  Frontend:  http://${PUBLIC_IP}"
-echo "  Backend:   http://${PUBLIC_IP}:9091"
+echo "  API:       http://${PUBLIC_IP}:8080"
 echo ""
 echo "  Status:    docker compose ps"
 echo "  Logs:      docker compose logs -f"

@@ -2,6 +2,8 @@ package com.aircargo.mawbservice.entity;
 
 import com.aircargo.common.entity.CommodityType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -46,10 +48,12 @@ public class Mawb {
     private BigDecimal chargeableWeightKg;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "commodity_type", length = 30)
     private CommodityType commodityType;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, length = 20)
     private MawbStatus status;
 

@@ -1,43 +1,13 @@
+# ─── Aircargo SaaS — Production orchestrator (used by deploy-ec2.sh / setup-https.sh) ───
+# This file is the single entrypoint for `docker compose up` on the server.
+# It includes the microservices + infrastructure definitions from docker/ and
+# adds the frontend (nginx) + certbot (Let's Encrypt auto-renewal).
+
+include:
+  - docker/docker-compose.infrastructure.yml
+  - docker/docker-compose.services.yml
+
 services:
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: aircargo-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB:       ${POSTGRES_DB:-aircargo}
-      POSTGRES_USER:     ${POSTGRES_USER:-aircargo_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aircargo_user} -d ${POSTGRES_DB:-aircargo}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: aircargo-api/Dockerfile
-    container_name: aircargo-api
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB:       ${POSTGRES_DB:-aircargo}
-      POSTGRES_USER:     ${POSTGRES_USER:-aircargo_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_HOST:     postgres
-      POSTGRES_PORT:     5432
-      JWT_SECRET:        ${JWT_SECRET:?Set JWT_SECRET in .env}
-      CORS_ORIGINS:      ${CORS_ORIGINS:-http://localhost,http://localhost:80}
-      JAVA_OPTS:         ${JAVA_OPTS:--Xms256m -Xmx512m}
-    ports:
-      - "${BACKEND_PORT:-9091}:9091"
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   frontend:
     build:
@@ -51,16 +21,13 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
-      - backend
+      - aircargo-gateway
 
   # Auto-renew Let's Encrypt certificates every 12 hours
   certbot:
     image: certbot/certbot:latest
     container_name: aircargo-certbot
+    restart: unless-stopped
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /usr/share/nginx/html; sleep 12h & wait $${!}; done;'"
-
-volumes:
-  pgdata:
-    driver: local

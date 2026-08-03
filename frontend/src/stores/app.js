@@ -127,7 +127,7 @@ export const useAppStore = defineStore('app', () => {
     bookings.value = bookings.value.filter(b => b.id !== id)
   }
 
-  async function loadMawbs(flightId, { page = 0, size = 50 } = {}) {
+  async function loadMawbs(flightId, { page = 0, size = 500 } = {}) {
     if (!flightId) return
     try {
       loading.value = true
@@ -136,7 +136,7 @@ export const useAppStore = defineStore('app', () => {
     } catch (e) { toast.error(extractError(e)); error.value = e.message } finally { loading.value = false }
   }
 
-  async function loadAllMawbs({ page = 0, size = 50 } = {}) {
+  async function loadAllMawbs({ page = 0, size = 500 } = {}) {
     try {
       loading.value = true
       const res = await mawbsApi.getAll({ page, size })
