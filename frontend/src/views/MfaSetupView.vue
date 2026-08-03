@@ -114,7 +114,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { usersApi } from '../api/users'
+import { authApi } from '../api/auth'
 import { IconShieldLock, IconCheck } from '@tabler/icons-vue'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
@@ -136,7 +136,7 @@ const qrImage = ref('')
 
 onMounted(async () => {
   try {
-    const res = await usersApi.mfaSetup(auth.userId)
+    const res = await authApi.mfaSetup()
     secret.value = res.data.secret
     qrUrl.value = res.data.otpAuthUrl
     // Use Google Charts API for QR (no library needed)
@@ -153,7 +153,7 @@ async function handleVerify() {
   errorMsg.value = ''
   saving.value = true
   try {
-    await usersApi.mfaEnable(auth.userId, secret.value, totpCode.value)
+    await authApi.mfaEnable(secret.value, totpCode.value)
     auth.mfaEnabled = true
     auth.persist()
     step.value = 'success'

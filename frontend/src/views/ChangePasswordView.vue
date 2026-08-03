@@ -141,7 +141,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { authApi } from '../api/auth'
-import { usersApi } from '../api/users'
 import { IconLock } from '@tabler/icons-vue'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
@@ -177,7 +176,7 @@ const passwordRules = computed(() => {
 onMounted(async () => {
   // Check if user has MFA set up
   try {
-    const res = await usersApi.getById(auth.userId)
+    const res = await authApi.me()
     hasMfaSetup.value = res.data.mfaEnabled === true
   } catch (e) {
     console.warn('Failed to check MFA status:', e)

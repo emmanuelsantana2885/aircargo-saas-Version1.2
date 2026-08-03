@@ -343,6 +343,51 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/mfa/setup")
+    public ResponseEntity<?> setupMfa(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AppUser user = userRepository.findById(principal.getUserIdAsUuid()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
+        }
+        if (Boolean.TRUE.equals(user.getMfaEnabled())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "MFA ya está habilitado para este usuario"));
+        }
+        String secret = mfaService.generateSecret();
+        String otpAuthUrl = mfaService.getOtpAuthUrl(user.getEmail(), secret);
+        return ResponseEntity.ok(Map.of(
+                "secret", secret,
+                "otpAuthUrl", otpAuthUrl
+        ));
+    }
+
+    @PostMapping("/mfa/enable")
+    public ResponseEntity<?> enableMfa(@AuthenticationPrincipal UserPrincipal principal,
+                                       @RequestBody Map<String, String> body,
+                                       HttpServletRequest servletRequest) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AppUser user = userRepository.findById(principal.getUserIdAsUuid()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
+        }
+        String secret = body.get("secret");
+        String totpCode = body.get("totpCode");
+        if (secret == null || totpCode == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "secret y totpCode son requeridos"));
+        }
+        if (!mfaService.verifyCode(secret, totpCode)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Código TOTP inválido"));
+        }
+        mfaService.enableMfa(user.getId(), secret);
+        auditService.log(user.getId(), user.getEmail(), user.getFullName(),
+                "MFA_ENABLED", "USER", user.getId().toString(), null, servletRequest.getRemoteAddr());
+        return ResponseEntity.ok(Map.of("message", "MFA habilitado correctamente"));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@AuthenticationPrincipal UserPrincipal principal,
                                     @RequestBody(required = false) Map<String, String> body,
