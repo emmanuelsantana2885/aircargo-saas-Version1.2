@@ -33,7 +33,7 @@
             </svg>
           </button>
           <div v-if="showFilter" class="flex items-center gap-1">
-      <input v-model="filterText" @keyup.enter="applyFilter" placeholder="* = contenga, = exacto, > < numerico"
+      <input v-model="filterText" placeholder="* = contenga, = exacto, > < numerico"
         class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-[13px] font-mono text-slate-950 outline-none focus:border-slate-500 transition-colors" />
             <span class="text-[14px] font-mono text-slate-950 min-w-[30px]">{{ filterTypeLabel }}</span>
           </div>

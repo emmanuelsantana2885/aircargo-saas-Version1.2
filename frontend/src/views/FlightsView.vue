@@ -13,8 +13,10 @@
         </div>
         <span class="ds-stat">
           <span class="h-2 w-2 rounded-full bg-slate-500"></span>
-          {{ store.flights.length }} VUELOS
+          {{ filteredFlights.length }} VUELOS
         </span>
+        <input v-model="searchText" type="text" placeholder="Buscar vuelo / ruta / matrícula..."
+          class="w-[200px] bg-white border border-slate-300 rounded px-3 py-1.5 text-[13px] font-mono text-slate-950 outline-none focus:border-slate-500 transition-colors placeholder:text-slate-400" />
         <button @click="openCreate" class="ds-btn-primary">
           <IconPlus :size="14" :stroke-width="2.5" /> Nuevo Vuelo
         </button>
@@ -43,9 +45,9 @@
       </div>
 
       <!-- Empty -->
-      <div v-else-if="store.flights.length === 0" class="ds-empty">
+      <div v-else-if="filteredFlights.length === 0" class="ds-empty">
         <IconPlaneDeparture :size="32" class="text-slate-300" :stroke-width="1.2" />
-        <p class="uppercase tracking-widest">No hay vuelos registrados</p>
+        <p class="uppercase tracking-widest">{{ store.flights.length === 0 ? 'No hay vuelos registrados' : 'Ningún vuelo coincide con la búsqueda' }}</p>
         <button @click="openCreate" class="ds-btn-secondary mt-1">
           + Crear primer vuelo
         </button>
@@ -53,7 +55,7 @@
 
       <!-- Rows -->
       <div v-else class="divide-y divide-slate-100 text-[13px] text-slate-950 overflow-y-auto flex-1 min-h-0 scrollbar-none">
-        <div v-for="f in store.flights" :key="f.id"
+        <div v-for="f in filteredFlights" :key="f.id"
           class="ds-table-row"
           @click="selectFlight(f)">
 
@@ -183,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { airlinesApi } from '../api/airlines'
@@ -197,6 +199,20 @@ const toast = useToastStore()
 
 const airlines = ref([])
 const airlinesError = ref(false)
+const searchText = ref('')
+
+const filteredFlights = computed(() => {
+  const q = searchText.value.trim().toLowerCase()
+  if (!q) return store.flights
+  return store.flights.filter(f => {
+    const haystack = [
+      f.flightNumber, f.origin, f.destination, f.aircraftType,
+      f.aircraftReg, f.status, f.flightDate,
+      airlineCode(f),
+    ].filter(Boolean).join(' ').toLowerCase()
+    return haystack.includes(q)
+  })
+})
 
 onMounted(async () => {
   await Promise.all([

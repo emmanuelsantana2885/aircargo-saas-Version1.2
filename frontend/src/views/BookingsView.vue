@@ -40,6 +40,10 @@
             </div>
           </div>
         </div>
+        <div class="relative">
+          <input v-model="searchText" type="text" placeholder="Buscar AWB / cliente / destino..."
+            class="w-[220px] bg-white border border-slate-300 rounded px-3 py-1.5 text-[13px] font-mono text-slate-950 outline-none focus:border-slate-500 transition-colors placeholder:text-slate-400" />
+        </div>
       </div>
       <div class="flex items-center gap-2">
         <button @click="triggerImport" class="ds-btn-secondary">
@@ -313,6 +317,7 @@ const localFlightId = ref(store.selectedFlightId)
 
 const statusFilter = ref('')
 const showStatusFilter = ref(false)
+const searchText = ref('')
 
 const statusOptions = [
   { value: 'BOOKED', label: 'Booked', colorClass: 'bg-slate-500' },
@@ -406,6 +411,17 @@ const visibleBookings = computed(() => {
       const m = bookingMawb(b)
       const s = m?.status || 'BOOKED'
       return s === statusFilter.value
+    })
+  }
+  const q = searchText.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(b => {
+      const m = bookingMawb(b)
+      const haystack = [
+        b.awbNumber, b.clientName, b.shipperName, b.contactName,
+        b.destination, b.notes, m?.awbNumber, m?.shipperName,
+      ].filter(Boolean).join(' ').toLowerCase()
+      return haystack.includes(q)
     })
   }
   return list
