@@ -59,7 +59,7 @@ public class MawbNumberResolver {
     private String resolveViaSharedDb(UUID mawbId) {
         try {
             return jdbcTemplate.queryForObject(
-                    "SELECT awb_number FROM mawb WHERE id = ?", String.class, mawbId.toString());
+                    "SELECT awb_number FROM mawb WHERE id = ?", String.class, mawbId);
         } catch (Exception e) {
             log.warn("Shared-DB lookup of MAWB {} failed: {}", mawbId, e.getMessage());
             return null;
