@@ -4,7 +4,7 @@
     <!-- ═══ HEADER ═══ -->
     <div class="ds-section-header mb-4 shrink-0">
       <div class="flex items-center gap-3">
-        <h1 class="ds-title">Reviews -- Audit</h1>
+        <h1 class="ds-title">Reviews -- Datos</h1>
         <div v-if="rows.length" class="h-4 w-[1px] bg-slate-300"></div>
         <span v-if="rows.length" class="ds-stat">
           {{ rows.length }} registro(s)
@@ -60,7 +60,7 @@
       <!-- Table header bar -->
       <div class="ds-table-header px-4 py-2 flex items-center justify-between shrink-0">
         <span class="text-[13px] font-bold text-white uppercase tracking-wider font-mono">
-          {{ typeLabel }} — Auditoría
+          {{ typeLabel }} — Datos
         </span>
         <span class="text-[12px] font-mono text-slate-300">
           {{ rows.length > 0 ? rows.length + ' registro(s)' : '' }}
@@ -222,7 +222,7 @@ async function loadData() {
   tableError.value = ''
 
   try {
-    const res = await exportData(exportType.value, 'csv', dateFrom.value || null, dateTo.value || null, true)
+    const res = await exportData(exportType.value, 'csv', dateFrom.value || null, dateTo.value || null, false)
     const text = await res.data.text()
     const parsed = parseCsv(text)
     cols.value = parsed.headers
@@ -278,7 +278,7 @@ function parseCsv(text) {
 }
 
 function handleExport() {
-  exportData(exportType.value, 'csv', dateFrom.value || null, dateTo.value || null, true)
+  exportData(exportType.value, 'csv', dateFrom.value || null, dateTo.value || null, false)
     .then(res => {
       const blob = new Blob([res.data], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)
