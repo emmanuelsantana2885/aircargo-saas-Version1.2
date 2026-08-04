@@ -4,6 +4,13 @@ set -euo pipefail
 # ─── Aircargo SaaS — HTTPS Setup Script ───
 # Run this ON the EC2 instance after the app is already running on HTTP
 # Usage: chmod +x setup-https.sh && ./setup-https.sh
+#
+# How it works:
+#   1. Obtains a Let's Encrypt certificate for $DOMAIN (standalone).
+#   2. Writes DOMAIN + CORS_ORIGINS into .env.
+#   3. Restarts the frontend container — its entrypoint detects the cert
+#      and generates the HTTPS nginx config automatically.
+#   4. Installs a cron job to renew the certificate.
 
 echo "═══════════════════════════════════════════════"
 echo "  Aircargo SaaS — HTTPS Setup"
@@ -48,36 +55,46 @@ sudo certbot certonly --standalone \
 
 echo "✓ Certificate obtained"
 
-# ── 5. Update nginx.conf with domain ──────────
-echo "▸ Configuring nginx for HTTPS..."
-cd ~/aircargo-saas
-sed -i "s/TU_DOMINIO/$DOMAIN/g" frontend/nginx.conf
+# ── 5. Write DOMAIN + CORS into .env ──────────
+APP_DIR="$HOME/aircargo-saas"
+cd "$APP_DIR"
 
-# ── 6. Update CORS in .env ────────────────────
-if [ -f .env ]; then
-  if grep -q "CORS_ORIGINS" .env; then
-    sed -i "s|CORS_ORIGINS=.*|CORS_ORIGINS=https://$DOMAIN,http://$DOMAIN,http://localhost|g" .env
-  else
-    echo "CORS_ORIGINS=https://$DOMAIN,http://$DOMAIN,http://localhost" >> .env
-  fi
-  echo "✓ CORS updated"
+if [ ! -f .env ]; then
+  echo "ERROR: .env not found in $APP_DIR"
+  exit 1
 fi
 
-# ── 7. Rebuild and restart ────────────────────
+# DOMAIN
+if grep -q "^DOMAIN=" .env; then
+  sed -i "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" .env
+else
+  echo "DOMAIN=${DOMAIN}" >> .env
+fi
+
+# CORS_ORIGINS
+if grep -q "^CORS_ORIGINS=" .env; then
+  sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${DOMAIN},http://${DOMAIN},http://localhost|" .env
+else
+  echo "CORS_ORIGINS=https://${DOMAIN},http://${DOMAIN},http://localhost" >> .env
+fi
+
+echo "✓ .env updated (DOMAIN + CORS_ORIGINS)"
+
+# ── 6. Rebuild and restart ────────────────────
 echo "▸ Rebuilding and restarting containers..."
 docker compose down
 docker compose up -d --build
 
-# ── 8. Wait for health ────────────────────────
+# ── 7. Wait for health ────────────────────────
 echo "▸ Waiting for services..."
 sleep 10
 
-# ── 9. Setup auto-renewal cron ────────────────
+# ── 8. Setup auto-renewal cron ────────────────
 echo "▸ Setting up certificate auto-renewal..."
-(sudo crontab -l 2>/dev/null | grep -v "certbot renew" ; echo "0 3 * * * cd ~/aircargo-saas && docker compose run --rm certbot renew --quiet && docker compose restart frontend") | sudo crontab -
+(sudo crontab -l 2>/dev/null | grep -v "certbot renew" ; echo "0 3 * * * cd $APP_DIR && docker compose run --rm certbot renew --quiet && docker compose restart frontend") | sudo crontab -
 echo "✓ Auto-renewal cron installed"
 
-# ── 10. Summary ──────────────────────────────
+# ── 9. Summary ──────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════"
 echo "  ✓ HTTPS Setup Complete!"

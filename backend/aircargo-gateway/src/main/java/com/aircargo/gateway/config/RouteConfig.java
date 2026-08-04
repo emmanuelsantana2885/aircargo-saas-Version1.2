@@ -4,9 +4,20 @@ import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
 @Configuration
 public class RouteConfig {
+
+    private final Environment env;
+
+    public RouteConfig(Environment env) {
+        this.env = env;
+    }
+
+    private String svc(String key, String defaultUri) {
+        return env.getProperty(key, defaultUri);
+    }
 
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
@@ -24,7 +35,7 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9092"))
+                        .uri(svc("SERVICE_AUTH_URL", "http://localhost:9092")))
 
                 .route("flight-service", r -> r
                         .path("/api/flights/**", "/api/airlines/**", "/api/aircraft-types/**")
@@ -37,7 +48,7 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9093"))
+                        .uri(svc("SERVICE_FLIGHT_URL", "http://localhost:9093")))
 
                 .route("booking-service", r -> r
                         .path("/api/bookings/**")
@@ -50,7 +61,7 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9094"))
+                        .uri(svc("SERVICE_BOOKING_URL", "http://localhost:9094")))
 
                 .route("mawb-service", r -> r
 .path("/api/mawbs/**", "/api/hawbs/**",
@@ -69,7 +80,7 @@ public class RouteConfig {
                                 .rewritePath("/api/cargo/hawbs/(?<seg>.*)", "/api/hawbs/${seg}")
                                 .rewritePath("/api/cargo/hawbs$", "/api/hawbs")
                         )
-                        .uri("http://localhost:9095"))
+                        .uri(svc("SERVICE_MAWB_URL", "http://localhost:9095")))
 
                 .route("warehouse-service", r -> r
 		     .path("/api/warehouse/**", "/api/receipts/**")
@@ -79,7 +90,7 @@ public class RouteConfig {
 			     .setBackoff(java.time.Duration.ofMillis(500),
 					  java.time.Duration.ofSeconds(2), 2, true))
 		     )
-		     .uri("http://localhost:9096"))
+		     .uri(svc("SERVICE_WAREHOUSE_URL", "http://localhost:9096")))
 
                 .route("uld-service", r -> r
                         .path("/api/ulds/**", "/api/uld-awbs/**",
@@ -93,7 +104,7 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9097"))
+                        .uri(svc("SERVICE_ULD_URL", "http://localhost:9097")))
 
                 .route("load-planning-service", r -> r
                         .path("/api/load-planning/**", "/api/cargo/flights/**")
@@ -106,7 +117,7 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9098"))
+                        .uri(svc("SERVICE_LOAD_PLANNING_URL", "http://localhost:9098")))
 
                 .route("export-service", r -> r
                         .path("/api/exports/**", "/api/bi/**", "/api/reports/**", "/api/catalog/**")
@@ -119,7 +130,7 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9099"))
+                        .uri(svc("SERVICE_EXPORT_URL", "http://localhost:9099")))
 
                 .route("notification-service", r -> r
                         .path("/api/notifications/**")
@@ -132,18 +143,18 @@ public class RouteConfig {
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri("http://localhost:9100"))
+                        .uri(svc("SERVICE_NOTIFICATION_URL", "http://localhost:9100")))
 
                 // ─── Swagger API docs routes ────────────────────────
-                .route("auth-api-docs", r -> r.path("/auth/api-docs/**").uri("http://localhost:9092"))
-                .route("flight-api-docs", r -> r.path("/flight/api-docs/**").uri("http://localhost:9093"))
-                .route("booking-api-docs", r -> r.path("/booking/api-docs/**").uri("http://localhost:9094"))
-                .route("mawb-api-docs", r -> r.path("/mawb/api-docs/**").uri("http://localhost:9095"))
-                .route("warehouse-api-docs", r -> r.path("/warehouse/api-docs/**").uri("http://localhost:9096"))
-                .route("uld-api-docs", r -> r.path("/uld/api-docs/**").uri("http://localhost:9097"))
-                .route("load-planning-api-docs", r -> r.path("/load-planning/api-docs/**").uri("http://localhost:9098"))
-                .route("export-api-docs", r -> r.path("/export/api-docs/**").uri("http://localhost:9099"))
-                .route("notification-api-docs", r -> r.path("/notification/api-docs/**").uri("http://localhost:9100"))
+                .route("auth-api-docs", r -> r.path("/auth/api-docs/**").uri(svc("SERVICE_AUTH_URL", "http://localhost:9092")))
+                .route("flight-api-docs", r -> r.path("/flight/api-docs/**").uri(svc("SERVICE_FLIGHT_URL", "http://localhost:9093")))
+                .route("booking-api-docs", r -> r.path("/booking/api-docs/**").uri(svc("SERVICE_BOOKING_URL", "http://localhost:9094")))
+                .route("mawb-api-docs", r -> r.path("/mawb/api-docs/**").uri(svc("SERVICE_MAWB_URL", "http://localhost:9095")))
+                .route("warehouse-api-docs", r -> r.path("/warehouse/api-docs/**").uri(svc("SERVICE_WAREHOUSE_URL", "http://localhost:9096")))
+                .route("uld-api-docs", r -> r.path("/uld/api-docs/**").uri(svc("SERVICE_ULD_URL", "http://localhost:9097")))
+                .route("load-planning-api-docs", r -> r.path("/load-planning/api-docs/**").uri(svc("SERVICE_LOAD_PLANNING_URL", "http://localhost:9098")))
+                .route("export-api-docs", r -> r.path("/export/api-docs/**").uri(svc("SERVICE_EXPORT_URL", "http://localhost:9099")))
+                .route("notification-api-docs", r -> r.path("/notification/api-docs/**").uri(svc("SERVICE_NOTIFICATION_URL", "http://localhost:9100")))
 
                 .build();
     }

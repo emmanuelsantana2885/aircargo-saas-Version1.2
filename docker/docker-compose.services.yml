@@ -9,6 +9,7 @@ x-common-env: &common-env
   RABBITMQ_HOST: rabbitmq
   RABBITMQ_PORT: 5672
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
 
 services:
   aircargo-gateway:
@@ -19,6 +20,15 @@ services:
     restart: unless-stopped
     environment:
       <<: *common-env
+      SERVICE_AUTH_URL: http://aircargo-auth-service:9092
+      SERVICE_FLIGHT_URL: http://aircargo-flight-service:9093
+      SERVICE_BOOKING_URL: http://aircargo-booking-service:9094
+      SERVICE_MAWB_URL: http://aircargo-mawb-service:9095
+      SERVICE_WAREHOUSE_URL: http://aircargo-warehouse-service:9096
+      SERVICE_ULD_URL: http://aircargo-uld-service:9097
+      SERVICE_LOAD_PLANNING_URL: http://aircargo-load-planning-service:9098
+      SERVICE_EXPORT_URL: http://aircargo-export-service:9099
+      SERVICE_NOTIFICATION_URL: http://aircargo-notification-service:9100
     ports:
       - "8080:8080"
 
