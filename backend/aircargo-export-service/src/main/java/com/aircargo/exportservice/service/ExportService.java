@@ -2,6 +2,8 @@ package com.aircargo.exportservice.service;
 
 import com.aircargo.exportservice.entity.*;
 import com.aircargo.exportservice.repository.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -24,6 +26,8 @@ public class ExportService {
     private final HawbRepository hawbRepository;
     private final AuditLogRepository auditLogRepository;
     private final AppUserRepository appUserRepository;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ExportService(MawbRepository mawbRepository, BookingRepository bookingRepository,
                           WarehouseReceiptRepository receiptRepository, FlightRepository flightRepository,
@@ -91,12 +95,12 @@ public class ExportService {
             }
         } else {
             switch (type.toUpperCase()) {
-                case "MAWBS" -> exportMawbs(pw);
-                case "BOOKINGS" -> exportBookings(pw);
-                case "RECEIPTS" -> exportReceipts(pw);
-                case "FLIGHTS" -> exportFlights(pw);
-                case "ULDS" -> exportUlds(pw);
-                case "HAWBS" -> exportHawbs(pw);
+                case "MAWBS" -> exportMawbs(pw, dateFrom, dateTo);
+                case "BOOKINGS" -> exportBookings(pw, dateFrom, dateTo);
+                case "RECEIPTS" -> exportReceipts(pw, dateFrom, dateTo);
+                case "FLIGHTS" -> exportFlights(pw, dateFrom, dateTo);
+                case "ULDS" -> exportUlds(pw, dateFrom, dateTo);
+                case "HAWBS" -> exportHawbs(pw, dateFrom, dateTo);
                 default -> pw.println("Tipo no soportado: " + type);
             }
         }
@@ -104,70 +108,164 @@ public class ExportService {
         return new ByteArrayInputStream(out.toByteArray());
     }
 
-    private void exportMawbs(PrintWriter pw) {
-        pw.println("AWB Number,Shipper,Consignee,Origin,Destination,Pieces,Reported Weight Kg,Chargeable Weight Kg,Status,Created At");
-        for (MawbEntity m : mawbRepository.findAll()) {
+    private void exportMawbs(PrintWriter pw, LocalDate dateFrom, LocalDate dateTo) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
+        Map<String, MawbEntity> byId = mawbRepository.findAll().stream()
+                .collect(Collectors.toMap(m -> m.getId().toString(), m -> m));
+        pw.println("AWB Number,Shipper,Consignee,Origin,Destination,Pieces,Reported Weight Kg,Chargeable Weight Kg,Status,Created At,Created By,Transaction Type,User Role,Email");
+        for (MawbEntity m : byId.values()) {
             pw.println(join(m.getAwbNumber(), m.getShipperName(), m.getConsigneeName(),
                 m.getOrigin(), m.getDestination(), String.valueOf(m.getPieces()),
                 str(m.getReportedWeightKg()), str(m.getChargeableWeightKg()),
                 m.getStatus() != null ? m.getStatus() : "",
-                m.getCreatedAt() != null ? m.getCreatedAt().toString() : ""));
+                m.getCreatedAt() != null ? m.getCreatedAt().toString() : "",
+                "", "", "", ""));
+        }
+        for (AuditLogEntity log : auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("MAWB")) {
+            if (!inDateRange(log, dateFrom, dateTo)) continue;
+            if (log.getEntityId() != null && byId.containsKey(log.getEntityId())) continue;
+            Map<String, String> d = parseDetails(log.getDetails());
+            pw.println(join(d.getOrDefault("awbNumber", ""),
+                d.getOrDefault("shipperName", ""), d.getOrDefault("consigneeName", ""),
+                d.getOrDefault("origin", ""), d.getOrDefault("destination", ""),
+                d.getOrDefault("pieces", ""), d.getOrDefault("reportedWeightKg", ""),
+                d.getOrDefault("chargeableWeightKg", ""), d.getOrDefault("status", ""),
+                log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
+                log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
         }
     }
 
-    private void exportBookings(PrintWriter pw) {
-        pw.println("ID,AWB Number,Shipper,Destination,Skids,Reserved Kg,Created At");
-        for (BookingEntity b : bookingRepository.findAll()) {
+    private void exportBookings(PrintWriter pw, LocalDate dateFrom, LocalDate dateTo) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
+        Map<String, BookingEntity> byId = bookingRepository.findAll().stream()
+                .collect(Collectors.toMap(b -> b.getId().toString(), b -> b));
+        pw.println("ID,AWB Number,Shipper,Destination,Skids,Reserved Kg,Created At,Created By,Transaction Type,User Role,Email");
+        for (BookingEntity b : byId.values()) {
             pw.println(join(b.getId().toString(), b.getAwbNumber(), b.getShipperName(),
                 b.getDestination(), String.valueOf(b.getSkids()), str(b.getReservedKg()),
-                b.getCreatedAt() != null ? b.getCreatedAt().toString() : ""));
+                b.getCreatedAt() != null ? b.getCreatedAt().toString() : "",
+                "", "", "", ""));
+        }
+        for (AuditLogEntity log : auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("BOOKING")) {
+            if (!inDateRange(log, dateFrom, dateTo)) continue;
+            if (log.getEntityId() != null && byId.containsKey(log.getEntityId())) continue;
+            Map<String, String> d = parseDetails(log.getDetails());
+            pw.println(join(log.getEntityId() != null ? log.getEntityId() : "",
+                d.getOrDefault("awbNumber", ""), d.getOrDefault("shipperName", ""),
+                d.getOrDefault("destination", ""), d.getOrDefault("skids", ""),
+                d.getOrDefault("reservedKg", ""),
+                log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
+                log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
         }
     }
 
-    private void exportReceipts(PrintWriter pw) {
-        pw.println("ID,MAWB,Shipper,Pieces,Actual Kg,Chargeable Kg,Created At");
+    private void exportReceipts(PrintWriter pw, LocalDate dateFrom, LocalDate dateTo) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
         List<MawbEntity> allMawbs = mawbRepository.findAll();
         Map<UUID, String> mawbNumberMap = allMawbs.stream()
                 .collect(Collectors.toMap(MawbEntity::getId, MawbEntity::getAwbNumber, (a, b) -> a));
-        for (WarehouseReceiptEntity r : receiptRepository.findAll()) {
+        Map<String, WarehouseReceiptEntity> byId = receiptRepository.findAll().stream()
+                .collect(Collectors.toMap(r -> r.getId().toString(), r -> r));
+        pw.println("ID,MAWB,Shipper,Pieces,Actual Kg,Chargeable Kg,Created At,Created By,Transaction Type,User Role,Email");
+        for (WarehouseReceiptEntity r : byId.values()) {
             String mawbNum = mawbNumberMap.getOrDefault(r.getMawbId(), "");
             pw.println(join(r.getId().toString(), mawbNum, r.getShipperName(),
                 String.valueOf(r.getPieceCount()), str(r.getActualWeightKg()),
                 str(r.getChargeableWeightKg()),
-                r.getCreatedAt() != null ? r.getCreatedAt().toString() : ""));
+                r.getCreatedAt() != null ? r.getCreatedAt().toString() : "",
+                "", "", "", ""));
+        }
+        List<AuditLogEntity> allLogs = new ArrayList<>();
+        allLogs.addAll(auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("RECEIPT"));
+        allLogs.addAll(auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("RECEIPT_CORRECTION"));
+        allLogs.sort(Comparator.comparing(AuditLogEntity::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+        for (AuditLogEntity log : allLogs) {
+            if (!inDateRange(log, dateFrom, dateTo)) continue;
+            if (log.getEntityId() != null && byId.containsKey(log.getEntityId())) continue;
+            Map<String, String> d = parseDetails(log.getDetails());
+            pw.println(join(log.getEntityId() != null ? log.getEntityId() : "",
+                d.getOrDefault("mawb", ""), d.getOrDefault("shipperName", ""),
+                d.getOrDefault("pieces", ""), d.getOrDefault("actualKg", ""),
+                d.getOrDefault("chargeableKg", ""),
+                log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
+                log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
         }
     }
 
-    private void exportFlights(PrintWriter pw) {
-        pw.println("Flight Number,Origin,Destination,Flight Date,Aircraft,Status,Created At");
-        for (FlightEntity f : flightRepository.findAll()) {
+    private void exportFlights(PrintWriter pw, LocalDate dateFrom, LocalDate dateTo) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
+        Map<String, FlightEntity> byId = flightRepository.findAll().stream()
+                .collect(Collectors.toMap(f -> f.getId().toString(), f -> f));
+        pw.println("Flight Number,Origin,Destination,Flight Date,Aircraft,Status,Created At,Created By,Transaction Type,User Role,Email");
+        for (FlightEntity f : byId.values()) {
             pw.println(join(f.getFlightNumber(), f.getOrigin(), f.getDestination(),
                 f.getFlightDate() != null ? f.getFlightDate().toString() : "",
                 f.getAircraftType() != null ? f.getAircraftType() : "",
                 f.getStatus() != null ? f.getStatus() : "",
-                f.getCreatedAt() != null ? f.getCreatedAt().toString() : ""));
+                f.getCreatedAt() != null ? f.getCreatedAt().toString() : "",
+                "", "", "", ""));
+        }
+        for (AuditLogEntity log : auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("FLIGHT")) {
+            if (!inDateRange(log, dateFrom, dateTo)) continue;
+            if (log.getEntityId() != null && byId.containsKey(log.getEntityId())) continue;
+            Map<String, String> d = parseDetails(log.getDetails());
+            pw.println(join(d.getOrDefault("flightNumber", ""),
+                d.getOrDefault("origin", ""), d.getOrDefault("destination", ""),
+                d.getOrDefault("flightDate", ""), d.getOrDefault("aircraftType", ""),
+                d.getOrDefault("status", ""),
+                log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
+                log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
         }
     }
 
-    private void exportUlds(PrintWriter pw) {
-        pw.println("ULD Number,Type,Tare Lbs,Status,Created At");
-        for (UldEntity u : uldRepository.findAll()) {
+    private void exportUlds(PrintWriter pw, LocalDate dateFrom, LocalDate dateTo) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
+        Map<String, UldEntity> byId = uldRepository.findAll().stream()
+                .collect(Collectors.toMap(u -> u.getId().toString(), u -> u));
+        pw.println("ULD Number,Type,Tare Lbs,Status,Created At,Created By,Transaction Type,User Role,Email");
+        for (UldEntity u : byId.values()) {
             pw.println(join(u.getUldNumber(), u.getUldType() != null ? u.getUldType() : "",
                 str(u.getTareLbs()), u.getStatus() != null ? u.getStatus() : "",
-                u.getCreatedAt() != null ? u.getCreatedAt().toString() : ""));
+                u.getCreatedAt() != null ? u.getCreatedAt().toString() : "",
+                "", "", "", ""));
+        }
+        for (AuditLogEntity log : auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("ULD")) {
+            if (!inDateRange(log, dateFrom, dateTo)) continue;
+            if (log.getEntityId() != null && byId.containsKey(log.getEntityId())) continue;
+            Map<String, String> d = parseDetails(log.getDetails());
+            pw.println(join(d.getOrDefault("uldNumber", ""),
+                d.getOrDefault("uldType", ""), d.getOrDefault("tareLbs", ""),
+                d.getOrDefault("status", ""),
+                log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
+                log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
         }
     }
 
-    private void exportHawbs(PrintWriter pw) {
-        pw.println("HAWB Number,MAWB,Consignee,Pieces,Weight Kg,Destination,Created At");
+    private void exportHawbs(PrintWriter pw, LocalDate dateFrom, LocalDate dateTo) {
+        Map<UUID, String> roleMap = buildUserRoleMap();
         List<MawbEntity> allMawbs = mawbRepository.findAll();
         Map<UUID, String> mawbNumberMap = allMawbs.stream()
                 .collect(Collectors.toMap(MawbEntity::getId, MawbEntity::getAwbNumber, (a, b) -> a));
-        for (HawbEntity h : hawbRepository.findAll()) {
+        Map<String, HawbEntity> byId = hawbRepository.findAll().stream()
+                .collect(Collectors.toMap(h -> h.getId().toString(), h -> h));
+        pw.println("HAWB Number,MAWB,Consignee,Pieces,Weight Kg,Destination,Created At,Created By,Transaction Type,User Role,Email");
+        for (HawbEntity h : byId.values()) {
             String mawbNum = mawbNumberMap.getOrDefault(h.getMawbId(), "");
             pw.println(join(h.getHawbNumber(), mawbNum, h.getConsigneeName(),
                 String.valueOf(h.getPieces()), str(h.getWeightKg()), h.getDestination(),
-                h.getCreatedAt() != null ? h.getCreatedAt().toString() : ""));
+                h.getCreatedAt() != null ? h.getCreatedAt().toString() : "",
+                "", "", "", ""));
+        }
+        for (AuditLogEntity log : auditLogRepository.findByEntityTypeOrderByCreatedAtDesc("HAWB")) {
+            if (!inDateRange(log, dateFrom, dateTo)) continue;
+            if (log.getEntityId() != null && byId.containsKey(log.getEntityId())) continue;
+            Map<String, String> d = parseDetails(log.getDetails());
+            pw.println(join(d.getOrDefault("hawbNumber", ""),
+                d.getOrDefault("mawb", ""), d.getOrDefault("consigneeName", ""),
+                d.getOrDefault("pieces", ""), d.getOrDefault("weightKg", ""),
+                d.getOrDefault("destination", ""),
+                log.getCreatedAt() != null ? log.getCreatedAt().toString() : "",
+                log.getFullName(), log.getAction(), userRole(log, roleMap), log.getEmail()));
         }
     }
 
@@ -418,6 +516,21 @@ public class ExportService {
         if (from != null && log.getCreatedAt().toLocalDate().isBefore(from)) return false;
         if (to != null && log.getCreatedAt().toLocalDate().isAfter(to)) return false;
         return true;
+    }
+
+    private Map<String, String> parseDetails(String details) {
+        if (details == null || details.isBlank()) return Map.of();
+        try {
+            JsonNode node = objectMapper.readTree(details);
+            Map<String, String> map = new HashMap<>();
+            if (node.isObject()) {
+                node.fields().forEachRemaining(e ->
+                    map.put(e.getKey(), e.getValue() != null && e.getValue().isValueNode() ? e.getValue().asText() : ""));
+            }
+            return map;
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     private String str(Object o) {
