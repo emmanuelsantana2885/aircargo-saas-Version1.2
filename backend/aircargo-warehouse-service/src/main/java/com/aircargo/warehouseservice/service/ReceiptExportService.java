@@ -30,6 +30,7 @@ public class ReceiptExportService {
     private final WarehouseReceiptRepository receiptRepository;
     private final ReceiptPieceRepository pieceRepository;
     private final EvidenceSheetRenderer evidenceRenderer;
+    private final MawbNumberResolver mawbNumberResolver;
 
     /** 1-indexed Excel row numbers matching the reference template layout */
     private static final int ROW_TITLE        = 1;
@@ -62,10 +63,12 @@ public class ReceiptExportService {
 
     public ReceiptExportService(WarehouseReceiptRepository receiptRepository,
                                 ReceiptPieceRepository pieceRepository,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                MawbNumberResolver mawbNumberResolver) {
         this.receiptRepository = receiptRepository;
         this.pieceRepository = pieceRepository;
         this.evidenceRenderer = new EvidenceSheetRenderer(objectMapper);
+        this.mawbNumberResolver = mawbNumberResolver;
     }
 
     @Transactional(readOnly = true)
@@ -147,7 +150,7 @@ public class ReceiptExportService {
     }
 
     private void fillHeaderFields(Sheet sheet, WarehouseReceipt receipt, List<ReceiptPiece> pieces) {
-        String awbNum = receipt.getMawbNumber() != null ? receipt.getMawbNumber() : "";
+        String awbNum = mawbNumberResolver.resolve(receipt.getMawbId(), receipt.getMawbNumber());
 
         setStringValue(sheet, ROW_GATEWAY, COL_D, safe(receipt.getGatewayCfs(), "SDQ"));
         setStringValue(sheet, ROW_SHIPPER, COL_D, safe(receipt.getShipperName(), ""));

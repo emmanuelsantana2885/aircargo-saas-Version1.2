@@ -36,6 +36,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final ReceiptFullPdfService receiptFullPdfService;
     private final PdfGenerationService pdfGenerationService;
     private final ObjectMapper objectMapper;
+    private final MawbNumberResolver mawbNumberResolver;
 
     @Value("${rabbitmq.exchange:aircargo.events}")
     private String exchange;
@@ -48,7 +49,8 @@ public class WarehouseServiceImpl implements WarehouseService {
                                  ReceiptExportService receiptExportService,
                                  ReceiptFullPdfService receiptFullPdfService,
                                  PdfGenerationService pdfGenerationService,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 MawbNumberResolver mawbNumberResolver) {
         this.receiptRepository = receiptRepository;
         this.pieceRepository = pieceRepository;
         this.mawbClient = mawbClient;
@@ -58,6 +60,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         this.receiptFullPdfService = receiptFullPdfService;
         this.pdfGenerationService = pdfGenerationService;
         this.objectMapper = objectMapper;
+        this.mawbNumberResolver = mawbNumberResolver;
     }
 
     @Override
@@ -71,17 +74,8 @@ public class WarehouseServiceImpl implements WarehouseService {
         dto.setReceiptDate(OffsetDateTime.now());
         dto.setSuperseded(false);
 
-        // Fetch MAWB number from Feign client
-        if (dto.getMawbId() != null) {
-            try {
-                var mawb = mawbClient.getMawbById(dto.getMawbId());
-                if (mawb != null) {
-                    dto.setMawbNumber(mawb.getAwbNumber());
-                }
-            } catch (Exception e) {
-                // Non-fatal - mawbNumber may be missing
-            }
-        }
+        // Resolve MAWB number: stored value → Feign → shared-DB fallback
+        dto.setMawbNumber(mawbNumberResolver.resolve(dto.getMawbId(), dto.getMawbNumber()));
 
         // Process pieces
         List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
