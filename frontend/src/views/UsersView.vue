@@ -14,7 +14,7 @@
     <!-- ────────────── TAB: CONNECTED USERS ────────────── -->
     <template v-if="activeTab === 'connected'">
       <div class="ds-table-section">
-        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
         <table class="w-full text-sm" style="min-width: 700px">
           <thead>
             <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
@@ -55,7 +55,7 @@
         </div>
       </div>
       <div class="ds-table-section">
-        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
         <table class="w-full text-sm" style="min-width: 600px">
           <thead>
             <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
@@ -114,7 +114,8 @@
           <div class="ds-section-header px-4 py-2">
             <span class="ds-label">{{ showConnectedOnly ? 'Connected users with role' : 'All users with role' }} {{ roleLabel(selectedRole) }}</span>
           </div>
-          <table class="w-full text-sm">
+          <div class="table-scroll-wrapper flex-1 min-h-0">
+          <table class="w-full text-sm" style="min-width: 700px">
             <thead>
               <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
                 <th>Nombre</th>
@@ -148,6 +149,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
 
         <!-- User audit transactions -->
@@ -157,7 +159,7 @@
             <span class="ds-stat">{{ userAuditLogs.length }} registros</span>
           </div>
           <div class="overflow-x-auto flex-1 min-h-0">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm" style="min-width: 900px">
               <thead>
                 <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
                   <th style="width: 90px"># Transacción</th>
@@ -248,7 +250,8 @@
           <span class="ds-label">Catálogo de Transacciones</span>
           <button @click="openViewEditor(null)" class="ds-btn-primary !px-3 !py-1.5 !text-[12px]">+ Nueva Transacción</button>
         </div>
-        <table class="w-full text-sm">
+        <div class="table-scroll-wrapper flex-1 min-h-0">
+        <table class="w-full text-sm" style="min-width: 800px">
           <thead>
             <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
               <th>Código</th>
@@ -274,6 +277,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- ── View Editor Modal ── -->

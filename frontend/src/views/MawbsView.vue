@@ -422,7 +422,7 @@
       <div class="flex-1 min-h-0 flex gap-2 mb-1.5 mt-2">
         <section class="ds-table-section">
           <div class="overflow-auto flex-1">
-            <table class="w-full border-collapse text-[13px] font-mono">
+            <table class="w-full border-collapse text-[13px] font-mono" style="min-width: 1100px">
               <thead class="sticky top-0 z-20">
                 <tr class="bg-slate-700 text-white text-[13px] font-bold uppercase tracking-wider shadow-sm">
                   <th class="text-left px-3 py-2.5 font-black uppercase tracking-wider border-r border-slate-500 whitespace-nowrap">MAWB</th>

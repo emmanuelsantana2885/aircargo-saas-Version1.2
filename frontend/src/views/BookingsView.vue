@@ -235,7 +235,7 @@
         </div>
 
         <div class="overflow-auto flex-1 min-h-0">
-          <table class="w-full text-[13px] font-mono">
+          <table class="w-full text-[13px] font-mono" style="min-width: 1100px">
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr class="text-[13px] font-black text-slate-950 uppercase tracking-wider">
                 <th class="text-left px-5 py-3 border-b border-slate-400">#</th>

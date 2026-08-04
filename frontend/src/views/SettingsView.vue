@@ -34,7 +34,7 @@
 
       <!-- Users table -->
       <div class="ds-table-section">
-        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
         <table class="w-full text-sm" style="min-width: 800px">
           <thead>
             <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
@@ -285,7 +285,7 @@
 
       <!-- Sites table -->
       <div class="ds-table-section">
-        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
         <table class="w-full text-sm" style="min-width: 500px">
           <thead>
             <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">

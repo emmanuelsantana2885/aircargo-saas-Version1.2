@@ -294,7 +294,7 @@
                         </div>
                       </div>
                       <div class="overflow-x-auto p-2">
-                        <table class="w-full text-[13px] font-mono border-collapse">
+                        <table class="w-full text-[13px] font-mono border-collapse" style="min-width: 800px">
                           <thead>
                             <tr class="text-slate-800 font-bold uppercase tracking-wider">
                               <th class="px-2 py-1 text-left border-b-2 border-slate-200"># HAWB</th>
@@ -477,7 +477,7 @@
                       <span class="text-[12px] font-mono text-slate-950 font-bold">{{ piecesByHawb(m.id, h._hawbId || h.id).reduce((s, p) => s + (p.pieces || 1), 0) }} pcs</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="w-full text-[13px] font-mono border-collapse">
+                      <table class="w-full text-[13px] font-mono border-collapse" style="min-width: 850px">
                         <thead>
                           <tr class="bg-slate-600 text-white text-[13px] uppercase tracking-wider">
                             <th class="px-1 py-0.5 border-r border-slate-500 w-5 text-center">#</th>
@@ -564,7 +564,7 @@
                       <span class="text-[12px] font-mono text-slate-200">{{ totalPieces(m.id, null) }} piezas · {{ groupedSummary(m.id).length }} dim</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="w-full text-[13px] font-mono border-collapse">
+                      <table class="w-full text-[13px] font-mono border-collapse" style="min-width: 900px">
                         <thead>
                           <tr class="bg-slate-200 text-slate-800 text-[13px] uppercase tracking-wider">
                             <th class="px-1 py-0.5 border-r border-slate-300 w-5 text-center">#</th>

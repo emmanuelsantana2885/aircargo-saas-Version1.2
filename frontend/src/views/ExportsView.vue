@@ -95,8 +95,8 @@
 
       <!-- Data -->
       <div v-else class="flex-1 min-h-0 overflow-auto">
-        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto scrollbar-none">
-        <table class="text-[13px] font-mono" style="table-layout: fixed; min-width: 900px">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
+        <table class="text-[13px] font-mono" :style="tableStyle">
           <colgroup>
             <col v-for="(col, ci) in cols" :key="col" :style="colStyle(ci)" />
           </colgroup>
@@ -161,6 +161,11 @@ const loading = ref(false)
 const tableError = ref('')
 
 const typeLabel = computed(() => types.find(t => t.value === exportType.value)?.label || exportType.value)
+
+const tableStyle = computed(() => ({
+  tableLayout: 'fixed',
+  minWidth: Math.max(900, cols.value.length * 140) + 'px',
+}))
 
 function isNumCol(col) {
   return ['pieces', 'skids', 'actual kg', 'chargeable kg', 'reported weight kg', 'chargeable weight kg', 'weight kg', 'tare lbs', 'reserved kg'].includes(col)
