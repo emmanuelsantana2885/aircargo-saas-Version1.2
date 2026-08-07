@@ -73,6 +73,27 @@ Flyway migrations live in **each microservice** at `backend/aircargo-*-service/s
 
 Full plan: `Documents/MICROSERVICES-MIGRATION-PLAN.md`
 
+## Recent session changes (Aug 6, 2026 — Connection Pooling tuning + Cache layer completion)
+
+Evaluación técnica en `~/Desktop/revision1.txt` (connection pooling · capa de caché · CDN).
+
+| File | Change |
+|------|--------|
+| `backend/.../authservice/config/CacheConfig.java` | **NEW** — `@EnableCaching` + Caffeine CacheManager (caches `users`, `sites`, TTL 10 min). La caché del auth-service estaba DESACTIVADA (deps presentes sin `@EnableCaching`). |
+| `backend/.../authservice/service/AppUserServiceImpl.java` | `@Cacheable("users")` en getAll/getById; `@CacheEvict` en create/update/delete/resetPassword |
+| `backend/.../authservice/service/SiteService.java` | `@Cacheable("sites")` en getAll/getActive/getById; `@CacheEvict` en create/update/delete |
+| `backend/.../authservice/resources/application.properties` | Añadido `spring.cache.type=caffeine` + `spring.cache.caffeine.spec` (antes no existía) |
+| `backend/.../exportservice/config/CacheConfig.java` | Ahora registra caché `bi` (Caffeine, 500 entradas, TTL **60s**) — antes @EnableCaching sin cache names ni uso |
+| `backend/.../exportservice/service/BiService.java` | `@Cacheable("bi")` en los 12 agregados (getFlights, getBookings, getMawbs, getReceipts, getUlds, getDashboard, getDaily, getSummary, getByLocation, getTimeline, getTopMawbs, getFlightPerformance) con keys por método/params/fechas. Antes: caché inerte (ningún @Cacheable). |
+| `backend/.../uldservice/service/UldServiceImpl.java` | `@Cacheable("ulds")` en getAll/getById; `@CacheEvict({"ulds","uld-awbs"})` en create/update/transferUld/assignFlight/delete. Antes: @EnableCaching sin @Cacheable. |
+| `backend/.../uldservice/service/UldAwbServiceImpl.java` | `@Cacheable("uld-awbs")` en getAll/getById; `@CacheEvict({"uld-awbs","ulds"})` en create/update/delete |
+| `backend/.../uldservice/service/ScanService.java` | `@CacheEvict({"uld-awbs","ulds"})` en registerPiece/undoLastPiece (el scan modifica piezas/ULD-AWB) |
+| Todos los `application.properties` con DB (auth, flight, booking, mawb, warehouse, uld, notification) | **Connection Pool tuning**: añadidos `pool-name`, `minimum-idle=2`, `idle-timeout=600000`, `max-lifetime=1800000`, `leak-detection-threshold=30000` (además de `connection-timeout` + `maximum-pool-size` ya presentes) |
+| `backend/.../exportservice/resources/application.properties` | `maximum-pool-size=5`, `minimum-idle=1`, `connection-timeout=30000`, `pool-name`, `idle-timeout`, `max-lifetime`, `leak-detection-threshold` (antes solo `read-only=false`) |
+| `docker/docker-compose.infrastructure.yml` | Postgres arranca con `command: postgres -c max_connections=150` (7 servicios × pool 10 + export 5 ≈ 65 conns; margen para crecer) |
+
+Nota CDN: pendiente a nivel de infraestructura (Cloudflare/CloudFront delante de nginx); nginx ya sirve `/assets/` con `Cache-Control: public, immutable` (frontend/nginx.conf).
+
 ## Recent session changes (July 26, 2026 — Receipt Correction Logic Fix)
 
 | File | Change |

@@ -4,6 +4,8 @@ import com.aircargo.uldservice.dto.UldAwbDTO;
 import com.aircargo.uldservice.entity.UldAwb;
 import com.aircargo.uldservice.repository.UldAwbRepository;
 import com.aircargo.uldservice.repository.UldRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,6 +26,7 @@ public class UldAwbServiceImpl implements UldAwbService {
     }
 
     @Override
+    @Cacheable(value = "uld-awbs", key = "{#uldId, #mawbId}")
     public List<UldAwbDTO> getAll(UUID uldId, UUID mawbId) {
         List<UldAwb> results;
         if (uldId != null) {
@@ -39,12 +42,14 @@ public class UldAwbServiceImpl implements UldAwbService {
     }
 
     @Override
+    @Cacheable(value = "uld-awbs", key = "#id")
     public Optional<UldAwbDTO> getById(UUID id) {
         return uldAwbRepository.findById(id)
                 .map(UldAwbDTO::fromEntity);
     }
 
     @Override
+    @CacheEvict(value = {"uld-awbs", "ulds"}, allEntries = true)
     public UldAwbDTO create(UldAwbDTO dto) {
         if (!uldRepository.existsById(dto.getUldId())) {
             throw new IllegalArgumentException("ULD not found: " + dto.getUldId());
@@ -56,6 +61,7 @@ public class UldAwbServiceImpl implements UldAwbService {
     }
 
     @Override
+    @CacheEvict(value = {"uld-awbs", "ulds"}, allEntries = true)
     public Optional<UldAwbDTO> update(UUID id, UldAwbDTO dto) {
         return uldAwbRepository.findById(id)
                 .map(existing -> {
@@ -67,6 +73,7 @@ public class UldAwbServiceImpl implements UldAwbService {
     }
 
     @Override
+    @CacheEvict(value = {"uld-awbs", "ulds"}, allEntries = true)
     public boolean delete(UUID id) {
         if (!uldAwbRepository.existsById(id)) return false;
         uldAwbRepository.deleteById(id);

@@ -5,6 +5,8 @@ import com.aircargo.authservice.entity.AppUser;
 import com.aircargo.authservice.entity.Site;
 import com.aircargo.authservice.repository.AppUserRepository;
 import com.aircargo.authservice.repository.SiteRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -26,17 +28,20 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Cacheable(value = "users", key = "#airlineId")
     public List<AppUserDTO> getAll(UUID airlineId) {
         List<AppUser> results = airlineId != null ? repository.findByAirlineId(airlineId) : repository.findAll();
         return results.stream().map(AppUserDTO::fromEntity).collect(Collectors.toList());
     }
 
     @Override
+    @Cacheable(value = "users", key = "#id")
     public Optional<AppUserDTO> getById(UUID id) {
         return repository.findById(id).map(AppUserDTO::fromEntity);
     }
 
     @Override
+    @CacheEvict(value = "users", allEntries = true)
     public AppUserDTO create(AppUserDTO dto) {
         AppUser e = AppUserDTO.toEntity(dto);
         e.setPasswordHash(null);
@@ -54,6 +59,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(value = "users", allEntries = true)
     public Optional<AppUserDTO> update(UUID id, AppUserDTO dto) {
         return repository.findById(id)
                 .map(existing -> {
@@ -80,6 +86,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(value = "users", allEntries = true)
     public boolean delete(UUID id) {
         if (!repository.existsById(id)) return false;
         repository.deleteById(id);
@@ -87,6 +94,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(value = "users", allEntries = true)
     public void resetPassword(UUID id) {
         repository.findById(id).ifPresent(user -> {
             user.setPasswordHash(null);

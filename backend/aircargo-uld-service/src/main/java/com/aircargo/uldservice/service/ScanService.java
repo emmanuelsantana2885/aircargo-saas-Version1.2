@@ -13,6 +13,7 @@ import com.aircargo.uldservice.entity.UldPiece;
 import com.aircargo.uldservice.repository.UldAwbRepository;
 import com.aircargo.uldservice.repository.UldPieceRepository;
 import com.aircargo.uldservice.repository.UldRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +67,7 @@ public class ScanService {
     }
 
     @Transactional
+    @CacheEvict(value = {"uld-awbs", "ulds"}, allEntries = true)
     public ScanPieceResult registerPiece(ScanPieceRequest request, UUID scannedBy) {
         Uld uld = uldRepository.findById(request.getUldId())
                 .orElseThrow(() -> new IllegalArgumentException("ULD no encontrada: " + request.getUldId()));
@@ -120,6 +122,7 @@ public class ScanService {
     }
 
     @Transactional
+    @CacheEvict(value = {"uld-awbs", "ulds"}, allEntries = true)
     public boolean undoLastPiece(UUID uldId, UUID mawbId) {
         Optional<UldPiece> lastOpt = uldPieceRepository.findFirstByUldIdAndMawbIdOrderByPieceNumberDesc(uldId, mawbId);
         if (lastOpt.isEmpty()) return false;

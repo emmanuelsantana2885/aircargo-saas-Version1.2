@@ -7,6 +7,8 @@ import com.aircargo.uldservice.entity.Uld;
 import com.aircargo.uldservice.entity.UldAwb;
 import com.aircargo.uldservice.repository.UldAwbRepository;
 import com.aircargo.uldservice.repository.UldRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -55,6 +57,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "ulds", key = "{#airlineId, #flightId}")
     public List<UldDTO> getAll(UUID airlineId, UUID flightId) {
         List<Uld> results;
         if (flightId != null) results = uldRepository.findByFlightId(flightId);
@@ -105,6 +108,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "ulds", key = "#id")
     public Optional<UldDTO> getById(UUID id) {
         return uldRepository.findById(id)
                 .map(UldDTO::fromEntity)
@@ -113,6 +117,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
     public UldDTO create(UldDTO dto) {
         Uld e = UldDTO.toEntity(dto);
         computeMetricWeights(e);
@@ -122,6 +127,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
     public Optional<UldDTO> update(UUID id, UldDTO dto) {
         return uldRepository.findById(id)
                 .map(existing -> {
@@ -156,6 +162,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
     public UldDTO transferUld(UUID uldId, UUID destinationFlightId, String reason) {
         Uld uld = uldRepository.findById(uldId)
                 .orElseThrow(() -> new IllegalArgumentException("ULD not found: " + uldId));
@@ -173,6 +180,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
     public UldDTO assignFlight(UUID id, UUID flightId) {
         Uld uld = uldRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("ULD not found: " + id));
@@ -183,6 +191,7 @@ public class UldServiceImpl implements UldService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
     public boolean delete(UUID id) {
         if (!uldRepository.existsById(id)) return false;
         uldRepository.deleteById(id);

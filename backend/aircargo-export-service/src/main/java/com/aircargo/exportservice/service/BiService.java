@@ -2,6 +2,7 @@ package com.aircargo.exportservice.service;
 
 import com.aircargo.exportservice.entity.*;
 import com.aircargo.exportservice.repository.*;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -40,6 +41,7 @@ public class BiService {
         this.airlineRepository = airlineRepository;
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #dateFrom, #dateTo}")
     public List<Map<String, Object>> getFlights(LocalDate dateFrom, LocalDate dateTo) {
         List<FlightEntity> flights = flightRepository.findAll();
         if (dateFrom != null) {
@@ -100,6 +102,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #dateFrom, #dateTo}")
     public List<Map<String, Object>> getBookings(LocalDate dateFrom, LocalDate dateTo) {
         List<BookingEntity> bookings = bookingRepository.findAll();
         List<FlightEntity> allFlights = flightRepository.findAll();
@@ -160,6 +163,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName}")
     public List<Map<String, Object>> getMawbs() {
         List<MawbEntity> mawbs = mawbRepository.findAll();
         Map<UUID, AirlineEntity> airlineMap = airlineRepository.findAll().stream()
@@ -214,6 +218,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName}")
     public List<Map<String, Object>> getReceipts() {
         List<WarehouseReceiptEntity> receipts = receiptRepository.findAll();
         Map<UUID, AirlineEntity> airlineMap = airlineRepository.findAll().stream()
@@ -249,6 +254,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName}")
     public List<Map<String, Object>> getUlds() {
         List<UldEntity> ulds = uldRepository.findAll();
         Map<UUID, AirlineEntity> airlineMap = airlineRepository.findAll().stream()
@@ -291,6 +297,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName}")
     public Map<String, Object> getDashboard() {
         Map<String, Object> kpis = new LinkedHashMap<>();
 
@@ -363,6 +370,7 @@ public class BiService {
         return kpis;
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #dateFrom, #dateTo}")
     public List<Map<String, Object>> getDaily(LocalDate dateFrom, LocalDate dateTo) {
         List<FlightEntity> flights = flightRepository.findAll();
         List<MawbEntity> mawbs = mawbRepository.findAll();
@@ -412,6 +420,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #dateFrom, #dateTo}")
     public Map<String, Object> getSummary(LocalDate dateFrom, LocalDate dateTo) {
         Map<String, Object> summary = new LinkedHashMap<>();
 
@@ -484,6 +493,7 @@ public class BiService {
         return summary;
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName}")
     public List<Map<String, Object>> getByLocation() {
         List<FlightEntity> flights = flightRepository.findAll();
         List<BookingEntity> allBookings = bookingRepository.findAll();
@@ -540,6 +550,7 @@ public class BiService {
         return result;
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #dateFrom, #dateTo}")
     public List<Map<String, Object>> getTimeline(LocalDate dateFrom, LocalDate dateTo) {
         List<FlightEntity> flights = flightRepository.findAll();
         List<MawbEntity> mawbs = mawbRepository.findAll();
@@ -582,6 +593,7 @@ public class BiService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #limit}")
     public List<Map<String, Object>> getTopMawbs(int limit) {
         List<MawbEntity> mawbs = mawbRepository.findAll();
         Map<UUID, FlightEntity> flightMap = flightRepository.findAll().stream()
@@ -609,6 +621,7 @@ public class BiService {
                 .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "bi", key = "{#root.methodName, #dateFrom, #dateTo}")
     public List<Map<String, Object>> getFlightPerformance(LocalDate dateFrom, LocalDate dateTo) {
         List<FlightEntity> flights = flightRepository.findAll();
         if (dateFrom != null) flights = flights.stream()
