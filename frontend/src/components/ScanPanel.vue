@@ -238,7 +238,7 @@ async function openCamera() {
     if ('BarcodeDetector' in window) {
       try {
         const formats = await BarcodeDetector.getSupportedFormats()
-        console.log('[Scan] Native BarcodeDetector, formats:', formats)
+        console.warn('[Scan] Native BarcodeDetector, formats:', formats)
         const bd = new BarcodeDetector({
           formats: ['code_128', 'code_39', 'code_39_vin', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'codabar', 'i2of5'],
         })
@@ -247,7 +247,7 @@ async function openCamera() {
           try {
             const codes = await bd.detect(video)
             if (codes.length > 0) {
-              console.log('[Scan] DETECTED:', codes[0].rawValue)
+              console.warn('[Scan] DETECTED:', codes[0].rawValue)
               lastDetect.value = true
               processScan(codes[0].rawValue)
             }
@@ -258,7 +258,7 @@ async function openCamera() {
     }
 
     // ZBar fallback (Firefox etc.)
-    console.log('[Scan] Loading ZBar WASM...')
+    console.warn('[Scan] Loading ZBar WASM...')
     const { scanImageData } = await import('@undecaf/zbar-wasm')
 
     const offscreen = document.createElement('canvas')
@@ -274,7 +274,7 @@ async function openCamera() {
         const symbols = await scanImageData(id)
         if (symbols.length > 0) {
           const code = symbols[0].decode()
-          console.log('[Scan] ZBar DETECTED:', symbols[0].typeName, code)
+          console.warn('[Scan] ZBar DETECTED:', symbols[0].typeName, code)
           if (code && !processing.value) {
             lastDetect.value = true
             processScan(code)

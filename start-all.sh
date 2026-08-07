@@ -1,16 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ── Flags ───────────────────────────────────────────────────────
+#   --skip-build | -b  →  no recompila, usa los jars existentes (arranque rápido)
+SKIP_BUILD=false
+case "${1:-}" in
+  --skip-build|-b) SKIP_BUILD=true ;;
+  "" ) ;;
+  *) echo "❌ Flag desconocido: $1  (usa --skip-build / -b)"; exit 1 ;;
+esac
+
 # ── Load secrets from gitignored .env ───────────────────────────
 AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$AIR_ROOT/aircargo-env.sh"
 
 echo "🛑 Deteniendo procesos existentes..."
-pkill -f "java -jar.*aircargo.*service" 2>/dev/null || true
+pkill -f "java -jar.*aircargo.*\.jar" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
 sleep 2
 
-echo "🏗️ Construyendo backend..."
+# ── Infraestructura (Postgres + RabbitMQ) ───────────────────────
+if ! (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null; then
+  echo "🐳 Postgres no está arriba — arrancando infraestructura..."
+  docker compose -f "$AIR_ROOT/docker/docker-compose.infrastructure.yml" up -d
+  echo "⏳ Esperando Postgres..."
+  for _ in $(seq 1 30); do
+    (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null && break
+    sleep 2
+  done
+  (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null || { echo "❌ Postgres no responde en :5432"; exit 1; }
+fi
+echo "✅ Infraestructura lista (Postgres :5432)"
+
+if [ "$SKIP_BUILD" = "true" ]; then
+  echo "⚡ Flag --skip-build: usando jars existentes (sin recompilar)"
+else
+  echo "🏗️ Construyendo backend (reactor completo, incluye aircargo-common y feign-clients)..."
+  (cd "$AIR_ROOT/backend" && mvn install -DskipTests -q) || {
+      echo "❌ La compilación del backend ha fallado."
+      exit 1
+  }
+fi
+
 declare -a services=(
     backend/aircargo-auth-service
     backend/aircargo-flight-service
@@ -24,23 +55,15 @@ declare -a services=(
     backend/aircargo-gateway
 )
 
-for dir in "${services[@]}"; do
-    [ -d "$dir" ] || { echo "❌ El directorio $dir no existe"; exit 1; }
-    name=$(basename "$dir")
-    echo "  → Construyendo $name"
-    (cd "$dir" && mvn clean package -DskipTests -q) || {
-        echo "❌ La compilación de $name ha fallado."
-        exit 1
-    }
-done
-
 echo "🚀 Iniciando todos los servicios backend..."
 for dir in "${services[@]}"; do
+    [ -d "$AIR_ROOT/$dir" ] || { echo "❌ El directorio $dir no existe"; exit 1; }
     name=$(basename "$dir")
+    jar="$AIR_ROOT/$dir/target/${name}-1.2.0-SNAPSHOT.jar"
+    [ -f "$jar" ] || { echo "❌ No se encontró $jar"; exit 1; }
     echo "  → Iniciando $name"
-    (cd "$dir" && \
-         java -jar "target/${name}-1.2.0-SNAPSHOT.jar" >> "/tmp/${name}.log" 2>&1) &
-    echo "    [PID $(pgrep -f "${name}.*jar" | head -1 || echo '??')] -> /tmp/${name}.log"
+    (java -jar "$jar" >> "/tmp/${name}.log" 2>&1) &
+    echo "    [PID $!] -> /tmp/${name}.log"
 done
 
 echo "⏳ Esperando Gateway..."
@@ -60,7 +83,7 @@ elapsed=$(($(date +%s) - start_time))
 echo "✅ Gateway UP (${elapsed}s)"
 
 echo "🌐 Iniciando frontend (Vite)..."
-cd /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/frontend && npm run dev &
+(cd "$AIR_ROOT/frontend" && npm run dev) &
 echo "   → Vite corriendo (puerto 5173)"
 
 echo ""
@@ -69,5 +92,5 @@ echo "   📡 Backend  : http://localhost:8080"
 echo "   🌐 Frontend : http://localhost:5173"
 echo ""
 echo "🛠️  Utilitaires rápidos:"
-echo "   • restart-all   -> pkill -f 'java -jar.*aircargo.*service' && pkill vite && ./start-all.sh"
+echo "   • restart-all   -> ./start-all.sh"
 echo "   • tail-logs     -> tail -f /tmp/(gateway|auth|flight|booking|mawb|warehouse|uld|load-planning|export|notification).log"
