@@ -17,7 +17,7 @@ public interface FlightClient {
     @GetMapping("/api/flights/{id}")
     FlightDTO getFlightById(@PathVariable UUID id);
 
-    @GetMapping("/api/flights")
+    @GetMapping("/api/flights/list")
     List<FlightDTO> getAllFlights();
 
     @PutMapping("/api/flights/{id}/status")

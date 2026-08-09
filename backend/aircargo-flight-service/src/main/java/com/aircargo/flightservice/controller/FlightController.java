@@ -15,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,6 +40,16 @@ public class FlightController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return flightService.getAll(airlineId, date, status, flightNumber, page, size);
+    }
+
+    @GetMapping("/list")
+    public List<FlightDTO> getAllList(
+            @RequestParam(required = false) UUID airlineId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) FlightStatus status,
+            @RequestParam(required = false) String flightNumber) {
+        return flightService.getAll(airlineId, date, status, flightNumber);
     }
 
     @GetMapping("/{id}")

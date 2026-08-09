@@ -14,7 +14,7 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
-        manager.setCacheNames(java.util.Arrays.asList("ulds", "uld-awbs"));
+        manager.setCacheNames(java.util.Arrays.asList("ulds", "uld-awbs", "uld-type-config"));
         manager.registerCustomCache("ulds",
                 Caffeine.newBuilder()
                         .maximumSize(500)
@@ -24,6 +24,11 @@ public class CacheConfig {
                 Caffeine.newBuilder()
                         .maximumSize(1000)
                         .expireAfterWrite(5, TimeUnit.MINUTES)
+                        .build());
+        manager.registerCustomCache("uld-type-config",
+                Caffeine.newBuilder()
+                        .maximumSize(500)
+                        .expireAfterWrite(10, TimeUnit.MINUTES)
                         .build());
         return manager;
     }

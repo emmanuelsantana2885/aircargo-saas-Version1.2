@@ -62,7 +62,7 @@ export const useUldsStore = defineStore('ulds', () => {
       const params = { flightId }
       if (appStore.selectedFlight?.airlineId) params.airlineId = appStore.selectedFlight.airlineId
       const res = await api.get('/ulds', { params })
-      uldsByFlight.value[flightId] = res.data
+      uldsByFlight.value[flightId] = res.data?.content || res.data
     } catch (e) {
       error.value = 'Error cargando ULDs: ' + apiError(e)
     } finally {

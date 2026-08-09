@@ -1,12 +1,15 @@
 package com.aircargo.mawbservice.service;
 
 import com.aircargo.common.dto.PageResponse;
+import com.aircargo.common.event.MawbStatusChangedEvent;
 import com.aircargo.mawbservice.dto.MawbDTO;
 import com.aircargo.mawbservice.entity.Mawb;
 import com.aircargo.mawbservice.entity.MawbStatus;
 import com.aircargo.mawbservice.repository.MawbRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -27,10 +30,16 @@ public class MawbServiceImpl implements MawbService {
 
     private final MawbRepository mawbRepository;
     private final ObjectMapper objectMapper;
+    private final RabbitTemplate rabbitTemplate;
 
-    public MawbServiceImpl(MawbRepository mawbRepository, ObjectMapper objectMapper) {
+    @Value("${rabbitmq.exchange:aircargo.events}")
+    private String exchange;
+
+    public MawbServiceImpl(MawbRepository mawbRepository, ObjectMapper objectMapper,
+                           RabbitTemplate rabbitTemplate) {
         this.mawbRepository = mawbRepository;
         this.objectMapper = objectMapper;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @Override
@@ -101,7 +110,9 @@ public class MawbServiceImpl implements MawbService {
     @CacheEvict(value = "mawbs", allEntries = true)
     public MawbDTO create(MawbDTO dto) {
         Mawb entity = MawbDTO.toEntity(dto);
-        entity.setStatus(MawbStatus.BOOKED);
+        if (entity.getStatus() == null) {
+            entity.setStatus(MawbStatus.BOOKED);
+        }
         Mawb saved = mawbRepository.save(entity);
         return MawbDTO.fromEntity(saved);
     }
@@ -143,10 +154,25 @@ public class MawbServiceImpl implements MawbService {
     public Optional<MawbDTO> updateStatus(UUID id, MawbStatus status) {
         return mawbRepository.findById(id)
                 .map(existing -> {
+                    MawbStatus oldStatus = existing.getStatus();
                     existing.setStatus(status);
-                    return mawbRepository.save(existing);
+                    Mawb saved = mawbRepository.save(existing);
+                    if (oldStatus != status) {
+                        publishStatusChanged(saved, oldStatus, status);
+                    }
+                    return saved;
                 })
                 .map(MawbDTO::fromEntity);
+    }
+
+    private void publishStatusChanged(Mawb mawb, MawbStatus oldStatus, MawbStatus newStatus) {
+        try {
+            rabbitTemplate.convertAndSend(exchange, "mawb.status.changed",
+                    new MawbStatusChangedEvent(mawb.getId(), mawb.getAwbNumber(),
+                            oldStatus != null ? oldStatus.name() : null, newStatus.name()));
+        } catch (Exception e) {
+            // Log but don't fail the status update
+        }
     }
 
     @Override

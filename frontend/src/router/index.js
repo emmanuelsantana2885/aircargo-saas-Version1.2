@@ -19,7 +19,7 @@ function hasPermission(role, path) {
   if (!view) return true
   switch (role) {
     case 'SUPER_USER': return true
-    case 'ADMIN': return view !== 'SETTINGS'
+    case 'ADMIN': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS', 'BOOKINGS', 'RECEIPTS', 'USERS', 'SETTINGS', 'EXPORTS'].includes(view)
     case 'READ_ONLY': return true
     case 'WAREHOUSE_ASSISTANT': return view === 'RECEIPTS' || view === 'DASHBOARD'
     case 'OPERATIONS': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(view)

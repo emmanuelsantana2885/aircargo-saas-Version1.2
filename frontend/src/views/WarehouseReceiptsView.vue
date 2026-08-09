@@ -1564,16 +1564,12 @@ function totalDimKg(mawbId, hawbId) {
 
 function totalChargeableKg(mawbId, hawbId) {
   const pieces = allPieces(mawbId, hawbId)
-  const totalDim = pieces.reduce((s, p) => s + (p.dimWeightKg || 0), 0)
-  const totalScale = pieces.reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
-  return Math.max(totalDim, totalScale)
+  return pieces.reduce((s, p) => s + (p.chargeableKg || 0), 0)
 }
 
 function totalChargeableLbs(mawbId, hawbId) {
   const pieces = allPieces(mawbId, hawbId)
-  const totalDimLbs = pieces.reduce((s, p) => s + (p.dimWeightLbs || 0), 0)
-  const totalScaleLbs = pieces.reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
-  return Math.max(totalDimLbs, totalScaleLbs)
+  return pieces.reduce((s, p) => s + (p.chargeableLbs || 0), 0)
 }
 
 function hawbsForDisplay(mawbId) {

@@ -36,7 +36,7 @@ public class RabbitConfig {
     public Binding bookingBinding(Queue notificationsQueue, TopicExchange eventsExchange) {
         return BindingBuilder.bind(notificationsQueue)
                 .to(eventsExchange)
-                .with("booking.confirmed");
+                .with("booking.awb.updated");
     }
 
     @Bean

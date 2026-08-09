@@ -62,10 +62,14 @@
         </div>
       </div>
 
+      <div v-if="missingContext" class="p-3 bg-amber-50 border-l-4 border-l-amber-500 text-amber-800 rounded font-bold text-sm">
+        ⚠ Selecciona un vuelo y navega con ?flightId=&amp;airlineId= en la URL antes de importar.
+      </div>
+
       <button 
         @click="processRampManifest"
-        :disabled="!selectedFile || uploading"
-        :class="selectedFile && !uploading ? 'bg-slate-950 hover:bg-slate-900 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+        :disabled="!selectedFile || uploading || missingContext"
+        :class="selectedFile && !uploading && !missingContext ? 'bg-slate-950 hover:bg-slate-900 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
         class="w-full font-black uppercase tracking-widest py-2.5 rounded text-sm transition-colors mt-4"
       >
         Sincronizar con Base de Datos
@@ -77,15 +81,18 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../api/client'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 
 const toast = useToastStore()
+const route = useRoute()
 
-// IDs de prueba consistentes con tu base de datos relacional
-const flightId = ref('33500000-0000-0000-0000-000000000000') // Reemplazar dinámicamente con router.params
-const airlineId = ref('11111111-1111-1111-1111-111111111111') // Vendor/Tenant ID actual
+// Se resuelven desde la URL (?flightId=...&airlineId=...) en lugar de UUIDs hardcodeados.
+const flightId = ref(typeof route.query.flightId === 'string' ? route.query.flightId : '')
+const airlineId = ref(typeof route.query.airlineId === 'string' ? route.query.airlineId : '')
+const missingContext = ref(!flightId.value || !airlineId.value)
 
 const isDragging = ref(false)
 const selectedFile = ref(null)

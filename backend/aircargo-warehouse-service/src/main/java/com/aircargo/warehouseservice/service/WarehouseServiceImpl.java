@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 @Service
 public class WarehouseServiceImpl implements WarehouseService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WarehouseServiceImpl.class);
+
     private final WarehouseReceiptRepository receiptRepository;
     private final ReceiptPieceRepository pieceRepository;
     private final MawbClient mawbClient;
@@ -286,6 +288,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             sb.append("<p>Error al procesar evidencias</p>");
         }
         sb.append("</div>");
+        sb.append(buildHawbBreakdownHtml(receipt, false));
         sb.append("<div class='footer'>AirCargo &mdash; Documento generado el ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16)).append("</div>");
         sb.append("</body></html>");
         return sb.toString();
@@ -317,7 +320,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         if (rawDocs == null || rawDocs.isBlank() || "[]".equals(rawDocs)) {
             sb.append("<div class='page'><div class='page-header'><h2>Evidencias Documentales</h2></div>");
             sb.append("<div class='placeholder'>Sin evidencias registradas</div>");
-            sb.append("<div class='footer-text'>AirCargo &mdash; ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16)).append("</div>");
+            sb.append("<div class='footer-text'>AirCargo &#8212; ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16)).append("</div>");
             sb.append("</div>");
             sb.append("</body></html>");
             return pdfGenerationService.generatePdf(sb.toString());
@@ -336,7 +339,7 @@ public class WarehouseServiceImpl implements WarehouseService {
 
                 sb.append("<div class='page'>");
                 sb.append("<div class='page-header'><h2>Evidencias Documentales</h2>");
-                sb.append("<div class='meta'>").append(name).append(" &middot; MAWB: ").append(mawbNum).append("</div>");
+                sb.append("<div class='meta'>").append(xmlEscape(name)).append(" &#183; MAWB: ").append(xmlEscape(mawbNum)).append("</div>");
                 sb.append("</div>");
 
                 if ("image".equals(type) && url != null && !url.isEmpty()) {
@@ -353,8 +356,8 @@ public class WarehouseServiceImpl implements WarehouseService {
                     sb.append("<div class='placeholder'>Documento: ").append(name).append("</div>");
                 }
 
-                sb.append("<div class='footer-text'>AirCargo &mdash; P\u00e1gina ").append(i + 1).append(" de ").append(docs.size());
-                sb.append(" &mdash; ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16));
+                sb.append("<div class='footer-text'>AirCargo &#8212; P\u00e1gina ").append(i + 1).append(" de ").append(docs.size());
+                sb.append(" &#8212; ").append(java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 16));
                 sb.append("</div></div>");
             }
         } catch (Exception e) {
@@ -363,6 +366,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             sb.append("</div>");
         }
 
+        sb.append(buildHawbBreakdownHtml(receipt, true));
         sb.append("</body></html>");
         return pdfGenerationService.generatePdf(sb.toString());
     }
@@ -370,6 +374,166 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public byte[] exportReceipt(UUID receiptId) {
         return receiptExportService.generateAndPersistExcel(receiptId);
+    }
+
+    private static BigDecimal nz(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
+
+    private static String fmt(BigDecimal v) {
+        if (v == null) return "0";
+        return v.setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+    }
+
+    private static String dimPart(BigDecimal v) {
+        if (v == null) return "\u2014";
+        return v.stripTrailingZeros().toPlainString();
+    }
+
+    private String buildHawbBreakdownHtml(WarehouseReceipt receipt, boolean forPdf) {
+        if (receipt.getMawbId() == null) return "";
+        List<ReceiptPiece> pieces = pieceRepository.findByReceiptId(receipt.getId());
+        List<ReceiptPiece> hawbPieces = pieces.stream()
+                .filter(p -> p.getHawbId() != null)
+                .collect(Collectors.toList());
+        if (hawbPieces.isEmpty()) return "";
+
+        Map<String, String> hawbNumbers = new HashMap<>();
+        Map<String, String> hawbConsignees = new HashMap<>();
+        Map<String, String> hawbDestinations = new HashMap<>();
+        try {
+            List<com.aircargo.feign.dto.HawbDTO> hawbs = mawbClient.getHawbsByMawb(receipt.getMawbId());
+            if (hawbs != null) {
+                for (var h : hawbs) {
+                    if (h.getId() == null) continue;
+                    hawbNumbers.put(h.getId().toString(), h.getHawbNumber() != null ? h.getHawbNumber() : "");
+                    hawbConsignees.put(h.getId().toString(), h.getConsigneeName() != null ? h.getConsigneeName() : "");
+                    hawbDestinations.put(h.getId().toString(), h.getDestination() != null ? h.getDestination() : "");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener HAWBs del MAWB {}: {}", receipt.getMawbId(), e.getMessage());
+        }
+
+        for (ReceiptPiece p : hawbPieces) {
+            String key = p.getHawbId().toString();
+            if (hawbNumbers.containsKey(key)) continue;
+            try {
+                com.aircargo.feign.dto.HawbDTO h = mawbClient.getHawbById(p.getHawbId());
+                if (h != null && h.getId() != null) {
+                    hawbNumbers.put(key, h.getHawbNumber() != null ? h.getHawbNumber() : "");
+                    hawbConsignees.put(key, h.getConsigneeName() != null ? h.getConsigneeName() : "");
+                    hawbDestinations.put(key, h.getDestination() != null ? h.getDestination() : "");
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo resolver HAWB {}: {}", key, e.getMessage());
+            }
+        }
+
+        String receiptConsignee = receipt.getConsigneeName() != null ? receipt.getConsigneeName() : "";
+        String receiptDestination = receipt.getDestination() != null ? receipt.getDestination() : "";
+
+        LinkedHashMap<UUID, List<ReceiptPiece>> groups = new LinkedHashMap<>();
+        for (ReceiptPiece p : hawbPieces) {
+            groups.computeIfAbsent(p.getHawbId(), k -> new ArrayList<>()).add(p);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (forPdf) {
+            sb.append("<div class='page' style='page-break-before:always'>");
+            sb.append("<div class='page-header'><h2>Desglose de HAWBs</h2>");
+            sb.append("<div class='meta'>MAWB: ").append(xmlEscape(receipt.getMawbNumber() != null ? receipt.getMawbNumber() : "")).append("</div></div>");
+        } else {
+            sb.append("<div class='hawb-breakdown' style='max-width:900px;margin:1.5rem auto 0;background:#fff;border:1px solid #ddd;border-left:4px solid #1a1a1a;padding:1rem'>");
+            sb.append("<h3 style='margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em;font-size:0.9rem'>Desglose de HAWBs</h3>");
+            sb.append("<p style='font-size:0.7rem;color:#666;margin:0 0 0.75rem'>MAWB: ").append(xmlEscape(receipt.getMawbNumber() != null ? receipt.getMawbNumber() : "")).append("</p>");
+        }
+
+        sb.append("<table style='width:100%;border-collapse:collapse;font-size:7.5pt'>");
+        sb.append("<thead><tr>");
+        String[] headers = {"HAWB", "Consignatario", "Dest.", "Pzas", "Dim (L\u00d7A\u00d7H in)", "Balanza lbs", "Volum. lbs", "Cobrable lbs"};
+        for (String h : headers) {
+            sb.append("<th style='border:1px solid #333;padding:3px;text-align:left;background:#eee'>").append(h).append("</th>");
+        }
+        sb.append("</tr></thead><tbody>");
+
+        int totalPcs = 0;
+        BigDecimal totalScale = BigDecimal.ZERO;
+        BigDecimal totalDim = BigDecimal.ZERO;
+        BigDecimal totalChargeable = BigDecimal.ZERO;
+
+        for (var entry : groups.entrySet()) {
+            String key = entry.getKey().toString();
+            String num = hawbNumbers.getOrDefault(key, key.substring(0, Math.min(8, key.length())));
+            String consignee = hawbConsignees.getOrDefault(key, "");
+            String dest = hawbDestinations.getOrDefault(key, "");
+            if (consignee.isBlank()) consignee = receiptConsignee;
+            if (dest.isBlank()) dest = receiptDestination;
+            List<ReceiptPiece> g = entry.getValue();
+            int gPcs = 0;
+            BigDecimal gScale = BigDecimal.ZERO;
+            BigDecimal gDim = BigDecimal.ZERO;
+            BigDecimal gChargeable = BigDecimal.ZERO;
+
+            for (ReceiptPiece p : g) {
+                int pcs = p.getPieces() != null ? p.getPieces() : 1;
+                gPcs += pcs;
+                BigDecimal scale = nz(p.getScaleWeightLbs());
+                BigDecimal dim = nz(p.getDimWeightLbs());
+                BigDecimal chg = nz(p.getChargeableLbs());
+                gScale = gScale.add(scale);
+                gDim = gDim.add(dim);
+                gChargeable = gChargeable.add(chg);
+
+                sb.append("<tr>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px;font-weight:bold'>").append(xmlEscape(num)).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px'>").append(xmlEscape(consignee)).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px'>").append(xmlEscape(dest)).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:center'>").append(pcs).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px;white-space:nowrap'>")
+                        .append(dimPart(p.getLengthIn())).append(" \u00d7 ").append(dimPart(p.getWidthIn()))
+                        .append(" \u00d7 ").append(dimPart(p.getHeightIn())).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:right'>").append(fmt(scale)).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:right'>").append(fmt(dim)).append("</td>");
+                sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:right'>").append(fmt(chg)).append("</td>");
+                sb.append("</tr>");
+            }
+
+            sb.append("<tr style='background:#f5f5f5'>");
+            sb.append("<td colspan='3' style='border:1px solid #ccc;padding:3px;font-weight:bold;text-align:right'>Subtotal ").append(xmlEscape(num)).append("</td>");
+            sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:center;font-weight:bold'>").append(gPcs).append("</td>");
+            sb.append("<td style='border:1px solid #ccc;padding:3px'></td>");
+            sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:right;font-weight:bold'>").append(fmt(gScale)).append("</td>");
+            sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:right;font-weight:bold'>").append(fmt(gDim)).append("</td>");
+            sb.append("<td style='border:1px solid #ccc;padding:3px;text-align:right;font-weight:bold'>").append(fmt(gChargeable)).append("</td>");
+            sb.append("</tr>");
+
+            totalPcs += gPcs;
+            totalScale = totalScale.add(gScale);
+            totalDim = totalDim.add(gDim);
+            totalChargeable = totalChargeable.add(gChargeable);
+        }
+
+        sb.append("<tr style='background:#e8e8e8'>");
+        sb.append("<td colspan='3' style='border:1px solid #333;padding:3px;font-weight:bold;text-align:right'>TOTAL</td>");
+        sb.append("<td style='border:1px solid #333;padding:3px;text-align:center;font-weight:bold'>").append(totalPcs).append("</td>");
+        sb.append("<td style='border:1px solid #333;padding:3px'></td>");
+        sb.append("<td style='border:1px solid #333;padding:3px;text-align:right;font-weight:bold'>").append(fmt(totalScale)).append("</td>");
+        sb.append("<td style='border:1px solid #333;padding:3px;text-align:right;font-weight:bold'>").append(fmt(totalDim)).append("</td>");
+        sb.append("<td style='border:1px solid #333;padding:3px;text-align:right;font-weight:bold'>").append(fmt(totalChargeable)).append("</td>");
+        sb.append("</tr></tbody></table>");
+
+        if (forPdf) {
+            sb.append("<div class='footer-text'>AirCargo &#8212; Desglose de HAWBs</div>");
+        }
+        sb.append("</div>");
+        return sb.toString();
+    }
+
+    private static String xmlEscape(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&apos;");
     }
 
     @Override
@@ -393,8 +557,9 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private void calculatePieceWeights(ReceiptPieceDTO piece, int dimFactor) {
         if (piece.getLengthIn() != null && piece.getWidthIn() != null && piece.getHeightIn() != null) {
+            BigDecimal pieces = piece.getPieces() != null ? BigDecimal.valueOf(piece.getPieces()) : BigDecimal.ONE;
             BigDecimal volume = piece.getLengthIn().multiply(piece.getWidthIn())
-                    .multiply(piece.getHeightIn());
+                    .multiply(piece.getHeightIn()).multiply(pieces);
             BigDecimal dimWeightLbs = volume.divide(BigDecimal.valueOf(dimFactor), 2, BigDecimal.ROUND_HALF_UP);
             piece.setDimWeightLbs(dimWeightLbs);
             piece.setDimWeightKg(dimWeightLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
@@ -452,10 +617,11 @@ public class WarehouseServiceImpl implements WarehouseService {
     private void syncMawbAndBooking(WarehouseReceipt receipt) {
         try {
             if (receipt.getMawbId() != null) {
-                var mawb = mawbClient.getMawbById(receipt.getMawbId());
-            }
-            if (receipt.getMawbId() != null) {
                 var booking = bookingClient.getBookingByMawbId(receipt.getMawbId());
+                if (booking != null && (booking.getAwbNumber() == null || booking.getAwbNumber().isBlank())
+                        && receipt.getMawbNumber() != null && !receipt.getMawbNumber().isBlank()) {
+                    bookingClient.updateBookingAwb(booking.getId(), Map.of("awbNumber", receipt.getMawbNumber()));
+                }
             }
         } catch (Exception e) {
             // Log but don't fail
@@ -464,7 +630,7 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private void publishReceiptCreatedEvent(WarehouseReceipt receipt) {
         try {
-            var event = new com.aircargo.warehouseservice.event.ReceiptCreatedEvent(
+            var event = new com.aircargo.common.event.ReceiptCreatedEvent(
                     receipt.getId(), receipt.getMawbId(),
                     receipt.getMawbNumber() != null ? receipt.getMawbNumber() : ""
             );

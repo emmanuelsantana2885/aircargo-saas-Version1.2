@@ -5,6 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @FeignClient(name = "booking-service", url = "${booking-service.url:http://localhost:9094}")
@@ -23,5 +24,5 @@ public interface BookingClient {
     BookingDTO createBooking(@RequestBody BookingDTO dto);
 
     @PatchMapping("/api/bookings/{id}/awb")
-    void updateBookingAwb(@PathVariable UUID id, @RequestBody String awbNumber);
+    void updateBookingAwb(@PathVariable UUID id, @RequestBody Map<String, String> request);
 }

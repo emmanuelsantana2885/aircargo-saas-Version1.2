@@ -28,7 +28,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
-    @Cacheable(value = "users", key = "#airlineId")
+    @Cacheable(value = "users", key = "#airlineId != null ? #airlineId : 'all'")
     public List<AppUserDTO> getAll(UUID airlineId) {
         List<AppUser> results = airlineId != null ? repository.findByAirlineId(airlineId) : repository.findAll();
         return results.stream().map(AppUserDTO::fromEntity).collect(Collectors.toList());

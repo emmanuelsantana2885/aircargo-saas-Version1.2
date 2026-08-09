@@ -47,6 +47,13 @@ public class MawbController {
         return mawbService.getAll(airlineId, flightId, status, page, size);
     }
 
+    @GetMapping("/awb/{awbNumber}")
+    public ResponseEntity<MawbDTO> getByAwbNumber(@PathVariable String awbNumber) {
+        return mawbService.getByAwbNumber(awbNumber)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/flight/{flightId}")
     public List<MawbDTO> getByFlight(@PathVariable UUID flightId) {
         return mawbService.getByFlightId(flightId);

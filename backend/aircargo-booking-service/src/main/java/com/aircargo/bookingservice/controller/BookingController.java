@@ -44,6 +44,18 @@ public class BookingController {
         return bookingService.getAll(airlineId, flightId, page, size);
     }
 
+    @GetMapping("/mawb/{mawbId}")
+    public ResponseEntity<BookingDTO> getByMawbId(@PathVariable UUID mawbId) {
+        return bookingService.findByMawbId(mawbId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/flight/{flightId}")
+    public List<BookingDTO> getByFlight(@PathVariable UUID flightId) {
+        return bookingService.getByFlightId(flightId);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<BookingDTO> getById(@PathVariable UUID id) {
         return bookingService.getById(id)

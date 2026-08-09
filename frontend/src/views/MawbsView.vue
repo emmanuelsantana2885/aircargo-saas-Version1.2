@@ -41,6 +41,9 @@
       </div>
       <div class="flex items-center gap-2">
         <span class="text-[12px] font-mono text-slate-950 whitespace-nowrap">Filas: {{ filteredRows.length }} / {{ matrixRows.length }} | Cols: {{ flightColumns.length }}</span>
+        <button @click="showLabels = true" class="ds-btn-secondary" title="Imprimir etiquetas de carga para los MAWBs visibles">
+          <span class="text-[14px] font-semibold leading-none">&#9642;</span> Etiquetas
+        </button>
         <button @click="exportCSV" class="ds-btn-secondary">
           <span class="text-[14px] font-semibold leading-none">↓</span> Export CSV
         </button>
@@ -417,6 +420,8 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
     </button>
 
+    <LabelPrintModal v-if="showLabels" type="CARGO" :items="labelItems" @close="showLabels = false" />
+
     <!-- Estados View -->
     <template v-if="activeTab === 'estados'">
       <div class="flex-1 min-h-0 flex gap-2 mb-1.5 mt-2">
@@ -495,10 +500,16 @@ import { receiptsApi } from '../api/receipts'
 import { downloadCSV } from '../utils/csv'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
+import LabelPrintModal from '../components/labels/LabelPrintModal.vue'
 
 const router = useRouter()
 const store = useAppStore()
 const toast = useToastStore()
+
+const showLabels = ref(false)
+const labelItems = computed(() =>
+  filteredRows.value.map(r => r.mawbId).filter(Boolean)
+)
 
 function airlineCodeById(airlineId) {
   const a = store.airlines.find(x => x.id === airlineId)

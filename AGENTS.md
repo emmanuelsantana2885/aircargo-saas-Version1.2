@@ -73,6 +73,123 @@ Flyway migrations live in **each microservice** at `backend/aircargo-*-service/s
 
 Full plan: `Documents/MICROSERVICES-MIGRATION-PLAN.md`
 
+## Recent session changes (Aug 9, 2026 — Fix número HAWB en PDF recibo completo)
+
+**FIX**: el PDF del recibo completo (`GET /api/warehouse/receipts/{id}/pdf` → `ReceiptFullPdfService`) mostraba `HAWB 1 de 1` / `HAWB 1` en el "Resumen General" y "Anexo — Desglose por HAWB" en vez del número real (ej. `4010096112`), porque agrupaba piezas por `hawbId` y usaba solo el índice del grupo sin resolver el número vía Feign. Ahora resuelve los números igual que `buildHawbBreakdownHtml` (lote por `getHawbsByMawb` + resolución individual `getHawbById`).
+
+| File | Change |
+|------|--------|
+| `backend/.../warehouseservice/service/ReceiptFullPdfService.java` | **FIX** — inyectado `MawbClient`; nuevo helper `resolveHawbNumbers(receipt, byHawb)` (mismo patrón de fallback que `WarehouseServiceImpl.buildHawbBreakdownHtml`); `renderSummaryTable` y el anexo muestran `HAWB <número>` real en vez del índice; `renderHawbSummary` incluye `HAWB: <número>` |
+
+Notas: verificado E2E vía gateway — PDF del recibo `56cb4b69` (MAWB `406-05912970`, HAWB `4010096112`) regenerado tras borrar `pdf_data` muestra `4010096112` en resumen, anexo y resumen de HAWB. `mvn -o test -pl aircargo-warehouse-service -am` pasa. El PDF se sirve desde `pdfData` persistido; para regenerar un recibo existente basta borrar su `pdf_data` en DB o re-emitir (los recibos sin HAWB vinculada —`hawbId` NULL en piezas— siguen sin sección de desglose por no existir HAWB que resolver).
+
+# Recent session changes (Aug 9, 2026 — Fix 401 PDF evidencias + desglose HAWBs)
+
+Fix del botón "descargar PDF de evidencias de recibo": devolvía 401 en recibo ya emitido. Causa raíz: `SAXParseException: The entity "middot" was referenced, but not declared` en openhtmltopdf → Spring Security enmascaraba la excepción como 401. Además se añadió desglose de HAWBs a las evidencias.
+
+| File | Change |
+|------|--------|
+| `backend/.../warehouseservice/service/WarehouseServiceImpl.java` | **FIX 401** — `&mdash;`→`&#8212;`, `&middot;`→`&#183;` en los generadores de evidencias; `xmlEscape()` para valores dinámicos (name/mawbNum); **NEW** — `buildHawbBreakdownHtml()`: agrupa `ReceiptPiece` por `hawbId` y renderiza tabla (HAWB, consignatario, dest, pzas, dims, balanza/volum/cobrable lbs con subtotales por HAWB y TOTAL) en `getSupportingDocsHtml` y `getSupportingDocsPdf`; helpers `nz`/`fmt`/`dimPart` |
+| `backend/.../warehouseservice/service/ReceiptFullPdfService.java` | `&mdash;`→`&#8212;` (mismo fallo openhtmltopdf en PDF completo) |
+| `backend/aircargo-common/pom.xml` | Añadido `io.github.openfeign:feign-core` (para RequestInterceptor) |
+| `backend/.../common/feign/FeignServiceAuthInterceptor.java` | **NEW** — `RequestInterceptor` global: propaga el `Authorization` del request entrante (RequestContextHolder) o, si no hay contexto (async/eventos), firma un token de servicio (`SUPER_USER`) con el `JwtUtil`/JWT_SECRET compartido. Sin esto el Feign service-to-service devolvía 403 (p.ej. `getHawbsByMawb`, `updateBookingAwb`, scan lookups) porque los servicios destino exigen auth |
+| `backend/aircargo-feign-clients/.../client/MawbClient.java` | Añadido `GET /api/hawbs/mawb/{mawbId}` → `List<HawbDTO>` y `GET /api/hawbs/{id}` → `HawbDTO` |
+| `backend/aircargo-feign-clients/.../dto/HawbDTO.java` | **NEW** — DTO Feign (id, mawbId, airlineId, hawbNumber, consigneeName, destination, pieces, weightKg, commodityType/status/notes como String) |
+
+Notas: el desglose solo se renderiza cuando las piezas del recibo tienen `hawbId` (el frontend ya envía `hawbId` en `WarehouseReceiptsView.vue` líneas 1031/1407/1485). Resolución de HAWBs: primero lote por `mawbId` y, si falta alguna, resolución individual por `id` (evita mostrar el UUID corto siempre que la HAWB exista). Consignatario/destino con fallback al del recibo/MAWB cuando la HAWB no los tiene (caso HAWB única → queda el consignatario de la MAWB). Verificado E2E vía gateway: HAWB única `3961805399`/MEM → muestra número real + consignatario MAWB; 2 HAWBs → cada una con su número/consignatario/destino propios; PDF 200. Datos de prueba limpiados. `mvn -o compile` full reactor y `mvn -o test -pl aircargo-warehouse-service -am` pasan.
+
+## Recent session changes (Aug 9, 2026 — Airlines CRUD + ULD type config + editable tare)
+
+Feature: registrar más aerolíneas (solo ADMIN/SUPER_USER), configurar tipos de ULD por aerolínea, y tara editable en el formulario de ULD (antes 140 lbs fijas).
+
+| File | Change |
+|------|--------|
+| `backend/.../flightservice/config/SecurityConfig.java` | POST/PUT/DELETE `/api/airlines/**` → solo ADMIN/SUPER_USER (GET público autenticado) |
+| `backend/.../flightservice/controller/AirlineController.java` | Añadida auditoría (AuditService) en create/update/delete con patrón de FlightController |
+| `backend/.../uldservice/dto/UldTypeConfigDTO.java` | **NEW** — DTO con fromEntity/toEntity |
+| `backend/.../uldservice/service/UldTypeConfigService.java` + Impl | **NEW** — CRUD + `replaceAllForAirline` (bulk upsert: borra y recrea por aerolínea); valida airlineId/uldType; `@Cacheable("uld-type-config")` por airlineId/'all' + `@CacheEvict(allEntries)` en mutaciones |
+| `backend/.../uldservice/entity/UldTypeConfig.java` | `@CreationTimestamp`/`@UpdateTimestamp` en createdAt/updatedAt (antes sin anotar; DB NOT NULL) |
+| `backend/.../uldservice/repository/UldTypeConfigRepository.java` | Añadido `deleteByAirlineId(UUID)` |
+| `backend/.../uldservice/controller/UldTypeConfigController.java` | **Ampliado** — GET (filtro opcional), GET /{airlineId}, GET /config/{id}, POST, PUT /{id}, DELETE /{id}, PUT /airline/{airlineId}/bulk |
+| `backend/.../uldservice/config/CacheConfig.java` | Caché `uld-type-config` (Caffeine, TTL 10 min) |
+| `backend/.../uldservice/config/SecurityConfig.java` | POST/PUT/DELETE `/api/uld-type-config/**` → solo ADMIN/SUPER_USER; GET sigue permitido a todos los roles |
+| `frontend/src/api/airlines.js` | Añadidos create/update/delete |
+| `frontend/src/api/uldTypeConfig.js` | **Ampliado** — getAll/getById/create/update/delete/replaceForAirline |
+| `frontend/src/router/index.js` | ADMIN ahora puede ver SETTINGS (antes `view !== 'SETTINGS'`) |
+| `frontend/src/stores/auth.js` | `canView('SETTINGS')` para ADMIN → true (mismo criterio que router) |
+| `frontend/src/views/SettingsView.vue` | **NEW tabs** "Aerolíneas" y "Config ULD" (visibles para ADMIN/SUPER_USER): CRUD de aerolíneas con modales, tabla editable de config ULD por aerolínea (tipo, tara default, max gross, notas) con guardado bulk |
+| `frontend/src/views/UldsView.vue` | **FIX** — `createNewBlankUld()` usa `defaultTareFor('PMC')` (config backend → TARE_MAP estático → 0) en vez de `tareLbs: 140` fija; `suggestedTareLbs` y auto-aplicación de tara al cambiar tipo de ULD en ULD sin guardar usan la config; `loadTypeConfig()` carga config por aerolínea del vuelo seleccionado (watch + onMounted) |
+
+Notas: `mvn -o` (reactor completo) compila; `npm run lint` y `npm run build` pasan. Verificado E2E vía gateway con token real: CRUD aerolíneas (201/200/204), CRUD config ULD (201/bulk 200/DELETE), 403 para role OPERATIONS en mutaciones de ambos endpoints y 200 en GET. La tara por tipo/aerolínea se puede editar en Settings → Config ULD; el formulario de ULD sigue siendo editable manualmente (input `tareLbs` con botón "usar" de la sugerida).
+
+## Recent session changes (Aug 8, 2026 — Bugfix audit: Feign integration + weight math)
+
+Revisión completa de bugs (documento: `~/Desktop/Mejoras_a_aircargo-saas.txt`). Los clientes Feign apuntaban a rutas del monólito (`/api/cargo/...`) → 404 en el scan de ULDs, import de ramp manifest y cierre de vuelo.
+
+| File | Change |
+|------|--------|
+| `backend/.../feign/client/MawbClient.java` | **FIX B1** — rutas `/api/cargo/mawbs/**` → `/api/mawbs/**` (el controller es `/api/mawbs`; el gateway reescribe solo para el navegador) |
+| `backend/.../mawbservice/controller/MawbController.java` | **FIX B1** — nuevo `GET /awb/{awbNumber}` (usa `getByAwbNumber` ya existente en service) |
+| `backend/.../feign/client/BookingClient.java` | **FIX B2** — `updateBookingAwb` ahora envía `Map<String,String>` (`{"awbNumber":...}`) acorde al DTO del server |
+| `backend/.../bookingservice/controller/BookingController.java` | **FIX B2** — nuevos `GET /mawb/{mawbId}` y `GET /flight/{flightId}` |
+| `backend/.../bookingservice/service/BookingService.java` + Impl | **FIX B2** — `findByMawbId`, `getByFlightId` (repo ya los soportaba) |
+| `backend/.../feign/client/FlightClient.java` | **FIX B3** — `getAllFlights` → `GET /api/flights/list` (el GET base siempre devuelve PageResponse) |
+| `backend/.../flightservice/controller/FlightController.java` | **FIX B3** — nuevo `GET /list` no paginado |
+| `backend/.../warehouseservice/service/WarehouseServiceImpl.java` | **FIX F1** — `calculatePieceWeights` multiplica volumen por `pieces` (alinea con el frontend); **FIX B6** — `syncMawbAndBooking` ahora actualiza el AWB del booking; publica `com.aircargo.common.event.ReceiptCreatedEvent` (antes clase local con campo `awbNumber` distinto) |
+| `frontend/src/views/WarehouseReceiptsView.vue` | **FIX F2** — `totalChargeableKg/Lbs` ahora suma `chargeable` por pieza (criterio IATA) en vez de max(Σdims, Σscales) |
+| `frontend/src/views/LoadPlanningView.vue` | **FIX F3** — no envía `airlineId: ''` (causaba 400); omite el param si no hay vuelo |
+| `frontend/src/views/RampUploadView.vue` | **FIX F4** — `flightId`/`airlineId` desde `route.query`; botón deshabilitado si faltan (antes UUIDs fake hardcodeados) |
+| `backend/aircargo-common/.../event/` | **NEW** — records `BookingAwbUpdatedEvent`, `FlightDepartedEvent`, `MawbStatusChangedEvent` |
+| `backend/aircargo-notification-service/.../listener/` | **FIX B4** — 3 listeners (`Receipt/Booking/FlightEventListener`) en la MISMA cola → único `NotificationEventListener` con un `@RabbitHandler` por tipo |
+| `backend/.../notificationservice/config/RabbitConfig.java` | **FIX B4** — binding `booking.confirmed` → `booking.awb.updated` (key real publicada) |
+| `backend/.../mawbservice/service/MawbServiceImpl.java` | **FIX B8** — `create` ya no fuerza `BOOKED` si el DTO trae status; **NEW** — publica `mawb.status.changed` (RabbitTemplate) |
+| `backend/.../bookingservice/service/BookingServiceImpl.java` | Publica `com.aircargo.common.event.BookingAwbUpdatedEvent` (se elimina la clase local duplicada) |
+| `backend/aircargo-common/.../auth/JwtUtil.java` | **FIX B7** — `generateAccessToken` usa `expirationMs` configurable (antes constante 15 min muerta) |
+| `frontend/src/stores/ulds.js` | **FIX F7** — `loadUldsForFlight` desenvuelve `res.data.content \|\| res.data` |
+| `frontend/src/components/ScanPanel.vue` | **FIX F10** — clases Tailwind dinámicas → mapa estático `FLASH_CLASSES` (el JIT no genera `border-${c}-400`) |
+| `backend/.../authservice/service/AppUserServiceImpl.java` | **FIX B16** — `@Cacheable("users")` key `#airlineId` → `#airlineId != null ? #airlineId : 'all'` (clave nula → `Null key returned for cache operation` → 500 en `GET /api/users` sin query param; encontrado en verificación E2E) |
+| `backend/.../mawbservice/service/HawbServiceImpl.java` | **FIX B17** — `create` deriva `airlineId` del MAWB padre (`mawbRepository.findById`) cuando el DTO no lo trae; si sigue null → `IllegalArgumentException` claro en vez de 500. `hawb.airline_id` es NOT NULL y el flujo de recibos (`WarehouseReceiptsView`) crea HAWBs sin `airlineId` → `DataIntegrityViolationException`. También ya no fuerza `status=BOOKED` (respeta el del DTO, alineado con B8) |
+
+Notas: `mvn -o compile` (reactor completo) y `mvn -o test` (módulos tocados) pasan; `npm run lint` y `npm run build` pasan. Pendiente B5 (revocación JWT centralizada) y publisher de `flight.departed` (load-planning no tiene dep amqp). Detalle completo en el documento del escritorio.
+
+**Verificación E2E (stack local):** los 10 servicios arrancan y todos los endpoints clave responden vía gateway con token real (`/api/flights/list` 200, `/api/mawbs` 200, `/api/ulds` 200, `/api/bookings` 200, `/api/receipts` 200, `/api/users` 200, `/api/users/connected` 200, `/api/sites` 200, `/api/audit-logs` 200, `/api/label-templates` 200, `/api/bi/dashboard` 200, `GET /api/mawbs/awb/{n}` 200, `GET /api/bookings/mawb/{id}` 200, `GET /api/bookings/flight/{id}` 200). Nota operativa: al arrancar los servicios manualmente con `java -jar` hay que cargar `.env` (`set -a; . ./aircargo-env.sh; set +a`) — si el gateway arranca sin `JWT_SECRET` valida con el secret dev y rechaza los tokens emitidos con el secret real (401 "Invalid or expired token").
+
+## Recent session changes (Aug 6, 2026 — Label Printing: Cargo Labels + Pallet Labels)
+
+Sistema de impresión de etiquetas tipo Zebra Designer: plantillas configurables (solo SUPER_USER) para etiquetas de carga por MAWB y pallet labels por ULD; impresión ZPL (Zebra) y PDF para todos los usuarios; tamaños 2x1, 3x2, 4x3, 4x6, 6x4 pulgadas con orientación horizontal/vertical; códigos CODE128 + QR (zxing). Modelos de referencia del usuario en `~/Desktop/Projects/Reference-Labels/` (NiceLabel `.nlbl` cifrados, solo nombres legibles).
+
+| File | Change |
+|------|--------|
+| `backend/.../mawbservice/resources/db/migration/V3__create_label_template.sql` | **NEW** — tabla `label_template` (name, type CARGO/PALLET, width/height_inches, orientation, dpi, config_json, is_default, timestamps) + índice por tipo |
+| `database/migrations/V42__create_label_template.sql` | Sincronizado desde mawb-service |
+| `backend/.../mawbservice/entity/LabelTemplate.java` | **NEW** — entidad JPA con `@Enumerated` LabelType y `orientation` |
+| `backend/.../mawbservice/entity/LabelType.java` | **NEW** — enum `CARGO`, `PALLET` |
+| `backend/.../mawbservice/dto/LabelTemplateDTO.java` | **NEW** — DTO con `fromEntity`/`toEntity` |
+| `backend/.../mawbservice/dto/LabelPrintRequest.java` | **NEW** — `templateId`, `format` (PDF/ZPL), `ids`, `quantity`, `overrides` |
+| `backend/.../mawbservice/repository/LabelTemplateRepository.java` | **NEW** — findByType, findByTypeAndIsDefaultTrue |
+| `backend/.../mawbservice/service/LabelTemplateService.java` | **NEW** — CRUD + gestión de default por tipo |
+| `backend/.../mawbservice/controller/LabelTemplateController.java` | **NEW** — `GET/POST /api/label-templates`, `PUT/DELETE /api/label-templates/{id}` + auditoría |
+| `backend/.../mawbservice/service/MawbLabelService.java` | **NEW** — resuelve plantilla (id o default CARGO), datos por MAWB (AWB_NUMBER, SHIPPER_NAME, CONSIGNEE_NAME, ORIGIN, DESTINATION, PIECES, WEIGHT_KG, CHARGEABLE_KG, COMMODITY, STATUS) |
+| `backend/.../mawbservice/controller/MawbLabelController.java` | **NEW** — `POST /api/mawbs/labels` → PDF `.pdf` o ZPL `.zpl` (attachment), errores JSON |
+| `backend/.../mawbservice/config/SecurityConfig.java` | POST/PUT/DELETE `/api/label-templates/**` → solo SUPER_USER |
+| `backend/aircargo-common/.../label/LabelRenderer.java` | **NEW** — renderer compartido (`@Component`): ZPL (`^PW/^LL/^FO/^A0N/^FB/^BC/^BQ/^GB` + escape) y PDF (openhtmltopdf, `@page` por tamaño, barcode/QR PNG base64); `LabelSpec` con `orientation` (V/H swap) |
+| `backend/aircargo-common/pom.xml` | Añadidos `com.google.zxing:core/javase:3.5.3` y `com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10` |
+| `backend/aircargo-feign-clients/.../dto/LabelTemplateDTO.java` | **NEW** — DTO Feign (type como String, incluye orientation) |
+| `backend/aircargo-feign-clients/.../client/MawbClient.java` | Añadidos `GET /api/label-templates?type=` y `GET /api/label-templates/{id}` |
+| `backend/.../uldservice/dto/LabelPrintRequest.java` | **NEW** — mismo DTO que mawb |
+| `backend/.../uldservice/service/PalletLabelService.java` | **NEW** — resuelve plantilla PALLET vía MawbClient, datos por ULD (ULD_NUMBER, ULD_TYPE, POSITION, CONFIG, SEAL, STATUS, GROSS/TARE/NET lbs+kg, PIECES sumado, MAWBS_COUNT) |
+| `backend/.../uldservice/controller/UldLabelController.java` | **NEW** — `POST /api/ulds/labels` → PDF/ZPL |
+| `backend/.../uldservice/config/SecurityConfig.java` | `/api/ulds/labels/**` → OPERATIONS/TRAFFIC/LOAD_PLANNER/ADMIN/SUPER_USER |
+| `backend/.../gateway/config/RouteConfig.java` | Ruta mawb-service ampliada con `/api/label-templates/**` |
+| `frontend/src/api/labelTemplates.js` | **NEW** — CRUD plantillas + `labelsApi.downloadCargo/downloadPallet` (blob, lee Content-Disposition) |
+| `frontend/src/utils/labelConfig.js` | **NEW** — SIZE_PRESETS, FIELDS y SAMPLE_DATA por tipo, `effectiveSize` (orientation swap), `defaultElement` |
+| `frontend/src/components/labels/LabelDesignerModal.vue` | **NEW** — editor tipo Zebra Designer (canvas escalado, arrastrar/redimensionar, cuadrícula mm, toolbox texto/CODE128/QR/línea/rect, propiedades por elemento, tamaño/orientación/DPI, default) — solo visible para SUPER_USER |
+| `frontend/src/components/labels/LabelPrintModal.vue` | **NEW** — selector de plantilla + formato PDF/ZPL + copias + vista previa + descarga (todos los usuarios); botón editar plantillas si SUPER_USER |
+| `frontend/src/views/MawbsView.vue` | Botón "Etiquetas" en header → imprime cargo labels de los MAWBs visibles |
+| `frontend/src/views/UldsView.vue` | Botón "Pallet Label" en el ULD expandido (requiere ULD guardado) |
+
+Notas: el renderer común necesita `ObjectMapper` (auto-configurado por Spring Boot en todos los servicios). El preview del diseñador muestra placeholders de barcode/QR; el código real se genera en ZPL/PDF (zxing). Endpoints de etiquetas funcionan a través del gateway (`/api/mawbs/labels`, `/api/ulds/labels`, `/api/label-templates/**`).
+
 ## Recent session changes (Aug 6, 2026 — Connection Pooling tuning + Cache layer completion)
 
 Evaluación técnica en `~/Desktop/revision1.txt` (connection pooling · capa de caché · CDN).

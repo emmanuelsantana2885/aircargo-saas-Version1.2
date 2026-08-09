@@ -14,6 +14,14 @@
         :class="activeTab === 'sites' ? 'ds-btn-primary' : 'ds-btn-secondary'">
         Sitios
       </button>
+      <button v-if="canManageSettings" @click="activeTab = 'airlines'"
+        :class="activeTab === 'airlines' ? 'ds-btn-primary' : 'ds-btn-secondary'">
+        Aerolíneas
+      </button>
+      <button v-if="canManageSettings" @click="activeTab = 'uldconfig'"
+        :class="activeTab === 'uldconfig' ? 'ds-btn-primary' : 'ds-btn-secondary'">
+        Config ULD
+      </button>
 
     </div>
 
@@ -387,6 +395,193 @@
       </div>
     </template>
 
+    <!-- ============ AIRLINES TAB (ADMIN / SuperUser) ============ -->
+    <template v-if="activeTab === 'airlines'">
+      <div class="flex items-center justify-between mb-3">
+        <span class="ds-stat">{{ airlines.length }} aerolíneas</span>
+        <button @click="openAirlineCreate" class="ds-btn-primary">
+          + Nueva aerolínea
+        </button>
+      </div>
+
+      <div class="ds-table-section">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
+        <table class="w-full text-sm" style="min-width: 600px">
+          <thead>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>IATA</th>
+              <th>País</th>
+              <th class="text-center" style="width: 80px">Activo</th>
+              <th class="text-right" style="width: 140px">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in airlines" :key="a.id"
+              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
+              <td class="font-mono font-semibold text-slate-900">{{ a.code }}</td>
+              <td class="text-slate-900">{{ a.name }}</td>
+              <td class="font-mono text-slate-700">{{ a.iataCode || '—' }}</td>
+              <td class="text-slate-900">{{ a.country || '—' }}</td>
+              <td class="text-center">
+                <span class="text-[12px] font-medium px-2 py-0.5 rounded"
+                  :class="a.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
+                  {{ a.isActive ? 'Sí' : 'No' }}
+                </span>
+              </td>
+              <td class="text-right">
+                <div class="flex gap-1 justify-end">
+                  <button @click="startAirlineEdit(a)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Editar</button>
+                  <button @click="removeAirline(a)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="airlines.length === 0">
+              <td colspan="6" class="px-4 py-8 text-center text-sm italic text-slate-400">
+                No hay aerolíneas
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <!-- Airline edit modal -->
+      <div v-if="editingAirline" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Editar aerolínea</h2>
+          </div>
+          <div class="p-6 space-y-3">
+            <div>
+              <label class="ds-label block mb-0.5">Código</label>
+              <input v-model="airlineForm.code" maxlength="10" required class="ds-input font-mono uppercase">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">Nombre</label>
+              <input v-model="airlineForm.name" required class="ds-input">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">Código IATA</label>
+              <input v-model="airlineForm.iataCode" maxlength="3" class="ds-input font-mono uppercase">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">País</label>
+              <input v-model="airlineForm.country" maxlength="60" class="ds-input">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">Activo</label>
+              <select v-model="airlineForm.isActive" class="ds-input">
+                <option :value="true">Sí</option>
+                <option :value="false">No</option>
+              </select>
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button @click="saveAirlineEdit" class="ds-btn-primary flex-1 justify-center">Guardar</button>
+              <button @click="editingAirline = null" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Airline create modal -->
+      <div v-if="showAirlineCreate" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-md">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">Nueva aerolínea</h2>
+          </div>
+          <div class="p-6 space-y-3">
+            <div>
+              <label class="ds-label block mb-0.5">Código</label>
+              <input v-model="airlineCreateForm.code" maxlength="10" required class="ds-input font-mono uppercase">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">Nombre</label>
+              <input v-model="airlineCreateForm.name" required class="ds-input">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">Código IATA</label>
+              <input v-model="airlineCreateForm.iataCode" maxlength="3" class="ds-input font-mono uppercase">
+            </div>
+            <div>
+              <label class="ds-label block mb-0.5">País</label>
+              <input v-model="airlineCreateForm.country" maxlength="60" class="ds-input">
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button @click="saveAirlineCreate" class="ds-btn-primary flex-1 justify-center">Crear</button>
+              <button @click="showAirlineCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ============ ULD CONFIG TAB (ADMIN / SuperUser) ============ -->
+    <template v-if="activeTab === 'uldconfig'">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div class="flex items-center gap-3">
+          <span class="ds-stat">{{ typeConfigs.length }} configs</span>
+          <select v-model="configAirlineId" @change="loadTypeConfig" class="ds-input !w-auto font-mono">
+            <option v-for="a in airlines" :key="a.id" :value="a.id">{{ a.code }} — {{ a.name }}</option>
+          </select>
+        </div>
+        <button @click="addTypeConfigRow" class="ds-btn-primary">
+          + Nueva fila
+        </button>
+      </div>
+
+      <div class="ds-table-section">
+        <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
+        <table class="w-full text-sm" style="min-width: 700px">
+          <thead>
+            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+              <th>Tipo ULD</th>
+              <th class="text-right">Tara default (lbs)</th>
+              <th class="text-right">Max Gross (lbs)</th>
+              <th>Notas</th>
+              <th class="text-right" style="width: 120px">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(cfg, idx) in typeConfigs" :key="idx"
+              class="border-b border-slate-100">
+              <td>
+                <select v-model="cfg.uldType" class="ds-input font-mono">
+                  <option v-for="t in uldTypes" :key="t" :value="t">{{ t }}</option>
+                </select>
+              </td>
+              <td>
+                <input v-model.number="cfg.defaultTareLbs" type="number" step="0.1" class="ds-input text-right font-mono">
+              </td>
+              <td>
+                <input v-model.number="cfg.maxGrossLbs" type="number" step="0.1" class="ds-input text-right font-mono">
+              </td>
+              <td>
+                <input v-model="cfg.notes" class="ds-input" placeholder="Observaciones">
+              </td>
+              <td class="text-right">
+                <div class="flex gap-1 justify-end">
+                  <button @click="removeTypeConfigRow(idx)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">Quitar</button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="typeConfigs.length === 0">
+              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-slate-400">
+                Sin configuración para esta aerolínea. Añade filas y guarda.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 mt-3">
+        <button @click="loadTypeConfig" class="ds-btn-secondary">Descartar cambios</button>
+        <button @click="saveTypeConfig" class="ds-btn-primary">Guardar configuración</button>
+      </div>
+    </template>
+
 
   </div>
 </template>
@@ -395,6 +590,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { usersApi } from '../api/users'
 import { sitesApi } from '../api/sites'
+import { airlinesApi } from '../api/airlines'
+import { uldTypeConfigApi } from '../api/uldTypeConfig'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
@@ -409,6 +606,121 @@ const searchQuery = ref('')
 const activeTab = ref('users')
 const editingSite = ref(null)
 const showSiteCreate = ref(false)
+
+const canManageSettings = computed(() => ['ADMIN', 'SUPER_USER'].includes(auth.role))
+
+const airlines = ref([])
+const editingAirline = ref(null)
+const showAirlineCreate = ref(false)
+const airlineForm = ref({ id: null, code: '', name: '', iataCode: '', country: '', isActive: true })
+const airlineCreateForm = ref({ code: '', name: '', iataCode: '', country: '', isActive: true })
+
+const uldTypes = ['PMC', 'PAH', 'PAG', 'PAJ', 'AAY', 'AAZ', 'AAD', 'PIP', 'BULK', 'AMP', 'AMJ']
+const typeConfigs = ref([])
+const configAirlineId = ref(null)
+
+async function loadAirlines() {
+  try {
+    const res = await airlinesApi.getAll()
+    airlines.value = res.data || []
+  } catch (e) {
+    toast.error(extractError(e, 'No se pudieron cargar las aerolíneas'))
+  }
+}
+
+function openAirlineCreate() {
+  airlineCreateForm.value = { code: '', name: '', iataCode: '', country: '', isActive: true }
+  showAirlineCreate.value = true
+}
+
+async function saveAirlineCreate() {
+  const f = airlineCreateForm.value
+  if (!f.code || !f.name) { toast.warning('Código y nombre son obligatorios'); return }
+  try {
+    await airlinesApi.create({ ...f, isActive: f.isActive ?? true })
+    toast.success('Aerolínea creada')
+    showAirlineCreate.value = false
+    await loadAirlines()
+  } catch (e) {
+    toast.error(extractError(e, 'Error al crear la aerolínea'))
+  }
+}
+
+function startAirlineEdit(a) {
+  airlineForm.value = {
+    id: a.id, code: a.code, name: a.name,
+    iataCode: a.iataCode || '', country: a.country || '',
+    isActive: a.isActive !== false,
+  }
+  editingAirline.value = a
+}
+
+async function saveAirlineEdit() {
+  const f = airlineForm.value
+  if (!f.code || !f.name) { toast.warning('Código y nombre son obligatorios'); return }
+  try {
+    await airlinesApi.update(f.id, { ...f })
+    toast.success('Aerolínea actualizada')
+    editingAirline.value = null
+    await loadAirlines()
+  } catch (e) {
+    toast.error(extractError(e, 'Error al actualizar la aerolínea'))
+  }
+}
+
+async function removeAirline(a) {
+  if (!confirm(`¿Eliminar la aerolínea ${a.name} (${a.code})?`)) return
+  try {
+    await airlinesApi.delete(a.id)
+    toast.success('Aerolínea eliminada')
+    await loadAirlines()
+  } catch (e) {
+    toast.error(extractError(e, 'Error al eliminar la aerolínea'))
+  }
+}
+
+async function loadTypeConfig() {
+  if (!configAirlineId.value) return
+  try {
+    const res = await uldTypeConfigApi.getByAirline(configAirlineId.value)
+    typeConfigs.value = (res.data || []).map(c => ({
+      ...c,
+      defaultTareLbs: c.defaultTareLbs != null ? Number(c.defaultTareLbs) : 0,
+      maxGrossLbs: c.maxGrossLbs != null ? Number(c.maxGrossLbs) : null,
+    }))
+  } catch (e) {
+    toast.error(extractError(e, 'No se pudo cargar la configuración ULD'))
+  }
+}
+
+function addTypeConfigRow() {
+  if (!configAirlineId.value) { toast.warning('Selecciona una aerolínea primero'); return }
+  typeConfigs.value.push({
+    id: null, airlineId: configAirlineId.value, uldType: 'PMC',
+    defaultTareLbs: 0, maxGrossLbs: null, notes: '',
+  })
+}
+
+function removeTypeConfigRow(idx) {
+  typeConfigs.value.splice(idx, 1)
+}
+
+async function saveTypeConfig() {
+  if (!configAirlineId.value) return
+  const rows = typeConfigs.value.map(r => ({
+    uldType: r.uldType,
+    defaultTareLbs: r.defaultTareLbs || 0,
+    maxGrossLbs: r.maxGrossLbs || null,
+    notes: r.notes || null,
+  }))
+  try {
+    await uldTypeConfigApi.replaceForAirline(configAirlineId.value, rows)
+    toast.success('Configuración ULD guardada')
+    await loadTypeConfig()
+  } catch (e) {
+    toast.error(extractError(e, 'Error al guardar la configuración ULD'))
+  }
+}
 
 const roles = ['READ_ONLY', 'WAREHOUSE_ASSISTANT', 'OPERATIONS', 'TRAFFIC', 'LOAD_PLANNER', 'ADMIN', 'SUPER_USER']
 
@@ -646,6 +958,12 @@ onMounted(async () => {
   await loadUsers()
   if (auth.role === 'SUPER_USER') {
     await loadSites()
+  }
+  if (canManageSettings.value) {
+    await loadAirlines()
+    if (airlines.value.length) {
+      configAirlineId.value = airlines.value[0].id
+    }
   }
 })
 </script>

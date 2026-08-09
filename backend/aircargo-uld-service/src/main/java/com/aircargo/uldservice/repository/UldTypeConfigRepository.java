@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface UldTypeConfigRepository extends JpaRepository<UldTypeConfig, UUID> {
     List<UldTypeConfig> findByAirlineId(UUID airlineId);
+
+    void deleteByAirlineId(UUID airlineId);
 }

@@ -4,6 +4,7 @@ import com.aircargo.mawbservice.dto.HawbDTO;
 import com.aircargo.mawbservice.entity.Hawb;
 import com.aircargo.mawbservice.entity.MawbStatus;
 import com.aircargo.mawbservice.repository.HawbRepository;
+import com.aircargo.mawbservice.repository.MawbRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -18,9 +19,11 @@ import java.util.UUID;
 public class HawbServiceImpl implements HawbService {
 
     private final HawbRepository hawbRepository;
+    private final MawbRepository mawbRepository;
 
-    public HawbServiceImpl(HawbRepository hawbRepository) {
+    public HawbServiceImpl(HawbRepository hawbRepository, MawbRepository mawbRepository) {
         this.hawbRepository = hawbRepository;
+        this.mawbRepository = mawbRepository;
     }
 
     @Override
@@ -48,7 +51,13 @@ public class HawbServiceImpl implements HawbService {
     @CacheEvict(value = "hawbs", allEntries = true)
     public HawbDTO create(HawbDTO dto) {
         Hawb entity = HawbDTO.toEntity(dto);
-        entity.setStatus(MawbStatus.BOOKED);
+        if (entity.getAirlineId() == null && dto.getMawbId() != null) {
+            mawbRepository.findById(dto.getMawbId())
+                    .ifPresent(mawb -> entity.setAirlineId(mawb.getAirlineId()));
+        }
+        if (entity.getAirlineId() == null) {
+            throw new IllegalArgumentException("airlineId es requerido (no se pudo derivar del MAWB " + dto.getMawbId() + ")");
+        }
         Hawb saved = hawbRepository.save(entity);
         return HawbDTO.fromEntity(saved);
     }

@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 import static org.springframework.security.config.Customizer.withDefaults;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 
@@ -26,6 +27,9 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/compliance/**").hasAnyAuthority("ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.POST, "/api/label-templates/**").hasAuthority("SUPER_USER")
+                .requestMatchers(HttpMethod.PUT, "/api/label-templates/**").hasAuthority("SUPER_USER")
+                .requestMatchers(HttpMethod.DELETE, "/api/label-templates/**").hasAuthority("SUPER_USER")
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )

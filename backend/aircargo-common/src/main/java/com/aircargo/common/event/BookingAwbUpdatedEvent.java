@@ -1,4 +1,4 @@
-package com.aircargo.bookingservice.event;
+package com.aircargo.common.event;
 
 import java.util.UUID;
 

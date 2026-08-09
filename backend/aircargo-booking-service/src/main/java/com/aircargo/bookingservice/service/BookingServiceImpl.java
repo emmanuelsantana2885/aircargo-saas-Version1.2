@@ -75,6 +75,20 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "bookings", key = "T(java.lang.String).valueOf(#mawbId)")
+    public Optional<BookingDTO> findByMawbId(UUID mawbId) {
+        return bookingRepository.findByMawbId(mawbId).stream().findFirst().map(BookingDTO::fromEntity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "bookings", key = "T(java.lang.String).valueOf(#flightId)")
+    public List<BookingDTO> getByFlightId(UUID flightId) {
+        return bookingRepository.findByFlightId(flightId).stream().map(BookingDTO::fromEntity).toList();
+    }
+
+    @Override
     @Transactional
     @CacheEvict(value = "bookings", allEntries = true)
     public BookingDTO create(BookingDTO dto) {
@@ -158,7 +172,7 @@ public class BookingServiceImpl implements BookingService {
                     Booking saved = bookingRepository.save(booking);
 
                     try {
-                        var event = new com.aircargo.bookingservice.event.BookingAwbUpdatedEvent(
+                        var event = new com.aircargo.common.event.BookingAwbUpdatedEvent(
                                 id, awbNumber, booking.getFlight() != null ? booking.getFlight().getId() : null
                         );
                         rabbitTemplate.convertAndSend(exchange, "booking.awb.updated", event);

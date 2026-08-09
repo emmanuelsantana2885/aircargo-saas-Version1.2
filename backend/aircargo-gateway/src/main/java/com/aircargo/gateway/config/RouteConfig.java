@@ -66,7 +66,8 @@ public class RouteConfig {
                 .route("mawb-service", r -> r
 .path("/api/mawbs/**", "/api/hawbs/**",
      "/api/cargo/mawbs/**", "/api/cargo/hawbs/**",
-     "/api/tracking/**", "/api/compliance/**")
+     "/api/tracking/**", "/api/compliance/**",
+     "/api/label-templates/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("mawb-service")

@@ -304,8 +304,15 @@ async function closeCamera() {
   showCamera.value = false
 }
 
+const FLASH_CLASSES = {
+  emerald: 'border-emerald-400 bg-emerald-50',
+  green: 'border-green-400 bg-green-50',
+  amber: 'border-amber-400 bg-amber-50',
+  red: 'border-red-400 bg-red-50',
+}
+
 function flash(color) {
-  flashClass.value = `border-${color}-400 bg-${color}-50`
+  flashClass.value = FLASH_CLASSES[color] || ''
   setTimeout(() => { flashClass.value = '' }, 600)
 }
 </script>

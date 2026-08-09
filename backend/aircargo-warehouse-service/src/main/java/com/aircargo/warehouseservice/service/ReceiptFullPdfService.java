@@ -5,6 +5,8 @@ import com.aircargo.warehouseservice.entity.WarehouseReceipt;
 import com.aircargo.warehouseservice.repository.ReceiptPieceRepository;
 import com.aircargo.warehouseservice.repository.WarehouseReceiptRepository;
 import com.aircargo.common.util.TextUtil;
+import com.aircargo.feign.client.MawbClient;
+import com.aircargo.feign.dto.HawbDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,13 +26,16 @@ public class ReceiptFullPdfService {
     private final WarehouseReceiptRepository receiptRepository;
     private final ReceiptPieceRepository pieceRepository;
     private final PdfGenerationService pdfService;
+    private final MawbClient mawbClient;
 
     public ReceiptFullPdfService(WarehouseReceiptRepository receiptRepository,
                                   ReceiptPieceRepository pieceRepository,
-                                  PdfGenerationService pdfService) {
+                                  PdfGenerationService pdfService,
+                                  MawbClient mawbClient) {
         this.receiptRepository = receiptRepository;
         this.pieceRepository = pieceRepository;
         this.pdfService = pdfService;
+        this.mawbClient = mawbClient;
     }
 
     @Transactional
@@ -75,12 +80,14 @@ public class ReceiptFullPdfService {
                 .filter(p -> p.getHawbId() != null)
                 .collect(Collectors.groupingBy(p -> p.getHawbId().toString(), LinkedHashMap::new, Collectors.toList()));
 
+        Map<String, String> hawbNumbers = resolveHawbNumbers(receipt, byHawb);
+
         if (byHawb.isEmpty()) {
             sb.append("<h2>Piezas — Desglose</h2>");
             renderPieceTable(sb, pieces);
         } else {
             sb.append("<h2>Resumen General (MAWB)</h2>");
-            renderSummaryTable(sb, pieces, byHawb);
+            renderSummaryTable(sb, pieces, byHawb, hawbNumbers);
 
             sb.append("<div class='page-break'></div>");
             sb.append("<h2>Anexo — Desglose por HAWB</h2>");
@@ -88,10 +95,11 @@ public class ReceiptFullPdfService {
             for (Map.Entry<String, List<ReceiptPiece>> entry : byHawb.entrySet()) {
                 idx++;
                 List<ReceiptPiece> hp = entry.getValue();
+                String num = hawbNumbers.getOrDefault(entry.getKey(), "");
                 sb.append("<div class='hawb-section'>");
-                sb.append("<h3>HAWB ").append(idx).append(" de ").append(byHawb.size()).append("</h3>");
+                sb.append("<h3>HAWB ").append(esc(num)).append(" &#8212; ").append(idx).append(" de ").append(byHawb.size()).append("</h3>");
                 renderPieceTable(sb, hp);
-                renderHawbSummary(sb, hp);
+                renderHawbSummary(sb, hp, num);
                 sb.append("</div>");
             }
         }
@@ -184,7 +192,7 @@ public class ReceiptFullPdfService {
         sb.append("<div class='footer'>").append(esc(footer)).append("</div>");
     }
 
-    private void renderSummaryTable(StringBuilder sb, List<ReceiptPiece> allPieces, Map<String, List<ReceiptPiece>> byHawb) {
+    private void renderSummaryTable(StringBuilder sb, List<ReceiptPiece> allPieces, Map<String, List<ReceiptPiece>> byHawb, Map<String, String> hawbNumbers) {
         int totalPcs = allPieces.stream().mapToInt(p -> p.getPieces() != null && p.getPieces() > 0 ? p.getPieces() : 1).sum();
         BigDecimal totalScaleLbs = allPieces.stream().map(p -> nz(p.getScaleWeightLbs())).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalDimLbs = allPieces.stream().map(p -> nz(p.getDimWeightLbs())).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -201,6 +209,7 @@ public class ReceiptFullPdfService {
         for (Map.Entry<String, List<ReceiptPiece>> entry : byHawb.entrySet()) {
             idx++;
             List<ReceiptPiece> hp = entry.getValue();
+            String num = hawbNumbers.getOrDefault(entry.getKey(), "");
             int pcs = hp.stream().mapToInt(p -> p.getPieces() != null && p.getPieces() > 0 ? p.getPieces() : 1).sum();
             BigDecimal scLbs = hp.stream().map(p -> nz(p.getScaleWeightLbs())).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal dLbs = hp.stream().map(p -> nz(p.getDimWeightLbs())).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -209,7 +218,7 @@ public class ReceiptFullPdfService {
             BigDecimal chKg = hp.stream().map(p -> nz(p.getChargeableKg())).reduce(BigDecimal.ZERO, BigDecimal::add);
 
             sb.append("<tr class='summary-row'>");
-            sb.append("<td>HAWB ").append(idx).append("</td>");
+            sb.append("<td>").append(esc(num)).append("</td>");
             sb.append("<td>").append(pcs).append("</td>");
             sb.append("<td>").append(scLbs.setScale(2, RoundingMode.HALF_UP)).append("</td>");
             sb.append("<td>").append(dLbs.setScale(2, RoundingMode.HALF_UP)).append("</td>");
@@ -230,7 +239,7 @@ public class ReceiptFullPdfService {
         sb.append("</tr></tbody></table>");
     }
 
-    private void renderHawbSummary(StringBuilder sb, List<ReceiptPiece> hawbPieces) {
+    private void renderHawbSummary(StringBuilder sb, List<ReceiptPiece> hawbPieces, String hawbNumber) {
         int pcs = hawbPieces.stream().mapToInt(p -> p.getPieces() != null && p.getPieces() > 0 ? p.getPieces() : 1).sum();
         BigDecimal scKg = hawbPieces.stream().map(p -> nz(p.getScaleWeightKg())).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal dKg = hawbPieces.stream().map(p -> nz(p.getDimWeightKg())).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -238,10 +247,45 @@ public class ReceiptFullPdfService {
         BigDecimal scLbs = hawbPieces.stream().map(p -> nz(p.getScaleWeightLbs())).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         sb.append("<div class='hawb-summary'>");
-        sb.append("Piezas: <strong>").append(pcs).append("</strong> &mdash; ");
-        sb.append("Scale: <strong>").append(scLbs.setScale(2, RoundingMode.HALF_UP)).append(" LBS / ").append(scKg.setScale(2, RoundingMode.HALF_UP)).append(" KGS</strong> &mdash; ");
+        if (hawbNumber != null && !hawbNumber.isBlank()) {
+            sb.append("HAWB: <strong>").append(esc(hawbNumber)).append("</strong> &#8212; ");
+        }
+        sb.append("Piezas: <strong>").append(pcs).append("</strong> &#8212; ");
+        sb.append("Scale: <strong>").append(scLbs.setScale(2, RoundingMode.HALF_UP)).append(" LBS / ").append(scKg.setScale(2, RoundingMode.HALF_UP)).append(" KGS</strong> &#8212; ");
         sb.append("Facturable: <strong>").append(chKg.setScale(2, RoundingMode.HALF_UP)).append(" KGS</strong>");
         sb.append("</div>");
+    }
+
+    private Map<String, String> resolveHawbNumbers(WarehouseReceipt receipt, Map<String, List<ReceiptPiece>> byHawb) {
+        Map<String, String> hawbNumbers = new HashMap<>();
+        if (byHawb == null || byHawb.isEmpty()) return hawbNumbers;
+
+        try {
+            List<HawbDTO> hawbs = mawbClient.getHawbsByMawb(receipt.getMawbId());
+            if (hawbs != null) {
+                for (HawbDTO h : hawbs) {
+                    if (h.getId() != null && h.getHawbNumber() != null) {
+                        hawbNumbers.put(h.getId().toString(), h.getHawbNumber());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener HAWBs del MAWB {} para el PDF: {}", receipt.getMawbId(), e.getMessage());
+        }
+
+        for (String key : byHawb.keySet()) {
+            if (hawbNumbers.containsKey(key)) continue;
+            try {
+                HawbDTO h = mawbClient.getHawbById(UUID.fromString(key));
+                if (h != null && h.getHawbNumber() != null) {
+                    hawbNumbers.put(key, h.getHawbNumber());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo resolver HAWB {} para el PDF: {}", key, e.getMessage());
+            }
+        }
+
+        return hawbNumbers;
     }
 
     private void renderPieceTable(StringBuilder sb, List<ReceiptPiece> pieces) {

@@ -50,6 +50,7 @@ public class JwtUtil {
 
     public String generateAccessToken(String userId, String role, String airlineId, String email, String fullName) {
         Date now = new Date();
+        long ttlMs = expirationMs > 0 ? expirationMs : ACCESS_TOKEN_MS;
         return Jwts.builder()
                 .subject(userId)
                 .claim("role", role)
@@ -58,7 +59,7 @@ public class JwtUtil {
                 .claim("fullName", fullName != null ? fullName : "")
                 .claim("tokenType", "access")
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + ACCESS_TOKEN_MS))
+                .expiration(new Date(now.getTime() + ttlMs))
                 .signWith(key)
                 .compact();
     }

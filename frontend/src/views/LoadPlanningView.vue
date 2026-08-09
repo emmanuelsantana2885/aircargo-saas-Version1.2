@@ -520,7 +520,8 @@ onMounted(async () => {
 
 async function loadAllUlds() {
   try {
-    const res = await api.get('/ulds', { params: { airlineId: appStore.selectedFlight?.airlineId || '' } })
+    const airlineId = appStore.selectedFlight?.airlineId
+    const res = await api.get('/ulds', airlineId ? { params: { airlineId } } : undefined)
     allUlds.value = res.data
   } catch (e) {
     toast.error(extractError(e))

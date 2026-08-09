@@ -331,6 +331,10 @@
                       class="ds-btn-secondary">
                       Desmontar ULD
                     </button>
+                    <button v-if="uld.backendId" @click="printPalletLabel(uld)"
+                      class="ds-btn-secondary" title="Imprimir pallet label de este ULD">
+                      &#9642; Pallet Label
+                    </button>
                     <button @click="saveUld(uld)"
                       class="ds-btn-primary">
                       {{ uld.backendId ? 'Actualizar ULD' : '&#128640; Enviar a Load Planning' }}
@@ -347,6 +351,8 @@
         </div>
       </template>
     </section>
+
+    <LabelPrintModal v-if="showLabels" type="PALLET" :items="labelIds" @close="showLabels = false" />
   </div>
 </template>
 
@@ -356,13 +362,23 @@ import { useUldsStore } from '../stores/ulds'
 import { useAppStore } from '../stores/app'
 import { uldsApi } from '../api/ulds'
 import { uldAwbsApi } from '../api/uldAwbs'
+import { uldTypeConfigApi } from '../api/uldTypeConfig'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 import ScanPanel from '../components/ScanPanel.vue'
+import LabelPrintModal from '../components/labels/LabelPrintModal.vue'
 
 const uldsStore = useUldsStore()
 const appStore = useAppStore()
 const toast = useToastStore()
+
+const showLabels = ref(false)
+const labelIds = ref([])
+function printPalletLabel(uld) {
+  if (!uld.backendId) { toast.warning('Guarda el ULD antes de imprimir su pallet label'); return }
+  labelIds.value = [uld.backendId]
+  showLabels.value = true
+}
 
 function airlineCodeById(airlineId) {
   const a = appStore.airlines.find(x => x.id === airlineId)
@@ -395,10 +411,35 @@ const TARE_MAP = {
   PMC: 270, PAG: 250, PAH: 300, PIP: 250,
 }
 
+// ULD type config from backend (per airline), editable by ADMIN/SUPER_USER
+const typeConfigs = ref([])
+
+function currentAirlineId() {
+  return appStore.selectedFlight?.airlineId || appStore.airlines[0]?.id || null
+}
+
+async function loadTypeConfig() {
+  const airlineId = currentAirlineId()
+  if (!airlineId) { typeConfigs.value = []; return }
+  try {
+    const res = await uldTypeConfigApi.getByAirline(airlineId)
+    typeConfigs.value = res.data || []
+  } catch {
+    typeConfigs.value = []
+  }
+}
+
+function defaultTareFor(uldType) {
+  const type = (uldType || '').toUpperCase()
+  const cfg = typeConfigs.value.find(c => String(c.uldType).toUpperCase() === type)
+  if (cfg && cfg.defaultTareLbs != null && Number(cfg.defaultTareLbs) > 0) return Number(cfg.defaultTareLbs)
+  return TARE_MAP[type] ?? 0
+}
+
 const suggestedTareLbs = computed(() => {
   const expanded = localUlds.value.find(u => u.uid === expandedUldId.value)
   if (!expanded || !expanded.uldType) return null
-  return TARE_MAP[expanded.uldType.toUpperCase()] ?? null
+  return defaultTareFor(expanded.uldType) || TARE_MAP[expanded.uldType.toUpperCase()] || null
 })
 
 const filteredUlDs = computed(() => localUlds.value)
@@ -454,6 +495,23 @@ watch(() => {
     creationStep.value = 3
   }
 })
+
+// Auto-apply suggested tare when ULD type changes on an unsaved ULD
+watch(() => {
+  const uld = localUlds.value.find(u => u.uid === expandedUldId.value)
+  return uld?.uldType
+}, (type, oldType) => {
+  const uld = localUlds.value.find(u => u.uid === expandedUldId.value)
+  if (!uld || uld.backendId) return
+  const prevAuto = oldType ? defaultTareFor(oldType) : null
+  const isAutoValue = uld.tareLbs == null || uld.tareLbs === 0 || (prevAuto != null && uld.tareLbs === prevAuto)
+  if (isAutoValue) {
+    uld.tareLbs = defaultTareFor(type)
+  }
+})
+
+// Reload ULD type config when the selected flight/airline changes
+watch(() => appStore.selectedFlight?.airlineId, () => loadTypeConfig())
 
 function onScanPieceAdded(result) {
   const uid = scanUldUid.value
@@ -665,7 +723,7 @@ function createNewBlankUld() {
     config: '',
     position: '',
     sealNumber: '',
-    tareLbs: 140,
+    tareLbs: defaultTareFor('PMC'),
     grossWeightLbs: 0,
     status: 'OPEN',
     volumePct: 0,
@@ -957,6 +1015,7 @@ onMounted(async () => {
     appStore.loadReceipts(),
     appStore.loadUlds(),
   ])
+  loadTypeConfig()
   rebuildLocalList()
 })
 

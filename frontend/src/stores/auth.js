@@ -138,7 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!role.value) return false
     switch (role.value) {
       case 'SUPER_USER': return true
-      case 'ADMIN': return viewName !== 'SETTINGS'
+      case 'ADMIN': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS', 'BOOKINGS', 'RECEIPTS', 'USERS', 'SETTINGS', 'EXPORTS'].includes(viewName)
       case 'READ_ONLY': return true
       case 'WAREHOUSE_ASSISTANT': return viewName === 'RECEIPTS' || viewName === 'DASHBOARD'
       case 'OPERATIONS': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)

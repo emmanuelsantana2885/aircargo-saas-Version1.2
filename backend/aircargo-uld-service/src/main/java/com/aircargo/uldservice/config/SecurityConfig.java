@@ -31,6 +31,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**", "/api/scan/**").hasAnyAuthority("READ_ONLY", "OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
+                .requestMatchers("/api/ulds/labels/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.POST, "/api/uld-type-config/**").hasAnyAuthority("ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.PUT, "/api/uld-type-config/**").hasAnyAuthority("ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.DELETE, "/api/uld-type-config/**").hasAnyAuthority("ADMIN", "SUPER_USER")
                 .requestMatchers("/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**", "/api/scan/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
                 .anyRequest().authenticated()
             )
