@@ -31,14 +31,22 @@ public class JwtUtil {
 
     public JwtUtil(
             @Value("${app.jwt.secret:dev-only-insecure-secret-do-not-use-in-production-please-change-me}") String secret,
-            @Value("${app.jwt.expiration-ms:86400000}") long expirationMs) {
+            @Value("${app.jwt.expiration-ms:86400000}") long expirationMs,
+            @Value("${app.jwt.allow-dev-secret:false}") boolean allowDevSecret) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                 "JWT_SECRET environment variable is not set. " +
                 "Generate one with: openssl rand -base64 64");
         }
         if (DEV_DEFAULT.equals(secret)) {
-            log.warn("⚠ Using INSECURE dev-only JWT secret. Set JWT_SECRET env var for production!");
+            if (allowDevSecret) {
+                log.warn("⚠ Using INSECURE dev-only JWT secret. Set JWT_SECRET env var for production!");
+            } else {
+                throw new IllegalStateException(
+                    "app.jwt.secret is set to the INSECURE dev default. " +
+                    "Set the JWT_SECRET environment variable (openssl rand -base64 64), " +
+                    "or set app.jwt.allow-dev-secret=true for local development only.");
+            }
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;

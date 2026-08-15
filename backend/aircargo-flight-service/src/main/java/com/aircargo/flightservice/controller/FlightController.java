@@ -5,7 +5,7 @@ import com.aircargo.common.dto.PageResponse;
 import com.aircargo.flightservice.dto.FlightDTO;
 import com.aircargo.flightservice.entity.FlightStatus;
 import com.aircargo.flightservice.service.FlightService;
-import com.aircargo.flightservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;

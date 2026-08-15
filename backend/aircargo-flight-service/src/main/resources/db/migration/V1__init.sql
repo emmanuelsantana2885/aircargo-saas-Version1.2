@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_flight_flight_date ON flight(flight_date);
 CREATE INDEX IF NOT EXISTS idx_flight_status ON flight(status);
 CREATE INDEX IF NOT EXISTS idx_flight_airline_date ON flight(airline_id, flight_date);
 
--- Seed UPS airline (UUID must match hardcoded value in frontend)
+-- Seed UPS airline (reference UUID; the frontend no longer hardcodes it, it loads from the API)
 INSERT INTO airline (id, code, name, iata_code, country, is_active, created_at, updated_at)
 VALUES (
     '00000000-0000-0000-0000-000000000001',

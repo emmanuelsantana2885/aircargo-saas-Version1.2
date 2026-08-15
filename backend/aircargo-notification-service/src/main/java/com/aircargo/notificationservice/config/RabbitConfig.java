@@ -52,4 +52,11 @@ public class RabbitConfig {
                 .to(eventsExchange)
                 .with("mawb.status.changed");
     }
+
+    @Bean
+    public Binding auditBinding(Queue notificationsQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(notificationsQueue)
+                .to(eventsExchange)
+                .with("audit.log");
+    }
 }

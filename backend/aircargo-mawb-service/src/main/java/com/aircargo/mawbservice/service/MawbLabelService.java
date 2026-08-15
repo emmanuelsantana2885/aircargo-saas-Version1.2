@@ -1,7 +1,7 @@
 package com.aircargo.mawbservice.service;
 
 import com.aircargo.common.label.LabelRenderer;
-import com.aircargo.mawbservice.dto.LabelPrintRequest;
+import com.aircargo.common.dto.LabelPrintRequest;
 import com.aircargo.mawbservice.entity.LabelTemplate;
 import com.aircargo.mawbservice.entity.LabelType;
 import com.aircargo.mawbservice.entity.Mawb;

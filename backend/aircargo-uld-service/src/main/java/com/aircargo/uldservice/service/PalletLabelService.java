@@ -3,7 +3,7 @@ package com.aircargo.uldservice.service;
 import com.aircargo.common.label.LabelRenderer;
 import com.aircargo.feign.client.MawbClient;
 import com.aircargo.feign.dto.LabelTemplateDTO;
-import com.aircargo.uldservice.dto.LabelPrintRequest;
+import com.aircargo.common.dto.LabelPrintRequest;
 import com.aircargo.uldservice.entity.Uld;
 import com.aircargo.uldservice.entity.UldAwb;
 import com.aircargo.uldservice.repository.UldAwbRepository;

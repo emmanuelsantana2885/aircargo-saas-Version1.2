@@ -2,7 +2,7 @@ package com.aircargo.mawbservice.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.mawbservice.dto.DuaRecordDTO;
-import com.aircargo.mawbservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.mawbservice.service.DuaRecordService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;

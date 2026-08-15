@@ -26,6 +26,13 @@ Monorepo with three main directories + microservices scaffolding:
 ## Commands
 
 ```sh
+# Full stack (Postgres + RabbitMQ + 9 services + gateway + frontend)
+./start-all.sh            # build + start everything (needs Docker for infra)
+./start-all.sh --skip-build   # same, reuse existing jars (fast boot)
+tail -f /tmp/aircargo-gateway.log   # logs per service in /tmp/<name>.log
+# Backend only (staggered boot with health waits)
+./start-backend.sh
+
 # Frontend
 npm install          # in frontend/
 npm run dev          # Vite dev server (port 5173)
@@ -41,9 +48,17 @@ mvn clean compile spring-boot:run      # full rebuild + run
 docker compose up -d                   # PostgreSQL 16 alpine on :5432
 ```
 
+### Environment & tooling
+
+- Secrets live in a gitignored root `.env` (copy `.env.example`, fill real values). Required: `JWT_SECRET` (min 32 chars), `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD`. `aircargo-env.sh` validates them and exports everything for the start scripts.
+- Maven is auto-detected: `MAVEN_BIN` env var → `mvn` on PATH → IntelliJ bundled Maven (flatpak) → SDKMAN. All start scripts use `$MAVEN_BIN`, so no manual PATH setup is needed.
+- `start-all.sh` requires Docker for the Postgres+RabbitMQ containers; if they're already up (native or containerized), Docker is not touched.
+
 ## Hard-coded constants
 
-- UPS airline UUID `00000000-0000-0000-0000-000000000001` is hard-coded in every frontend API file and seeded in `V1__init.sql` (backend copy only). Never change it without updating both sides.
+- UPS airline UUID `00000000-0000-0000-0000-000000000001` is the seeded reference airline (flight-service `V1__init.sql`, root copy `V1__init.sql`). The frontend NO LONGER hardcodes it — airlines load from the API (`/api/airlines`). Keep the seed in sync with any hardcoded references in code.
+- **Master data seeding (auth-service `DataSeeder`)**: `com.aircargo.authservice.config.DataSeeder` (`@Profile("!test")`, `ApplicationRunner`) seeds the UPS airline, sites (SDQ/STI/PUJ/MIA), users, site assignments, and view/role permissions idempotently on startup — required because auth-service has `spring.flyway.enabled=false` + `ddl-auto=update` (Hibernate creates tables but never seeds). This is what makes `./start-all.sh` work on a fresh database (no `database/migrations/` seed files are ever applied by any service). It uses `AirlineRepository` (new, in auth-service) for the shared `com.aircargo.common.entity.Airline`.
+- **Additional airlines** (FDX/DHL/M6/UC/QT/5Y/K4/GG/M7) live in flight-service `V2__seed_extra_airlines.sql` (migrated from root copy `V12__seed_more_airlines.sql`, `ON CONFLICT DO NOTHING`).
 - Vite proxy in `frontend/vite.config.js` assumes backend is on `localhost:8080` (gateway).
 
 ## Migrations
@@ -72,6 +87,46 @@ Flyway migrations live in **each microservice** at `backend/aircargo-*-service/s
 | Phase 12 | Delete Monolith | ✅ Complete — `backend/aircargo-api/` removed, DUA compliance migrated to mawb-service, gateway routes cleaned, Swagger/OpenAPI added to all services |
 
 Full plan: `Documents/MICROSERVICES-MIGRATION-PLAN.md`
+
+## Recent session changes (Aug 14, 2026 — Eliminación de debilidades D1–D10 del análisis Bolt vs aircargo)
+
+Trabajo dirigido por `~/Desktop/analisis-bolt-vs-aircargo.txt`. Objetivo: cerrar las debilidades reales detectadas. **Verificación final: `mvn test` reactor completo BUILD SUCCESS (63 tests: 7 unitarias + 1 integración auth + 10 de contrato feign) + `npm run lint`/`npm run build` OK.**
+
+| File | Change |
+|------|--------|
+| `.github/workflows/ci.yml` | **D1 FIX** — eliminado `aircargo-api` del bucle "Build Docker images" (monolito borrado en Phase 12); CI estaba obsoleto |
+| `aircargo-booking-service/.../dto/PageResponse.java` | **D2 DELETED** — código muerto: booking ya importaba `com.aircargo.common.dto.PageResponse` |
+| `aircargo-uld-service/.../dto/PageResponse.java` | **D2 DELETED** — igual; UldService/UldServiceImpl/UldController ahora usan `com.aircargo.common.dto.PageResponse` |
+| `aircargo-common/pom.xml` | **D3** — añadido `spring-boot-starter-amqp` `<optional>true</optional>` (común disponible solo si el servicio tiene amqp) |
+| `aircargo-common/.../event/AuditLogEvent.java` | **D3 NEW** — record compartido de auditoría |
+| `aircargo-common/.../audit/AuditService.java` | **D3 NEW** — publicador AMQP no bloqueante (routing key `audit.log`); `@Service("amqpAuditService")` para no colisionar con el `auditService` local de auth; `@ConditionalOnClass(RabbitTemplate)` → solo se registra donde hay amqp (booking, mawb, warehouse, flight, notification) |
+| `aircargo-{booking,flight,mawb,warehouse}-service/.../service/AuditService.java` | **D3 DELETED** — 4 copias locales (2 estrategias distintas) eliminadas; los controllers ahora inyectan `com.aircargo.common.audit.AuditService` |
+| `aircargo-{booking,mawb,warehouse}-service/.../event/AuditLogEvent.java` | **D3 DELETED** — 3 records locales duplicados eliminados |
+| `aircargo-common/.../error/GlobalExceptionHandler.java` | **D4 NEW** — `@RestControllerAdvice` compartido + `@ConditionalOnWebApplication(SERVLET)` (no aplica al gateway reactivo); 400 validación/IllegalArgument, 404 NoResourceFound, re-lanza AccessDenied/Authentication, 500 genérico JSON consistente. Antes cada servicio devolvía JSON de error distinto |
+| `aircargo-common/.../auth/JwtUtil.java` | **D8** — constructor con 3er parámetro `@Value("${app.jwt.allow-dev-secret:false}")`; fail-fast: lanza en startup si el secret es el dev default salvo `app.jwt.allow-dev-secret=true` (antes solo warn; un secret dev en producción era silencioso) |
+| `aircargo-notification-service/.../db/migration/V2__create_audit_log.sql` | **D3 NEW** — tabla `notification.audit_log` + índices (schema `notification`, evita colisión con `public.audit_log` de auth) |
+| `aircargo-notification-service/.../entity/AuditLog.java` | **D3 NEW** — entidad JPA `@Table(schema="notification")` |
+| `aircargo-notification-service/.../repository/AuditLogRepository.java` | **D3 NEW** — repositorio |
+| `aircargo-notification-service/.../config/RabbitConfig.java` | **D3** — binding `audit.log` → cola `audit.log`; **ANTES la routing key `audit.log` no tenía consumidor (los eventos de auditoría se perdían)** |
+| `aircargo-notification-service/.../listener/NotificationEventListener.java` | **D3** — nuevo `@RabbitHandler` `onAuditLog` que persiste `AuditLog` con try/catch |
+| `database/migrations/V43__create_notification_audit_log.sql` | Sincronizado desde notification-service |
+| `aircargo-auth-service/.../entity/AppUser.java` | **FIX** — `update()` de `AppUserServiceImpl` sobrescribía email/fullName/role con `null` en DTOs parciales; ahora guards null-safe (bug detectado por `AppUserServiceImplTest`) |
+| `aircargo-auth-service/src/test/resources/application-test.properties` | **D6 NEW** — H2, `ddl-auto=create-drop`, Flyway off, `app.jwt.allow-dev-secret=true`, cache simple |
+| `aircargo-auth-service/.../config/TestSecurityConfig.java` | **D6 NEW** — `@Profile("test")` permitAll (antes AGENTS.md lo describía pero no existía) |
+| `aircargo-auth-service/.../controller/AuthControllerIntegrationTest.java` | **D6 NEW** — 4 tests: login válido→200+token, usuario inexistente→401, inactivo→403, password faltante→428. Persiste `Airline` vía `EntityManager` (airline_id NOT NULL) |
+| `AGENTS.md` | **D9 FIX** — sección "Hard-coded constants": el frontend ya NO hardcodea el UUID de UPS (carga desde `/api/airlines`); el seed vive en flight-service `V1__init.sql` (comentario del seed corregido) |
+| `aircargo-common/.../cache/CacheConfig.java` | **D5 NEW** — `@Configuration` compartido con `@EnableCaching` + `@ConditionalOnClass(name="org.springframework.cache.caffeine.CaffeineCacheManager")` (el gateway reactivo no lo registra); lee `spring.cache.caffeine.spec` (antes muerta: los CacheConfig la ignoraban). Con `spring.cache.type=none` se DESACTIVA toda la caché — patrón documentado para HA sin Redis |
+| Los 9 `aircargo-*-service/.../config/CacheConfig.java` | **D5 DELETED** — clases duplicadas eliminadas; la caché ahora la gestiona common. Cada servicio conserva su spec en `application.properties` (export 60s, load-planning 120s, auth 600s, resto 300s) |
+| `aircargo-auth-service/.../AuthServiceApplication.java` | **D5** — añadido `@EnableCaching` (auth lo tenía solo en su CacheConfig borrado) |
+| `aircargo-gateway/.../filter/RateLimitFilter.java` | **D7** — límites configurables: `app.gateway.rate-limit.enabled` / `.limit-per-minute` / `.timeout-ms` (defaults: true / 100 / 50). Sigue siendo en-memoria por instancia |
+| `aircargo-gateway/.../resources/application.properties` | **D7** — sección Rate Limiting con env vars `RATE_LIMIT_ENABLED`/`RATE_LIMIT_PER_MINUTE`/`RATE_LIMIT_TIMEOUT_MS` + comentario HA (nginx `limit_req` o Redis en 2+ réplicas) |
+| `aircargo-common/.../dto/LabelPrintRequest.java` | **D10 NEW** — request de impresión compartido (antes 2 copias byte-idénticas en mawb y uld) |
+| `aircargo-{mawb,uld}-service/.../dto/LabelPrintRequest.java` | **D10 DELETED** — MawbLabelService/MawbLabelController/PalletLabelService/UldLabelController importan `com.aircargo.common.dto.LabelPrintRequest` |
+| `aircargo-feign-clients/.../dto/UserDTO.java` | **D10** — contrato alineado con el wire real: `sites` → `siteIds` (`List<UUID>`) (auth responde `siteIds`; notification solo usa id/email) |
+| 5 × `.../dto/FeignContractSyncTest.java` | **D10 NEW** — guarda de contrato por servicio productor (auth, flight, booking, mawb, uld): refleja cada DTO feign y falla el build si un campo del contrato falta en el DTO local (el local puede tener extras y tipos enum/String). Hace explícito el "patrón de contrato" de la Fase 8 |
+| `aircargo-{auth,flight}-service/pom.xml` | **D10** — `aircargo-feign-clients` como dep `<scope>test</scope>` (solo para FeignContractSyncTest) |
+
+Notas: `AppUser.airline` es `@JoinColumn(nullable=false)` → todo test de integración de login debe persistir una `Airline` primero. El `GlobalExceptionHandler` de common ya se verificó activo en el test de integración (errores 500 JSON consistentes). D5/D7 son infraestructura: la caché Caffeine en proceso y el rate limiter por instancia son CORRECTOS para 1 instancia por servicio (el diseño actual); para HA (2+ réplicas) se documenta: `spring.cache.type=none` (D5) y nginx/Redis (D7). Los TTLs de caché por servicio ahora viven en `spring.cache.caffeine.spec` de cada `application.properties` (live, antes muerta).
 
 ## Recent session changes (Aug 9, 2026 — Fix número HAWB en PDF recibo completo)
 
@@ -374,7 +429,7 @@ Seven roles with the following view permissions (enforced on both frontend route
 ## Backend quirks
 
 - **Spring Security** (`spring-boot-starter-security`, `jjwt-api/impl/jackson 0.12.6`) — protects all `/api/*` endpoints by role via `SecurityConfig.filterChain()`.
-- **Test pattern:** All 50 tests pass (`mvn test`): service-layer tests use Mockito (no Spring context); integration tests use `@SpringBootTest` + `@AutoConfigureMockMvc` + `@Transactional` with H2 (test profile disables security via `TestSecurityConfig`). Flyway disabled in tests.
+- **Test pattern:** All 63 tests pass (`mvn test`): service-layer tests use Mockito (no Spring context); integration tests use `@SpringBootTest` + `@AutoConfigureMockMvc` + `@Transactional` with H2 (test profile disables security via `TestSecurityConfig`). Flyway disabled in tests.
 - **Apache POI** for Excel ramp manifest parsing (`LoadPlanningImportService`).
 - **Fixes applied:**
   - Deleted duplicate `com.aircargo.WebConfig` (root package) — kept `com.aircargo.config.WebConfig` (ports 5173 + 5174) since both beans named `webConfig` caused `ConflictingBeanDefinitionException`.

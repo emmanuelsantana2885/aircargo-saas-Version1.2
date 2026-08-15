@@ -1,8 +1,8 @@
 package com.aircargo.mawbservice.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
-import com.aircargo.mawbservice.dto.LabelPrintRequest;
-import com.aircargo.mawbservice.service.AuditService;
+import com.aircargo.common.dto.LabelPrintRequest;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.mawbservice.service.MawbLabelService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;

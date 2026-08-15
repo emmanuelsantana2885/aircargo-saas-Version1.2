@@ -1,7 +1,7 @@
 package com.aircargo.uldservice.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
-import com.aircargo.uldservice.dto.PageResponse;
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.uldservice.dto.TransferRequest;
 import com.aircargo.uldservice.dto.UldDTO;
 import com.aircargo.uldservice.entity.UldStatus;

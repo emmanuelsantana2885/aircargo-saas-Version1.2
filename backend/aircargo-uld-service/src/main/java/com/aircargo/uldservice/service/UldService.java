@@ -1,6 +1,6 @@
 package com.aircargo.uldservice.service;
 
-import com.aircargo.uldservice.dto.PageResponse;
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.uldservice.dto.UldDTO;
 
 import java.util.List;

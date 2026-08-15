@@ -84,6 +84,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.aircargo</groupId>
+            <artifactId>aircargo-feign-clients</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>

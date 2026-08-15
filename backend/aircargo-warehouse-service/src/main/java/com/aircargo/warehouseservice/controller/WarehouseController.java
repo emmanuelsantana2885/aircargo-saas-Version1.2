@@ -4,6 +4,7 @@ import com.aircargo.warehouseservice.dto.ReceiptPieceDTO;
 import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.service.WarehouseReceiptService;
 import com.aircargo.warehouseservice.service.WarehouseService;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.common.auth.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -22,11 +23,11 @@ public class WarehouseController {
 
     private final WarehouseService warehouseService;
     private final WarehouseReceiptService receiptService;
-    private final com.aircargo.warehouseservice.service.AuditService auditService;
+    private final AuditService auditService;
 
     public WarehouseController(WarehouseService warehouseService,
                                WarehouseReceiptService receiptService,
-                               com.aircargo.warehouseservice.service.AuditService auditService) {
+                               AuditService auditService) {
         this.warehouseService = warehouseService;
         this.receiptService = receiptService;
         this.auditService = auditService;

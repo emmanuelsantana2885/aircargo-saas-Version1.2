@@ -3,7 +3,7 @@ package com.aircargo.mawbservice.controller;
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.mawbservice.dto.LabelTemplateDTO;
 import com.aircargo.mawbservice.entity.LabelType;
-import com.aircargo.mawbservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.mawbservice.service.LabelTemplateService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

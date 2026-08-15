@@ -2,7 +2,7 @@ package com.aircargo.warehouseservice.controller;
 
 import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.service.WarehouseReceiptService;
-import com.aircargo.warehouseservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.common.auth.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

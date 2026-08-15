@@ -23,7 +23,7 @@ echo "[🏗️  Building all backend modules ...]"
 
 MAVEN_OPTS="${MAVEN_OPTS:--Xmx512m -XX:MaxMetaspaceSize=256m}"
 
-(cd "$AIR_ROOT/backend" && MAVEN_OPTS="$MAVEN_OPTS" mvn clean package -DskipTests -q) || {
+(cd "$AIR_ROOT/backend" && MAVEN_OPTS="$MAVEN_OPTS" "$MAVEN_BIN" clean package -DskipTests -q) || {
     echo "❌ Maven build failed. Aborting."
     exit 1
 }

@@ -32,3 +32,26 @@ if [ -z "${RABBITMQ_PASSWORD:-}" ]; then
 fi
 
 export JWT_SECRET RABBITMQ_PASSWORD POSTGRES_PASSWORD POSTGRES_DB POSTGRES_USER RABBITMQ_USER
+
+# ── Maven: locate a usable mvn binary ───────────────────────────
+# 1) MAVEN_BIN already set (env var)
+# 2) mvn on PATH
+# 3) IntelliJ bundled Maven (flatpak), SDKMAN candidates
+if [ -z "${MAVEN_BIN:-}" ]; then
+  if command -v mvn >/dev/null 2>&1; then
+    MAVEN_BIN="$(command -v mvn)"
+  else
+    for cand in \
+      "/var/lib/flatpak/app/com.jetbrains.IntelliJ-IDEA-Community/x86_64/stable/active/files/plugins/maven-plugin/lib/maven3/bin/mvn" \
+      "$HOME/.sdkman/candidates/maven/current/bin/mvn" \
+      "/opt/maven/bin/mvn"; do
+      if [ -x "$cand" ]; then MAVEN_BIN="$cand"; break; fi
+    done
+  fi
+fi
+export MAVEN_BIN
+
+if [ -z "$MAVEN_BIN" ]; then
+  echo "❌ No se encontró Maven (mvn). Instala Maven o exporta MAVEN_BIN=/ruta/a/mvn" >&2
+  exit 1
+fi

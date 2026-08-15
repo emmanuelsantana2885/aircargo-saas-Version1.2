@@ -3,7 +3,7 @@ package com.aircargo.bookingservice.controller;
 import com.aircargo.bookingservice.dto.BookingAwbUpdateRequest;
 import com.aircargo.bookingservice.dto.BookingDTO;
 import com.aircargo.bookingservice.service.BookingService;
-import com.aircargo.bookingservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.common.dto.PageResponse;
 import jakarta.servlet.http.HttpServletRequest;

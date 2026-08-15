@@ -1,7 +1,7 @@
 package com.aircargo.uldservice.controller;
 
 import com.aircargo.common.auth.UserPrincipal;
-import com.aircargo.uldservice.dto.LabelPrintRequest;
+import com.aircargo.common.dto.LabelPrintRequest;
 import com.aircargo.uldservice.service.PalletLabelService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;

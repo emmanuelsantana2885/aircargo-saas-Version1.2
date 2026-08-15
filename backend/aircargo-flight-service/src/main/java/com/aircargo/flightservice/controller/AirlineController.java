@@ -3,7 +3,7 @@ package com.aircargo.flightservice.controller;
 import com.aircargo.common.auth.UserPrincipal;
 import com.aircargo.flightservice.dto.AirlineDTO;
 import com.aircargo.flightservice.service.AirlineService;
-import com.aircargo.flightservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

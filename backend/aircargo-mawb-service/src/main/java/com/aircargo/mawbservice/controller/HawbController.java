@@ -2,7 +2,7 @@ package com.aircargo.mawbservice.controller;
 
 import com.aircargo.mawbservice.dto.HawbDTO;
 import com.aircargo.mawbservice.service.HawbService;
-import com.aircargo.mawbservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import com.aircargo.common.auth.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

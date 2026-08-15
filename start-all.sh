@@ -20,23 +20,40 @@ pkill -f "vite" 2>/dev/null || true
 sleep 2
 
 # ── Infraestructura (Postgres + RabbitMQ) ───────────────────────
-if ! (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null; then
-  echo "🐳 Postgres no está arriba — arrancando infraestructura..."
+pg_up=false; rmq_up=false
+(echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null && pg_up=true
+(echo > /dev/tcp/127.0.0.1/5672) 2>/dev/null && rmq_up=true
+
+if [ "$pg_up" = "false" ] || [ "$rmq_up" = "false" ]; then
+  if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "❌ Postgres(:5432) y/o RabbitMQ(:5672) no están arriba y Docker no está disponible." >&2
+    echo "   Opción A: instala Docker y ejecuta:" >&2
+    echo "     docker compose -f $AIR_ROOT/docker/docker-compose.infrastructure.yml up -d" >&2
+    echo "   Opción B: arranca Postgres y RabbitMQ por tu cuenta en :5432 / :5672" >&2
+    exit 1
+  fi
+  echo "🐳 Infraestructura incompleta (postgres=$pg_up, rabbitmq=$rmq_up) — arrancando contenedores..."
   docker compose -f "$AIR_ROOT/docker/docker-compose.infrastructure.yml" up -d
-  echo "⏳ Esperando Postgres..."
+  echo "⏳ Esperando Postgres :5432..."
   for _ in $(seq 1 30); do
-    (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null && break
+    (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null && { pg_up=true; break; }
     sleep 2
   done
-  (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null || { echo "❌ Postgres no responde en :5432"; exit 1; }
+  [ "$pg_up" = "true" ] || { echo "❌ Postgres no responde en :5432"; exit 1; }
+  echo "⏳ Esperando RabbitMQ :5672..."
+  for _ in $(seq 1 30); do
+    (echo > /dev/tcp/127.0.0.1/5672) 2>/dev/null && { rmq_up=true; break; }
+    sleep 2
+  done
+  [ "$rmq_up" = "true" ] || { echo "❌ RabbitMQ no responde en :5672"; exit 1; }
 fi
-echo "✅ Infraestructura lista (Postgres :5432)"
+echo "✅ Infraestructura lista (Postgres :5432, RabbitMQ :5672)"
 
 if [ "$SKIP_BUILD" = "true" ]; then
   echo "⚡ Flag --skip-build: usando jars existentes (sin recompilar)"
 else
   echo "🏗️ Construyendo backend (reactor completo, incluye aircargo-common y feign-clients)..."
-  (cd "$AIR_ROOT/backend" && mvn install -DskipTests -q) || {
+  (cd "$AIR_ROOT/backend" && "$MAVEN_BIN" install -DskipTests -q) || {
       echo "❌ La compilación del backend ha fallado."
       exit 1
   }

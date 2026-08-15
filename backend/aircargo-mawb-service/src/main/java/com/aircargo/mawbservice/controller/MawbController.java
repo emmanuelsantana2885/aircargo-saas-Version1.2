@@ -5,7 +5,7 @@ import com.aircargo.common.dto.PageResponse;
 import com.aircargo.mawbservice.dto.MawbDTO;
 import com.aircargo.mawbservice.entity.MawbStatus;
 import com.aircargo.mawbservice.service.MawbService;
-import com.aircargo.mawbservice.service.AuditService;
+import com.aircargo.common.audit.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

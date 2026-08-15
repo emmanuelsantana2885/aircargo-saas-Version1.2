@@ -14,13 +14,13 @@ public class UserDTO {
     private Boolean mustChangePassword;
     private Boolean mfaEnabled;
     private OffsetDateTime lastLogin;
-    private List<SiteDTO> sites;
+    private List<UUID> siteIds;
 
     public UserDTO() {}
 
     public UserDTO(UUID id, String email, String fullName, String role, UUID airlineId,
                    Boolean isActive, Boolean mustChangePassword, Boolean mfaEnabled,
-                   OffsetDateTime lastLogin, List<SiteDTO> sites) {
+                   OffsetDateTime lastLogin, List<UUID> siteIds) {
         this.id = id;
         this.email = email;
         this.fullName = fullName;
@@ -30,7 +30,7 @@ public class UserDTO {
         this.mustChangePassword = mustChangePassword;
         this.mfaEnabled = mfaEnabled;
         this.lastLogin = lastLogin;
-        this.sites = sites;
+        this.siteIds = siteIds;
     }
 
     public UUID getId() { return id; }
@@ -51,6 +51,6 @@ public class UserDTO {
     public void setMfaEnabled(Boolean mfaEnabled) { this.mfaEnabled = mfaEnabled; }
     public OffsetDateTime getLastLogin() { return lastLogin; }
     public void setLastLogin(OffsetDateTime lastLogin) { this.lastLogin = lastLogin; }
-    public List<SiteDTO> getSites() { return sites; }
-    public void setSites(List<SiteDTO> sites) { this.sites = sites; }
+    public List<UUID> getSiteIds() { return siteIds; }
+    public void setSiteIds(List<UUID> siteIds) { this.siteIds = siteIds; }
 }

@@ -63,9 +63,9 @@ public class AppUserServiceImpl implements AppUserService {
     public Optional<AppUserDTO> update(UUID id, AppUserDTO dto) {
         return repository.findById(id)
                 .map(existing -> {
-                    existing.setEmail(dto.getEmail());
-                    existing.setFullName(dto.getFullName());
-                    existing.setRole(dto.getRole());
+                    if (dto.getEmail() != null) existing.setEmail(dto.getEmail());
+                    if (dto.getFullName() != null) existing.setFullName(dto.getFullName());
+                    if (dto.getRole() != null) existing.setRole(dto.getRole());
                     existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
                     if (dto.getAirlineId() != null) {
                         com.aircargo.common.entity.Airline airline = new com.aircargo.common.entity.Airline();
